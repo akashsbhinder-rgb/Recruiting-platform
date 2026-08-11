@@ -174,23 +174,6 @@
     opacity: 0.88;
   }
 
-  button.back {
-    width: 100%;
-    background: transparent;
-    color: var(--muted);
-    border: none;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 10px 14px 0;
-    cursor: pointer;
-    text-align: center;
-  }
-
-  button.back:hover {
-    color: var(--fg);
-  }
-
   .fields {
     display: grid;
   }
@@ -204,22 +187,9 @@
     opacity: 0;
     pointer-events: none;
   }
-
-  .step {
-    display: grid;
-  }
-
-  .step > * {
-    grid-area: 1 / 1;
-    transition: opacity 0.2s ease;
-  }
-
-  .step > .hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
 </style>
 </head>
+
 <body data-mode="companies">
   <div class="card">
     <h1 id="heading">Make your next hire</h1>
@@ -230,52 +200,37 @@
     </div>
 
     <div class="fields">
-      <!-- Companies flow (two steps) -->
+
+      <!-- Companies flow: single step, no "Next" -->
       <form id="form-companies" novalidate>
-        <div class="step" id="companies-step">
-
-          <!-- Step 1 -->
-          <div id="companies-step-1">
-            <div class="row">
-              <div class="field">
-                <input type="text" id="c-first" placeholder="First name" required>
-                <div class="error-msg" id="err-c-first">Please enter your first name</div>
-              </div>
-              <div class="field">
-                <input type="text" id="c-last" placeholder="Last name" required>
-                <div class="error-msg" id="err-c-last">Please enter your last name</div>
-              </div>
-            </div>
-            <div class="field">
-              <input type="email" id="c-email" placeholder="Company email" required>
-              <div class="error-msg" id="err-c-email">Please enter a valid email</div>
-            </div>
-            <div class="field">
-              <input type="tel" id="c-phone" placeholder="Phone number" required>
-              <div class="error-msg" id="err-c-phone">Enter a valid phone number (at least 10 digits)</div>
-            </div>
-            <button type="button" class="submit" id="c-next">Next</button>
+        <div class="row">
+          <div class="field">
+            <input type="text" id="c-first" placeholder="First name" required>
+            <div class="error-msg" id="err-c-first">Please enter your first name</div>
           </div>
 
-          <!-- Step 2 -->
-          <div id="companies-step-2" class="hidden">
-            <div class="field">
-              <input type="text" id="c-role" placeholder="Role you're hiring for (e.g. VP of Sales)" required>
-              <div class="error-msg" id="err-c-role">Please enter the role and seniority</div>
-            </div>
-            <div class="field">
-              <input type="text" id="c-salary" placeholder="Salary range (e.g. 150,000 - 180,000)" required>
-              <div class="error-msg" id="err-c-salary">Numbers only, e.g. 150,000 - 180,000</div>
-            </div>
-            <div class="field">
-              <label for="c-file" style="display:block; font-size:12px; color:var(--muted); margin-bottom:6px;">Job posting (optional)</label>
-              <input type="file" id="c-file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" style="padding:10px 14px; font-size:13px;">
-            </div>
-            <button type="submit" class="submit">Submit</button>
-            <button type="button" class="back" id="c-back">Back</button>
+          <div class="field">
+            <input type="text" id="c-last" placeholder="Last name" required>
+            <div class="error-msg" id="err-c-last">Please enter your last name</div>
           </div>
-
         </div>
+
+        <div class="field">
+          <input type="text" id="c-company" placeholder="Company name" required>
+          <div class="error-msg" id="err-c-company">Please enter your company name</div>
+        </div>
+
+        <div class="field">
+          <input type="email" id="c-email" placeholder="Work email" required>
+          <div class="error-msg" id="err-c-email">Please enter a valid email</div>
+        </div>
+
+        <div class="field">
+          <input type="tel" id="c-phone" placeholder="Phone number" required>
+          <div class="error-msg" id="err-c-phone">Enter a valid phone number (at least 10 digits)</div>
+        </div>
+
+        <button type="submit" class="submit">Submit</button>
       </form>
 
       <!-- Search firms flow -->
@@ -284,22 +239,29 @@
           <input type="email" id="a-email" placeholder="Work email" required>
           <div class="error-msg" id="err-a-email">Please enter a valid email</div>
         </div>
+
         <div class="field">
           <input type="tel" id="a-phone" placeholder="Phone number" required>
           <div class="error-msg" id="err-a-phone">Enter a valid phone number (at least 10 digits)</div>
         </div>
+
         <div class="field">
           <input type="text" id="a-linkedin" placeholder="LinkedIn profile" required>
           <div class="error-msg" id="err-a-linkedin">Please enter your LinkedIn profile</div>
         </div>
+
         <button type="submit" class="submit">Submit</button>
       </form>
+
     </div>
   </div>
 
   <script>
-    // ⚠️ Replace this with your deployed Apps Script /exec URL
+    // Google Apps Script /exec URL
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHl_Yltqz4nSriGvxSKY35nQlEuE_q_NrIkE7UeRx47BwaxQaP4UMiX9948DQXlyyF/exec';
+
+    // Onboarding page
+    const ONBOARDING_URL = 'onboarding.html';
 
     function generateSubmissionId() {
       return 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
@@ -307,17 +269,19 @@
 
     function submitToBackend(payload, button) {
       const originalText = button.textContent;
+
       button.disabled = true;
       button.textContent = 'Submitting...';
 
       return fetch(SCRIPT_URL, {
         method: 'POST',
-        mode: 'no-cors', // Apps Script doesn't return CORS headers; this lets the POST go through
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
         body: JSON.stringify(payload)
       })
         .then(() => {
-          // no-cors means we can't read the response, so we treat "no network error" as success
           button.textContent = 'Submitted ✓';
           return true;
         })
@@ -336,15 +300,15 @@
     const btnAgencies = document.getElementById('btn-agencies');
     const formCompanies = document.getElementById('form-companies');
     const formAgencies = document.getElementById('form-agencies');
-    const companiesStep1 = document.getElementById('companies-step-1');
-    const companiesStep2 = document.getElementById('companies-step-2');
 
     function setMode(mode) {
       const isCompanies = mode === 'companies';
+
       body.dataset.mode = mode;
 
       btnCompanies.classList.toggle('active', isCompanies);
       btnAgencies.classList.toggle('active', !isCompanies);
+
       btnCompanies.setAttribute('aria-selected', isCompanies);
       btnAgencies.setAttribute('aria-selected', !isCompanies);
 
@@ -360,29 +324,36 @@
     btnAgencies.addEventListener('click', () => setMode('agencies'));
 
     // --- Validation helpers ---
+
     function validateField(input, errorEl, customCheck) {
       const value = input.value.trim();
+
       let valid = value.length > 0;
-      if (valid && customCheck) valid = customCheck(value);
+
+      if (valid && customCheck) {
+        valid = customCheck(value);
+      }
 
       input.classList.toggle('invalid', !valid);
       errorEl.classList.toggle('show', !valid);
+
       return valid;
     }
 
-    const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    const isEmail = v =>
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-    // Accepts formats like (555) 123-4567, 555-123-4567, 555.123.4567, +1 555 123 4567
-    // Requires at least 10 digits so it can't just be a random short string
+    // Accepts formats like:
+    // (555) 123-4567
+    // 555-123-4567
+    // 555.123.4567
+    // +1 555 123 4567
     const isPhone = v => {
       const digitCount = (v.match(/\d/g) || []).length;
       const validChars = /^[\d\s()+\-.]+$/.test(v);
+
       return validChars && digitCount >= 10;
     };
-
-    // Requires a numeric range only, e.g. 150,000 - 180,000 (no letters allowed)
-    const isSalaryRange = v =>
-      /^\d[\d,]*\s*-\s*\d[\d,]*$/.test(v.trim());
 
     function clearFieldError(input, errorEl) {
       input.addEventListener('input', () => {
@@ -391,112 +362,98 @@
       });
     }
 
-    // --- Companies step 1 ---
+    // --- Companies form ---
+
     const cFirst = document.getElementById('c-first');
     const cLast = document.getElementById('c-last');
+    const cCompany = document.getElementById('c-company');
     const cEmail = document.getElementById('c-email');
     const cPhone = document.getElementById('c-phone');
+
     const errCFirst = document.getElementById('err-c-first');
     const errCLast = document.getElementById('err-c-last');
+    const errCCompany = document.getElementById('err-c-company');
     const errCEmail = document.getElementById('err-c-email');
     const errCPhone = document.getElementById('err-c-phone');
 
-    [[cFirst, errCFirst], [cLast, errCLast], [cEmail, errCEmail], [cPhone, errCPhone]]
-      .forEach(([input, err]) => clearFieldError(input, err));
-
-    document.getElementById('c-next').addEventListener('click', () => {
-      const validFirst = validateField(cFirst, errCFirst);
-      const validLast = validateField(cLast, errCLast);
-      const validEmail = validateField(cEmail, errCEmail, isEmail);
-      const validPhone = validateField(cPhone, errCPhone, isPhone);
-
-      if (validFirst && validLast && validEmail && validPhone) {
-        companiesStep1.classList.add('hidden');
-        companiesStep2.classList.remove('hidden');
-      }
-    });
-
-    document.getElementById('c-back').addEventListener('click', () => {
-      companiesStep2.classList.add('hidden');
-      companiesStep1.classList.remove('hidden');
-    });
-
-    // --- Companies step 2 ---
-    const cRole = document.getElementById('c-role');
-    const cSalary = document.getElementById('c-salary');
-    const errCRole = document.getElementById('err-c-role');
-    const errCSalary = document.getElementById('err-c-salary');
-
-    [[cRole, errCRole], [cSalary, errCSalary]].forEach(([input, err]) => clearFieldError(input, err));
-
-    // Strip out any character that isn't a digit, comma, space, or dash as the user types
-    cSalary.addEventListener('input', () => {
-      const cleaned = cSalary.value.replace(/[^\d,\s-]/g, '');
-      if (cleaned !== cSalary.value) cSalary.value = cleaned;
-    });
+    [
+      [cFirst, errCFirst],
+      [cLast, errCLast],
+      [cCompany, errCCompany],
+      [cEmail, errCEmail],
+      [cPhone, errCPhone]
+    ].forEach(([input, err]) => clearFieldError(input, err));
 
     formCompanies.addEventListener('submit', e => {
       e.preventDefault();
-      const validRole = validateField(cRole, errCRole);
-      const validSalary = validateField(cSalary, errCSalary, isSalaryRange);
-      if (validRole && validSalary) {
-        const submitBtn = formCompanies.querySelector('button[type="submit"]');
-        const basePayload = {
+
+      const validFirst = validateField(cFirst, errCFirst);
+      const validLast = validateField(cLast, errCLast);
+      const validCompany = validateField(cCompany, errCCompany);
+      const validEmail = validateField(cEmail, errCEmail, isEmail);
+      const validPhone = validateField(cPhone, errCPhone, isPhone);
+
+      if (validFirst && validLast && validCompany && validEmail && validPhone) {
+
+        const submitBtn =
+          formCompanies.querySelector('button[type="submit"]');
+
+        const payload = {
           type: 'company',
           firstName: cFirst.value.trim(),
           lastName: cLast.value.trim(),
+          companyName: cCompany.value.trim(),
           email: cEmail.value.trim(),
           phone: cPhone.value.trim(),
-          role: cRole.value.trim(),
-          salary: cSalary.value.trim(),
           submissionId: generateSubmissionId()
         };
 
-        const fileInput = document.getElementById('c-file');
-        const file = fileInput.files[0];
+        submitToBackend(payload, submitBtn).then(ok => {
 
-        if (file) {
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Uploading file...';
-          const reader = new FileReader();
-          reader.onload = () => {
-            // reader.result looks like "data:<mimetype>;base64,<data>" — strip the prefix
-            const base64Data = reader.result.split(',')[1];
-            basePayload.fileName = file.name;
-            basePayload.fileType = file.type;
-            basePayload.fileData = base64Data;
-            submitToBackend(basePayload, submitBtn);
-          };
-          reader.onerror = () => {
-            alert('Could not read the file. Please try again or submit without it.');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit';
-          };
-          reader.readAsDataURL(file);
-        } else {
-          submitToBackend(basePayload, submitBtn);
-        }
+          if (ok) {
+
+            const params = new URLSearchParams({
+              firstName: payload.firstName,
+              companyName: payload.companyName,
+              submissionId: payload.submissionId
+            });
+
+            window.location.href =
+              `${ONBOARDING_URL}?${params.toString()}`;
+          }
+
+        });
       }
     });
 
     // --- Search firms form ---
+
     const aEmail = document.getElementById('a-email');
     const aPhone = document.getElementById('a-phone');
     const aLinkedin = document.getElementById('a-linkedin');
+
     const errAEmail = document.getElementById('err-a-email');
     const errAPhone = document.getElementById('err-a-phone');
     const errALinkedin = document.getElementById('err-a-linkedin');
 
-    [[aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin]]
-      .forEach(([input, err]) => clearFieldError(input, err));
+    [
+      [aEmail, errAEmail],
+      [aPhone, errAPhone],
+      [aLinkedin, errALinkedin]
+    ].forEach(([input, err]) => clearFieldError(input, err));
 
     formAgencies.addEventListener('submit', e => {
       e.preventDefault();
+
       const validEmail = validateField(aEmail, errAEmail, isEmail);
       const validPhone = validateField(aPhone, errAPhone, isPhone);
       const validLinkedin = validateField(aLinkedin, errALinkedin);
+
       if (validEmail && validPhone && validLinkedin) {
-        const submitBtn = formAgencies.querySelector('button[type="submit"]');
+
+        const submitBtn =
+          formAgencies.querySelector('button[type="submit"]');
+
         const payload = {
           type: 'search_firm',
           email: aEmail.value.trim(),
@@ -504,6 +461,7 @@
           linkedin: aLinkedin.value.trim(),
           submissionId: generateSubmissionId()
         };
+
         submitToBackend(payload, submitBtn);
       }
     });
