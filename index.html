@@ -658,25 +658,40 @@
       window.location.href = ONBOARDING_URL;
     }
 
-    // Upserts the account record (harmless no-op if it already exists,
-    // e.g. a returning user whose signUp fell back to a login) and
-    // routes to onboarding. Company name itself is collected on the
-    // first page of onboarding, not here.
+    // Tries a plain insert; if a row already exists for this account
+    // (e.g. a returning user whose signUp fell back to a login),
+    // updates it instead. Avoids upsert/ON CONFLICT, which doesn't
+    // play well with RLS here.
+    async function insertOrUpdate(table, matchColumn, matchValue, row) {
+      const { error: insertErr } = await supabaseClient.from(table).insert([row]);
+      if (!insertErr) return;
+
+      if (insertErr.code === '23505') {
+        const { [matchColumn]: _drop, ...updateFields } = row;
+        const { error: updateErr } = await supabaseClient
+          .from(table)
+          .update(updateFields)
+          .eq(matchColumn, matchValue);
+        if (updateErr) throw updateErr;
+        return;
+      }
+
+      throw insertErr;
+    }
+
+    // Company name itself is collected on the first page of onboarding,
+    // not here.
     async function completeSignup(session, pending) {
       showOnly(finishingBox);
 
       try {
         if (pending.type === 'company') {
-          const { error } = await supabaseClient
-            .from('companies')
-            .upsert([{
-              auth_user_id: session.user.id,
-              contact_first_name: pending.firstName,
-              last_name: pending.lastName,
-              email: pending.email
-            }], { onConflict: 'auth_user_id' });
-
-          if (error) throw error;
+          await insertOrUpdate('companies', 'auth_user_id', session.user.id, {
+            auth_user_id: session.user.id,
+            contact_first_name: pending.firstName,
+            last_name: pending.lastName,
+            email: pending.email
+          });
 
           localStorage.removeItem(PENDING_KEY);
           window.location.href = ONBOARDING_URL;
@@ -684,16 +699,12 @@
         }
 
         if (pending.type === 'search_firm') {
-          const { error } = await supabaseClient
-            .from('recruiters')
-            .upsert([{
-              auth_user_id: session.user.id,
-              email: pending.email,
-              phone: pending.phone,
-              linkedin: pending.linkedin
-            }], { onConflict: 'auth_user_id' });
-
-          if (error) throw error;
+          await insertOrUpdate('recruiters', 'auth_user_id', session.user.id, {
+            auth_user_id: session.user.id,
+            email: pending.email,
+            phone: pending.phone,
+            linkedin: pending.linkedin
+          });
 
           localStorage.removeItem(PENDING_KEY);
           finishingBox.querySelector('div').textContent = "You're in! We'll be in touch once roles are ready for you.";
