@@ -704,11 +704,15 @@
         }
 
         if (pending.type === 'search_firm') {
+          // recruiters has no "email" column -- Supabase auth already
+          // stores the user's email on auth.users against this same id.
+          // "verified" is NOT NULL with no DB default, so it must be
+          // set explicitly on every insert or this throws too.
           await insertOrUpdate('recruiters', 'auth_user_id', session.user.id, {
             auth_user_id: session.user.id,
-            email: pending.email,
             phone: pending.phone,
-            linkedin: pending.linkedin
+            linkedin: pending.linkedin,
+            verified: false
           });
 
           localStorage.removeItem(PENDING_KEY);
