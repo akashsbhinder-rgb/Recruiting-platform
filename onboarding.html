@@ -94,6 +94,14 @@ async function getMyCompany(session) {
 async function submitRoleToSupabase(data, session) {
   const company = await getMyCompany(session);
 
+  // Company name is collected here on page one, not at signup -- keep
+  // the companies row in sync with whatever they entered.
+  const { error: nameErr } = await supabaseClient
+    .from("companies")
+    .update({ name: data.companyName })
+    .eq("id", company.id);
+  if (nameErr) throw new Error(`Failed saving company name: ${nameErr.message}`);
+
   const [role] = await sbInsertRows(
     "roles",
     [
@@ -149,11 +157,12 @@ function emptyCandidate() {
 }
 
 const initialData = {
+  companyName: "",
   roleName: "",
   roleDescription: "",
   minSalary: "",
   maxSalary: "",
-  stages: [""],
+  stages: ["Recruiter screen"],
   hiringGoals: "",
   idealQualities: ["", "", ""],
   idealCandidates: [emptyCandidate()],
@@ -465,6 +474,7 @@ function validateStep(key, data) {
   switch (key) {
     case "basics":
       return (
+        isFilled(data.companyName) &&
         isFilled(data.roleName) &&
         isFilled(data.roleDescription) &&
         isFilled(data.minSalary) &&
@@ -635,12 +645,22 @@ function EmployerOnboarding() {
   const [session, setSession] = useState(undefined);
 
   useEffect(() => {
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         window.location.href = LOGIN_URL;
         return;
       }
       setSession(session);
+
+      const { data: existingCompany } = await supabaseClient
+        .from("companies")
+        .select("name")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+
+      if (existingCompany && existingCompany.name) {
+        set({ companyName: existingCompany.name });
+      }
     });
   }, []);
 
@@ -715,6 +735,13 @@ function EmployerOnboarding() {
 
         {step.key === "basics" && (
           <>
+            <Field label="Company name" required>
+              <TextInput
+                value={data.companyName}
+                placeholder="e.g. Acme Inc."
+                onChange={(e) => set({ companyName: e.target.value })}
+              />
+            </Field>
             <Field label="Role name" required>
               <TextInput
                 value={data.roleName}
