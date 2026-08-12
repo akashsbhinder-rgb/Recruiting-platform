@@ -680,16 +680,21 @@
     }
 
     // Company name itself is collected on the first page of onboarding,
-    // not here.
+    // not here -- "name" here is the contact's full name (first + optional last).
     async function completeSignup(session, pending) {
       showOnly(finishingBox);
 
       try {
         if (pending.type === 'company') {
+          const fullName = pending.lastName
+            ? `${pending.firstName} ${pending.lastName}`
+            : pending.firstName;
+
           await insertOrUpdate('companies', 'auth_user_id', session.user.id, {
             auth_user_id: session.user.id,
             contact_first_name: pending.firstName,
             last_name: pending.lastName,
+            name: fullName,
             email: pending.email
           });
 
