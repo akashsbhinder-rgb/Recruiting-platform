@@ -425,7 +425,8 @@
       submitBtn.textContent = originalText;
 
       if (error) {
-        alert('Something went wrong sending your login link. Please try again.');
+        console.error('signInWithOtp error:', error);
+        alert('Something went wrong sending your login link: ' + error.message);
         return;
       }
 
@@ -478,7 +479,8 @@
       submitBtn.textContent = originalText;
 
       if (error) {
-        alert('Something went wrong sending your login link. Please try again.');
+        console.error('signInWithOtp error:', error);
+        alert('Something went wrong sending your login link: ' + error.message);
         return;
       }
 
