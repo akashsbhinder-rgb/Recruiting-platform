@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard | MakePlacement</title>
+
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.10/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html, body, #root { margin: 0; min-height: 100%; }
+    body { background: #fafaf9; }
+    #boot-error {
+      display: none;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #111;
+    }
+    #boot-error pre {
+      white-space: pre-wrap;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 8px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="boot-error">
+    <h2>We couldn't load the dashboard.</h2>
+    <p>Please refresh the page. If the problem continues, contact support.</p>
+    <pre id="boot-error-detail"></pre>
+  </div>
+
+  <script>
+    window.addEventListener("error", function (event) {
+      const box = document.getElementById("boot-error");
+      const detail = document.getElementById("boot-error-detail");
+      if (box && detail && !document.getElementById("root").hasChildNodes()) {
+        box.style.display = "block";
+        detail.textContent = event.error ? (event.error.stack || event.error.message) : event.message;
+      }
+    });
+  </script>
+
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+// ---------- Supabase config ----------
+const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const LOGIN_URL = "index.html";
+const NEW_ROLE_URL = "onboarding.html";
+
+// Statuses are treated as free text on purpose -- we don't hard-code an
+// enum here since the DB doesn't enforce one. "active" is just "not yet
+// rejected or placed"; anything else typed into that column falls into
+// the active bucket too, which is the safer failure mode for a pipeline view.
+const isRejected = (s) => (s.status || "").toLowerCase() === "rejected";
+const isPlaced = (s) => (s.status || "").toLowerCase() === "placed";
+const isActive = (s) => !isRejected(s) && !isPlaced(s);
+
+async function getMyCompany(session) {
+  const { data, error } = await supabaseClient
+    .from("companies")
+    .select("*")
+    .eq("auth_user_id", session.user.id)
+    .maybeSingle();
+  if (error) throw new Error(`Failed loading company: ${error.message}`);
+  return data;
+}
+
+async function fetchRoles(companyId) {
+  const { data, error } = await supabaseClient
+    .from("roles")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed loading roles: ${error.message}`);
+  return data || [];
+}
+
+async function fetchRoleCandidateCounts(roleIds) {
+  if (roleIds.length === 0) return {};
+  const { data, error } = await supabaseClient
+    .from("candidates")
+    .select("role_id, status")
+    .in("role_id", roleIds);
+  if (error) throw new Error(`Failed loading candidate counts: ${error.message}`);
+  const counts = {};
+  roleIds.forEach((id) => (counts[id] = { active: 0, rejected: 0, placed: 0 }));
+  (data || []).forEach((c) => {
+    const bucket = isPlaced(c) ? "placed" : isRejected(c) ? "rejected" : "active";
+    if (!counts[c.role_id]) counts[c.role_id] = { active: 0, rejected: 0, placed: 0 };
+    counts[c.role_id][bucket] += 1;
+  });
+  return counts;
+}
+
+async function fetchStages(roleId) {
+  const { data, error } = await supabaseClient
+    .from("role_stages")
+    .select("*")
+    .eq("role_id", roleId)
+    .order("position", { ascending: true });
+  if (error) throw new Error(`Failed loading stages: ${error.message}`);
+  return data || [];
+}
+
+async function fetchCandidates(roleId) {
+  const { data, error } = await supabaseClient
+    .from("candidates")
+    .select("*")
+    .eq("role_id", roleId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed loading candidates: ${error.message}`);
+  return data || [];
+}
+
+async function fetchRecruiters(recruiterIds) {
+  if (recruiterIds.length === 0) return {};
+  const { data, error } = await supabaseClient
+    .from("recruiters")
+    .select("id, email")
+    .in("id", recruiterIds);
+  if (error) throw new Error(`Failed loading recruiters: ${error.message}`);
+  const map = {};
+  (data || []).forEach((r) => (map[r.id] = r.email));
+  return map;
+}
+
+async function updateCandidate(id, patch) {
+  const { error } = await supabaseClient.from("candidates").update(patch).eq("id", id);
+  if (error) throw new Error(`Failed updating candidate: ${error.message}`);
+}
+
+async function updateRoleStatus(id, status) {
+  const { error } = await supabaseClient.from("roles").update({ status }).eq("id", id);
+  if (error) throw new Error(`Failed updating role: ${error.message}`);
+}
+
+// ---------- small UI bits ----------
+function Badge({ children, tone = "default" }) {
+  const tones = {
+    default: { bg: "#f0f0ee", fg: "#555" },
+    live: { bg: "#e6f4ea", fg: "#1e7a37" },
+    paused: { bg: "#fdf0dc", fg: "#a15c00" },
+    filled: { bg: "#eaeaf7", fg: "#4b4bb0" },
+    rejected: { bg: "#fbe9e9", fg: "#b42318" },
+    placed: { bg: "#e6f4ea", fg: "#1e7a37" },
+  };
+  const t = tones[tone] || tones.default;
+  return (
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        padding: "3px 9px",
+        borderRadius: 999,
+        background: t.bg,
+        color: t.fg,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function IconButton({ children, onClick, tone = "default", disabled }) {
+  const tones = {
+    default: { border: "#ddd", fg: "#111", bg: "#fff" },
+    danger: { border: "#f3c9c4", fg: "#b42318", bg: "#fff" },
+    primary: { border: "#111", fg: "#fff", bg: "#111" },
+  };
+  const t = tones[tone];
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        fontSize: 12.5,
+        fontWeight: 600,
+        padding: "6px 11px",
+        borderRadius: 7,
+        border: `1px solid ${t.border}`,
+        background: t.bg,
+        color: t.fg,
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function money(v) {
+  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
+}
+
+// ---------- Roles overview ----------
+function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 24 }}>
+        <div style={{ fontSize: 24, fontWeight: 600 }}>Your roles</div>
+        <a
+          href={NEW_ROLE_URL}
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#fff",
+            background: "#111",
+            padding: "10px 16px",
+            borderRadius: 8,
+            textDecoration: "none",
+          }}
+        >
+          + Post new role
+        </a>
+      </div>
+
+      {roles.length === 0 && (
+        <div style={{ color: "#8a8a8a", fontSize: 14 }}>
+          You haven't posted a role yet. Use "Post new role" to get started.
+        </div>
+      )}
+
+      <div style={{ display: "grid", gap: 14 }}>
+        {roles.map((role) => {
+          const c = counts[role.id] || { active: 0, rejected: 0, placed: 0 };
+          const status = (role.status || "live").toLowerCase();
+          return (
+            <div
+              key={role.id}
+              style={{
+                border: "1px solid #eee",
+                borderRadius: 12,
+                padding: 20,
+                background: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ cursor: "pointer", flex: 1, minWidth: 220 }} onClick={() => onOpenRole(role.id)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <div style={{ fontSize: 17, fontWeight: 600 }}>{role.name}</div>
+                  <Badge tone={status}>{status}</Badge>
+                </div>
+                <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>
+                  {money(role.min_salary)} – {money(role.max_salary)}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }} onClick={() => onOpenRole(role.id)}>
+                <Badge>{c.active} active</Badge>
+                <Badge tone="rejected">{c.rejected} rejected</Badge>
+                <Badge tone="placed">{c.placed} placed</Badge>
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <IconButton onClick={() => onOpenRole(role.id)}>View pipeline</IconButton>
+                {status === "live" && (
+                  <IconButton onClick={() => onToggleRoleStatus(role, "paused")}>Pause</IconButton>
+                )}
+                {status === "paused" && (
+                  <IconButton onClick={() => onToggleRoleStatus(role, "live")}>Reopen</IconButton>
+                )}
+                {status !== "filled" && (
+                  <IconButton onClick={() => onToggleRoleStatus(role, "filled")}>Mark filled</IconButton>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Candidate card ----------
+function CandidateCard({ candidate, recruiterEmail, nextStageName, onAdvance, onReject, onPlace, onRestore }) {
+  const rejected = isRejected(candidate);
+  const placed = isPlaced(candidate);
+
+  return (
+    <div
+      style={{
+        border: "1px solid #eee",
+        borderRadius: 10,
+        padding: 14,
+        background: "#fff",
+        marginBottom: 10,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
+          {recruiterEmail && (
+            <div style={{ fontSize: 12, color: "#9a9a9a", marginTop: 2 }}>via {recruiterEmail}</div>
+          )}
+        </div>
+        {rejected && <Badge tone="rejected">Rejected</Badge>}
+        {placed && <Badge tone="placed">Placed</Badge>}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+        {candidate.linkedin && (
+          <a href={candidate.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "#4b6bfb" }}>
+            LinkedIn
+          </a>
+        )}
+        {candidate.resume_url && (
+          <a href={candidate.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "#4b6bfb" }}>
+            Resume
+          </a>
+        )}
+        {candidate.email && <span style={{ fontSize: 12.5, color: "#9a9a9a" }}>{candidate.email}</span>}
+      </div>
+
+      {candidate.notes && (
+        <div style={{ fontSize: 13, color: "#555", marginTop: 8, whiteSpace: "pre-wrap" }}>{candidate.notes}</div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        {isActive(candidate) && (
+          <>
+            <IconButton tone="primary" onClick={onAdvance}>
+              {nextStageName ? `Advance → ${nextStageName}` : "Mark placed"}
+            </IconButton>
+            <IconButton tone="danger" onClick={onReject}>
+              Reject
+            </IconButton>
+            {nextStageName && <IconButton onClick={onPlace}>Mark placed</IconButton>}
+          </>
+        )}
+        {!isActive(candidate) && <IconButton onClick={onRestore}>Restore to active</IconButton>}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Pipeline view ----------
+function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh }) {
+  const [busyId, setBusyId] = useState(null);
+
+  const stageById = useMemo(() => {
+    const m = {};
+    stages.forEach((s) => (m[s.id] = s));
+    return m;
+  }, [stages]);
+
+  const nextStage = (candidate) => {
+    const stage = stageById[candidate.stage_id];
+    const currentPos = stage ? stage.position : -1;
+    return stages.find((s) => s.position > currentPos) || null;
+  };
+
+  const act = async (fn) => {
+    try {
+      await fn();
+      await refresh();
+    } catch (err) {
+      alert(err.message || "Something went wrong.");
+    }
+  };
+
+  const active = candidates.filter(isActive);
+  const rejected = candidates.filter(isRejected);
+  const placed = candidates.filter(isPlaced);
+
+  const columns = stages.length > 0 ? stages : [{ id: "__none__", name: "Unassigned", position: 0 }];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <button
+          onClick={onBack}
+          style={{ background: "none", border: "none", color: "#8a8a8a", fontSize: 13.5, cursor: "pointer", padding: 0 }}
+        >
+          ← All roles
+        </button>
+        <div style={{ fontSize: 24, fontWeight: 600, marginTop: 8 }}>{role.name}</div>
+        <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>
+          {money(role.min_salary)} – {money(role.max_salary)}
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`,
+          gap: 16,
+          overflowX: "auto",
+          paddingBottom: 8,
+        }}
+      >
+        {columns.map((stage) => {
+          const inStage = active.filter((c) =>
+            stage.id === "__none__" ? !c.stage_id : c.stage_id === stage.id
+          );
+          return (
+            <div key={stage.id}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
+                {stage.name} ({inStage.length})
+              </div>
+              {inStage.map((c) => (
+                <CandidateCard
+                  key={c.id}
+                  candidate={c}
+                  recruiterEmail={recruiterMap[c.recruiter_id]}
+                  nextStageName={nextStage(c) ? nextStage(c).name : null}
+                  onAdvance={() =>
+                    act(async () => {
+                      const ns = nextStage(c);
+                      if (ns) await updateCandidate(c.id, { stage_id: ns.id });
+                      else await updateCandidate(c.id, { status: "placed" });
+                    })
+                  }
+                  onPlace={() => act(async () => updateCandidate(c.id, { status: "placed" }))}
+                  onReject={() => act(async () => updateCandidate(c.id, { status: "rejected" }))}
+                  onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
+                />
+              ))}
+              {inStage.length === 0 && (
+                <div style={{ fontSize: 12.5, color: "#c4c4c4", fontStyle: "italic" }}>No candidates</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {(rejected.length > 0 || placed.length > 0) && (
+        <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
+              Rejected ({rejected.length})
+            </div>
+            {rejected.map((c) => (
+              <CandidateCard
+                key={c.id}
+                candidate={c}
+                recruiterEmail={recruiterMap[c.recruiter_id]}
+                onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
+              />
+            ))}
+          </div>
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
+              Placed ({placed.length})
+            </div>
+            {placed.map((c) => (
+              <CandidateCard
+                key={c.id}
+                candidate={c}
+                recruiterEmail={recruiterMap[c.recruiter_id]}
+                onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- main ----------
+function ClientDashboard() {
+  const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
+  const [company, setCompany] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [counts, setCounts] = useState({});
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
+  const [stages, setStages] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [recruiterMap, setRecruiterMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        window.location.href = LOGIN_URL;
+        return;
+      }
+      setSession(session);
+      try {
+        const c = await getMyCompany(session);
+        if (!c) {
+          window.location.href = LOGIN_URL;
+          return;
+        }
+        setCompany(c);
+        const r = await fetchRoles(c.id);
+        setRoles(r);
+        setCounts(await fetchRoleCandidateCounts(r.map((x) => x.id)));
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, []);
+
+  const refreshRoleCounts = async (roleIds) => setCounts(await fetchRoleCandidateCounts(roleIds));
+
+  const openRole = async (roleId) => {
+    setSelectedRoleId(roleId);
+    setLoading(true);
+    try {
+      const [s, c] = await Promise.all([fetchStages(roleId), fetchCandidates(roleId)]);
+      setStages(s);
+      setCandidates(c);
+      const recruiterIds = [...new Set(c.map((x) => x.recruiter_id).filter(Boolean))];
+      setRecruiterMap(await fetchRecruiters(recruiterIds));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshPipeline = async () => {
+    if (!selectedRoleId) return;
+    const c = await fetchCandidates(selectedRoleId);
+    setCandidates(c);
+    await refreshRoleCounts(roles.map((r) => r.id));
+  };
+
+  const toggleRoleStatus = async (role, status) => {
+    try {
+      await updateRoleStatus(role.id, status);
+      setRoles((prev) => prev.map((r) => (r.id === role.id ? { ...r, status } : r)));
+    } catch (err) {
+      alert(err.message || "Couldn't update role status.");
+    }
+  };
+
+  if (session === undefined || loading) {
+    return (
+      <div style={pageWrap}>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#8a8a8a" }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={pageWrap}>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#b42318" }}>{error}</div>
+      </div>
+    );
+  }
+
+  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+
+  return (
+    <div style={pageWrap}>
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "40px 24px 100px" }}>
+        {!selectedRole && (
+          <RolesOverview
+            roles={roles}
+            counts={counts}
+            onOpenRole={openRole}
+            onToggleRoleStatus={toggleRoleStatus}
+          />
+        )}
+        {selectedRole && (
+          <PipelineView
+            role={selectedRole}
+            stages={stages}
+            candidates={candidates}
+            recruiterMap={recruiterMap}
+            onBack={() => setSelectedRoleId(null)}
+            refresh={refreshPipeline}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+const pageWrap = {
+  minHeight: "100vh",
+  background: "#fafaf9",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  color: "#111",
+};
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<ClientDashboard />);
+  </script>
+</body>
+</html>
