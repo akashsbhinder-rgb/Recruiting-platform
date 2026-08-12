@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Post a Job | MakePlacement</title>
 
-  <!-- Stable CDN-hosted UMD builds; no React build system is required. -->
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.10/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     html, body, #root { margin: 0; min-height: 100%; }
@@ -50,45 +50,51 @@
   </script>
 
   <script type="text/babel" data-presets="react">
-const { useState } = React;
+const { useState, useEffect } = React;
 
 // ---------- Supabase config ----------
-// Fill these in with your project's values (Project Settings → API).
-// The anon key is safe to expose client-side — it only has the access
-// your Row Level Security policies grant it.
 const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const LOGIN_URL = "index.html";
 
-const sbHeaders = {
-  "Content-Type": "application/json",
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-};
-
-async function sbInsert(table, rows, opts = {}) {
+// Every insert below runs through supabaseClient, which automatically
+// attaches the signed-in user's access token -- this is what makes the
+// RLS policies (auth.uid() = ...) recognize who's writing the data.
+async function sbInsertRows(table, rows, opts = {}) {
   if (Array.isArray(rows) && rows.length === 0) return [];
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: "POST",
-    headers: { ...sbHeaders, Prefer: opts.returnRep ? "return=representation" : "return=minimal" },
-    body: JSON.stringify(rows),
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Failed writing to ${table}: ${errText}`);
-  }
-  return opts.returnRep ? res.json() : null;
+  const query = supabaseClient.from(table).insert(rows);
+  const { data, error } = opts.returnRep ? await query.select() : await query;
+  if (error) throw new Error(`Failed writing to ${table}: ${error.message}`);
+  return opts.returnRep ? data : null;
 }
 
-// Creates the company (or reuses one by name), then the role, then every
-// child row (stages, qualities, references, traits, questions) in parallel.
-async function submitRoleToSupabase(data, meta) {
-  const [company] = await sbInsert(
+// Looks up the company row already created on the landing page for this
+// signed-in user, instead of creating a new one on every role posted.
+async function getMyCompany(session) {
+  const { data, error } = await supabaseClient
+    .from("companies")
+    .select("*")
+    .eq("auth_user_id", session.user.id)
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed loading company: ${error.message}`);
+  if (data) return data;
+
+  // Fallback: shouldn't normally happen since the landing page creates
+  // this row, but keeps onboarding usable if someone lands here directly.
+  const [created] = await sbInsertRows(
     "companies",
-    [{ name: meta.companyName || "Unnamed company", contact_first_name: meta.firstName || null }],
+    [{ auth_user_id: session.user.id, name: "Unnamed company" }],
     { returnRep: true }
   );
+  return created;
+}
 
-  const [role] = await sbInsert(
+async function submitRoleToSupabase(data, session) {
+  const company = await getMyCompany(session);
+
+  const [role] = await sbInsertRows(
     "roles",
     [
       {
@@ -108,25 +114,25 @@ async function submitRoleToSupabase(data, meta) {
   );
 
   await Promise.all([
-    sbInsert(
+    sbInsertRows(
       "role_stages",
       data.stages.filter(isFilled).map((name, i) => ({ role_id: role.id, name, position: i }))
     ),
-    sbInsert(
+    sbInsertRows(
       "role_qualities",
       data.idealQualities.filter(isFilled).map((quality) => ({ role_id: role.id, quality }))
     ),
-    sbInsert(
+    sbInsertRows(
       "role_candidate_references",
       data.idealCandidates
         .filter((c) => isFilled(c.note) || isFilled(c.linkedin))
         .map((c) => ({ role_id: role.id, note: c.note || null, linkedin: c.linkedin || null }))
     ),
-    sbInsert(
+    sbInsertRows(
       "role_traits_to_avoid",
       data.traitsToAvoid.filter(isFilled).map((trait) => ({ role_id: role.id, trait }))
     ),
-    sbInsert(
+    sbInsertRows(
       "role_questions",
       data.questions.filter(isFilled).map((question) => ({ role_id: role.id, question }))
     ),
@@ -300,7 +306,6 @@ function RichBox({ value, onChange, placeholder, suggestions }) {
   );
 }
 
-// generic add/remove list of plain strings
 function StringList({ items, onChange, placeholder, addLabel }) {
   const set = (i, v) => {
     const next = [...items];
@@ -438,33 +443,12 @@ function StageList({ items, onChange }) {
   );
 }
 
-// ---------- steps ----------
 const steps = [
-  {
-    key: "basics",
-    title: "Let's start with the basics",
-    subtitle: "Basic information about this role we need to get started",
-  },
-  {
-    key: "candidates",
-    title: "Ideal candidates",
-    subtitle: "Tell recruiters exactly who to look for",
-  },
-  {
-    key: "recruiter",
-    title: "Helping the recruiter",
-    subtitle: "Give recruiters the context they need to represent this role well",
-  },
-  {
-    key: "questions",
-    title: "Candidate questions",
-    subtitle: "Optional — key things you want recruiters to ask before submitting a candidate",
-  },
-  {
-    key: "review",
-    title: "Recruiter dashboard preview",
-    subtitle: "This is what recruiters will see for this role",
-  },
+  { key: "basics", title: "Let's start with the basics", subtitle: "Basic information about this role we need to get started" },
+  { key: "candidates", title: "Ideal candidates", subtitle: "Tell recruiters exactly who to look for" },
+  { key: "recruiter", title: "Helping the recruiter", subtitle: "Give recruiters the context they need to represent this role well" },
+  { key: "questions", title: "Candidate questions", subtitle: "Optional — key things you want recruiters to ask before submitting a candidate" },
+  { key: "review", title: "Recruiter dashboard preview", subtitle: "This is what recruiters will see for this role" },
 ];
 
 function isFilled(v) {
@@ -496,7 +480,6 @@ function validateStep(key, data) {
   }
 }
 
-// ---------- review / dashboard ----------
 function ReviewSection({ label, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
@@ -641,29 +624,31 @@ function Review({ data, goTo }) {
 }
 
 // ---------- main ----------
-function getMeta() {
-  if (typeof window === "undefined") return {};
-  const params = new URLSearchParams(window.location.search);
-  return {
-    firstName: params.get("firstName") || "",
-    companyName: params.get("companyName") || "",
-    submissionId: params.get("submissionId") || "",
-  };
-}
-
 function EmployerOnboarding() {
   const [data, setData] = useState(initialData);
   const [stepIndex, setStepIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [meta] = useState(getMeta);
+
+  // undefined = still checking, null = no session, object = signed in
+  const [session, setSession] = useState(undefined);
+
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = LOGIN_URL;
+        return;
+      }
+      setSession(session);
+    });
+  }, []);
 
   const handleSubmitRole = async () => {
     setSubmitting(true);
     setSubmitError("");
     try {
-      await submitRoleToSupabase(data, meta);
+      await submitRoleToSupabase(data, session);
       setSubmitted(true);
     } catch (err) {
       setSubmitError(err.message || "Something went wrong submitting this role.");
@@ -678,6 +663,16 @@ function EmployerOnboarding() {
 
   const canNext = validateStep(step.key, data);
   const isLast = stepIndex === steps.length - 1;
+
+  if (session === undefined) {
+    return (
+      <div style={pageWrap}>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#777" }}>
+          Checking your account…
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
