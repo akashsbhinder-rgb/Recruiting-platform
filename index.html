@@ -156,6 +156,28 @@
     display: block;
   }
 
+  .password-wrap {
+    position: relative;
+  }
+
+  .password-wrap input {
+    padding-right: 44px;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    bottom: 6px;
+    width: 34px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
   button.submit {
     width: 100%;
     background: var(--btn-bg);
@@ -234,37 +256,23 @@
 
     <div class="fields">
 
-      <!-- Companies signup -->
+      <!-- Companies: name, work email, password only -->
       <form id="form-companies" novalidate>
-        <div class="row">
-          <div class="field">
-            <input type="text" id="c-first" placeholder="First name" required>
-            <div class="error-msg" id="err-c-first">Please enter your first name</div>
-          </div>
-
-          <div class="field">
-            <input type="text" id="c-last" placeholder="Last name" required>
-            <div class="error-msg" id="err-c-last">Please enter your last name</div>
-          </div>
-        </div>
-
         <div class="field">
-          <input type="text" id="c-company" placeholder="Company name" required>
-          <div class="error-msg" id="err-c-company">Please enter your company name</div>
+          <input type="text" id="c-name" placeholder="Full name" required>
+          <div class="error-msg" id="err-c-name">Please enter your name</div>
         </div>
 
         <div class="field">
           <input type="email" id="c-email" placeholder="Work email" required>
-          <div class="error-msg" id="err-c-email">Please enter a valid email</div>
+          <div class="error-msg" id="err-c-email">Please enter your work email (not a personal address)</div>
         </div>
 
         <div class="field">
-          <input type="tel" id="c-phone" placeholder="Phone number" required>
-          <div class="error-msg" id="err-c-phone">Enter a valid phone number (at least 10 digits)</div>
-        </div>
-
-        <div class="field">
-          <input type="password" id="c-password" placeholder="Create a password" required>
+          <div class="password-wrap">
+            <input type="password" id="c-password" placeholder="Create a password" required>
+            <button type="button" class="toggle-password" data-target="c-password">Show</button>
+          </div>
           <div class="error-msg" id="err-c-password">Password must be at least 8 characters</div>
         </div>
 
@@ -291,7 +299,10 @@
         </div>
 
         <div class="field">
-          <input type="password" id="a-password" placeholder="Create a password" required>
+          <div class="password-wrap">
+            <input type="password" id="a-password" placeholder="Create a password" required>
+            <button type="button" class="toggle-password" data-target="a-password">Show</button>
+          </div>
           <div class="error-msg" id="err-a-password">Password must be at least 8 characters</div>
         </div>
 
@@ -300,7 +311,7 @@
         <div class="link-row">Already have an account? <a id="link-login-from-agencies">Log in</a></div>
       </form>
 
-      <!-- Returning user login -->
+      <!-- Manual login (fallback -- the signup forms above also auto-detect an existing account) -->
       <form id="form-login" class="hidden" novalidate>
         <div class="field">
           <input type="email" id="l-email" placeholder="Work email" required>
@@ -308,7 +319,10 @@
         </div>
 
         <div class="field">
-          <input type="password" id="l-password" placeholder="Password" required>
+          <div class="password-wrap">
+            <input type="password" id="l-password" placeholder="Password" required>
+            <button type="button" class="toggle-password" data-target="l-password">Show</button>
+          </div>
           <div class="error-msg" id="err-l-password">Please enter your password</div>
         </div>
 
@@ -317,18 +331,16 @@
         <div class="link-row">New here? <a id="link-back-to-signup">Sign up</a></div>
       </form>
 
-      <!-- Shown only if Supabase is still configured to require email confirmation -->
+      <!-- Shown only if Confirm email hasn't been turned off yet -->
       <div id="check-email" class="hidden status-box">
         <div id="check-email-text">Check your email to confirm your account.</div>
         <div class="muted">Click the link on this device or any device — once you do, we'll finish setting up your account here.</div>
       </div>
 
-      <!-- Shown briefly while we finish creating the account / logging in -->
       <div id="finishing" class="hidden status-box">
         <div>Setting up your account…</div>
       </div>
 
-      <!-- Shown if account setup fails after confirmation -->
       <div id="post-auth-error" class="hidden status-box">
         <div>Something went wrong finishing your signup.</div>
         <div class="error-text" id="post-auth-error-text"></div>
@@ -338,13 +350,22 @@
   </div>
 
   <script>
-    // ---- Supabase config ----
     const SUPABASE_URL = 'https://cnayvrtkxgqpejhrlakm.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const ONBOARDING_URL = 'onboarding.html';
     const PENDING_KEY = 'mp_pending_signup';
+
+    // ---- Show/hide password toggles ----
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        btn.textContent = showing ? 'Show' : 'Hide';
+      });
+    });
 
     // ---- View switching ----
     const body = document.body;
@@ -368,20 +389,13 @@
     function setMode(next) {
       mode = next;
       const isCompanies = mode === 'companies';
-
       body.dataset.mode = isCompanies ? 'companies' : 'agencies';
-
       btnCompanies.classList.toggle('active', isCompanies);
       btnAgencies.classList.toggle('active', !isCompanies);
-
       btnCompanies.setAttribute('aria-selected', isCompanies);
       btnAgencies.setAttribute('aria-selected', !isCompanies);
-
       pillsWrap.classList.remove('hidden');
-      heading.textContent = isCompanies
-        ? 'Make your next hire'
-        : 'Grow your recruiting business';
-
+      heading.textContent = isCompanies ? 'Make your next hire' : 'Grow your recruiting business';
       showOnly(isCompanies ? formCompanies : formAgencies);
     }
 
@@ -413,14 +427,24 @@
     }
 
     const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-
     const isPhone = v => {
       const digitCount = (v.match(/\d/g) || []).length;
       const validChars = /^[\d\s()+\-.]+$/.test(v);
       return validChars && digitCount >= 10;
     };
-
     const isStrongEnoughPassword = v => v.length >= 8;
+
+    const PERSONAL_EMAIL_DOMAINS = new Set([
+      'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com', 'hotmail.com',
+      'outlook.com', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com',
+      'mac.com', 'protonmail.com', 'proton.me', 'mail.com', 'gmx.com',
+      'yandex.com', 'zoho.com', 'comcast.net', 'verizon.net', 'att.net'
+    ]);
+    const isWorkEmail = v => {
+      if (!isEmail(v)) return false;
+      const domain = v.split('@')[1].toLowerCase();
+      return !PERSONAL_EMAIL_DOMAINS.has(domain);
+    };
 
     function clearFieldError(input, errorEl) {
       input.addEventListener('input', () => {
@@ -429,88 +453,92 @@
       });
     }
 
-    // Shared: after signUp, either we already have a session (Confirm email
-    // is off, the recommended setting) or we don't (Confirm email is on,
-    // and Supabase just sent a confirmation email instead).
-    async function signUpAndProceed(email, password, pending, submitBtn, originalText) {
-      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    function splitName(full) {
+      const parts = full.trim().split(/\s+/);
+      const first = parts.shift() || '';
+      const last = parts.join(' ');
+      return { first, last };
+    }
 
-      const { data, error } = await supabaseClient.auth.signUp({
+    // Tries to create the account; if that email is already registered,
+    // transparently logs in with the same password instead of erroring.
+    async function signUpOrLogIn(email, password) {
+      const signUpResult = await supabaseClient.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: window.location.origin + window.location.pathname }
       });
 
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      if (!signUpResult.error) return { kind: 'signed_up', ...signUpResult };
 
-      if (error) {
-        console.error('signUp error:', error);
-        alert('Something went wrong creating your account: ' + error.message);
-        return;
+      if (signUpResult.error.message.toLowerCase().includes('already registered')) {
+        const signInResult = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (signInResult.error) {
+          return { kind: 'existing_wrong_password', error: signInResult.error };
+        }
+        return { kind: 'logged_in', ...signInResult };
       }
 
-      if (data.session) {
-        // Confirm email is off -- account is ready immediately.
-        pillsWrap.classList.add('hidden');
-        await completeSignup(data.session, pending);
-        return;
-      }
-
-      // Confirm email is on -- wait for them to click the link in their inbox.
-      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
-      pillsWrap.classList.add('hidden');
-      showOnly(checkEmailBox);
+      return { kind: 'error', error: signUpResult.error };
     }
 
     // ---- Companies form ----
-    const cFirst = document.getElementById('c-first');
-    const cLast = document.getElementById('c-last');
-    const cCompany = document.getElementById('c-company');
+    const cName = document.getElementById('c-name');
     const cEmail = document.getElementById('c-email');
-    const cPhone = document.getElementById('c-phone');
     const cPassword = document.getElementById('c-password');
 
-    const errCFirst = document.getElementById('err-c-first');
-    const errCLast = document.getElementById('err-c-last');
-    const errCCompany = document.getElementById('err-c-company');
+    const errCName = document.getElementById('err-c-name');
     const errCEmail = document.getElementById('err-c-email');
-    const errCPhone = document.getElementById('err-c-phone');
     const errCPassword = document.getElementById('err-c-password');
 
-    [
-      [cFirst, errCFirst], [cLast, errCLast], [cCompany, errCCompany],
-      [cEmail, errCEmail], [cPhone, errCPhone], [cPassword, errCPassword]
-    ].forEach(([input, err]) => clearFieldError(input, err));
+    [[cName, errCName], [cEmail, errCEmail], [cPassword, errCPassword]]
+      .forEach(([input, err]) => clearFieldError(input, err));
 
     formCompanies.addEventListener('submit', async e => {
       e.preventDefault();
 
-      const validFirst = validateField(cFirst, errCFirst);
-      const validLast = validateField(cLast, errCLast);
-      const validCompany = validateField(cCompany, errCCompany);
-      const validEmail = validateField(cEmail, errCEmail, isEmail);
-      const validPhone = validateField(cPhone, errCPhone, isPhone);
+      const validName = validateField(cName, errCName);
+      const validEmail = validateField(cEmail, errCEmail, isWorkEmail);
       const validPassword = validateField(cPassword, errCPassword, isStrongEnoughPassword);
 
-      if (!(validFirst && validLast && validCompany && validEmail && validPhone && validPassword)) return;
+      if (!(validName && validEmail && validPassword)) return;
 
       const submitBtn = formCompanies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Creating account…';
+      submitBtn.textContent = 'Setting up your account…';
 
       const email = cEmail.value.trim();
-      const pending = {
-        type: 'company',
-        firstName: cFirst.value.trim(),
-        lastName: cLast.value.trim(),
-        companyName: cCompany.value.trim(),
-        email,
-        phone: cPhone.value.trim()
-      };
+      const { first, last } = splitName(cName.value);
+      const pending = { type: 'company', firstName: first, lastName: last, email };
 
-      await signUpAndProceed(email, cPassword.value, pending, submitBtn, originalText);
+      const result = await signUpOrLogIn(email, cPassword.value);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+
+      if (result.kind === 'existing_wrong_password') {
+        alert("An account with this email already exists, and that password doesn't match it. Double check for typos.");
+        return;
+      }
+      if (result.kind === 'error') {
+        console.error('signUp error:', result.error);
+        alert('Something went wrong creating your account: ' + result.error.message);
+        return;
+      }
+
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+
+      if (result.data.session) {
+        pillsWrap.classList.add('hidden');
+        await completeSignup(result.data.session, pending);
+        return;
+      }
+
+      // Confirm email is still on -- wait for the confirmation click.
+      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
+      pillsWrap.classList.add('hidden');
+      showOnly(checkEmailBox);
     });
 
     // ---- Search firms form ----
@@ -524,9 +552,8 @@
     const errALinkedin = document.getElementById('err-a-linkedin');
     const errAPassword = document.getElementById('err-a-password');
 
-    [
-      [aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin], [aPassword, errAPassword]
-    ].forEach(([input, err]) => clearFieldError(input, err));
+    [[aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin], [aPassword, errAPassword]]
+      .forEach(([input, err]) => clearFieldError(input, err));
 
     formAgencies.addEventListener('submit', async e => {
       e.preventDefault();
@@ -541,20 +568,40 @@
       const submitBtn = formAgencies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Creating account…';
+      submitBtn.textContent = 'Setting up your account…';
 
       const email = aEmail.value.trim();
-      const pending = {
-        type: 'search_firm',
-        email,
-        phone: aPhone.value.trim(),
-        linkedin: aLinkedin.value.trim()
-      };
+      const pending = { type: 'search_firm', email, phone: aPhone.value.trim(), linkedin: aLinkedin.value.trim() };
 
-      await signUpAndProceed(email, aPassword.value, pending, submitBtn, originalText);
+      const result = await signUpOrLogIn(email, aPassword.value);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+
+      if (result.kind === 'existing_wrong_password') {
+        alert("An account with this email already exists, and that password doesn't match it. Double check for typos.");
+        return;
+      }
+      if (result.kind === 'error') {
+        console.error('signUp error:', result.error);
+        alert('Something went wrong creating your account: ' + result.error.message);
+        return;
+      }
+
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+
+      if (result.data.session) {
+        pillsWrap.classList.add('hidden');
+        await completeSignup(result.data.session, pending);
+        return;
+      }
+
+      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
+      pillsWrap.classList.add('hidden');
+      showOnly(checkEmailBox);
     });
 
-    // ---- Login form (returning users) ----
+    // ---- Manual login form ----
     const lEmail = document.getElementById('l-email');
     const lPassword = document.getElementById('l-password');
     const errLEmail = document.getElementById('err-l-email');
@@ -593,38 +640,28 @@
       await routeSignedInUser(data.session);
     });
 
-    // Where an already-authenticated user should land, based on which
-    // table they have a row in.
     async function routeSignedInUser(session) {
       const { data: company } = await supabaseClient
-        .from('companies')
-        .select('id')
-        .eq('auth_user_id', session.user.id)
-        .maybeSingle();
-
+        .from('companies').select('id').eq('auth_user_id', session.user.id).maybeSingle();
       if (company) {
         window.location.href = ONBOARDING_URL;
         return;
       }
 
       const { data: recruiter } = await supabaseClient
-        .from('recruiters')
-        .select('id')
-        .eq('auth_user_id', session.user.id)
-        .maybeSingle();
-
+        .from('recruiters').select('id').eq('auth_user_id', session.user.id).maybeSingle();
       if (recruiter) {
         finishingBox.querySelector('div').textContent = "You're signed in. We'll be in touch once roles are ready for you.";
         return;
       }
 
-      // No row yet for either table -- shouldn't normally happen, default
-      // to onboarding so a company account can still get created there.
       window.location.href = ONBOARDING_URL;
     }
 
-    // ---- Finish signup once we have a session (immediately, or after
-    // clicking a confirmation-email link) ----
+    // Upserts the account record (harmless no-op if it already exists,
+    // e.g. a returning user whose signUp fell back to a login) and
+    // routes to onboarding. Company name itself is collected on the
+    // first page of onboarding, not here.
     async function completeSignup(session, pending) {
       showOnly(finishingBox);
 
@@ -634,11 +671,9 @@
             .from('companies')
             .upsert([{
               auth_user_id: session.user.id,
-              name: pending.companyName,
               contact_first_name: pending.firstName,
               last_name: pending.lastName,
-              email: pending.email,
-              phone: pending.phone
+              email: pending.email
             }], { onConflict: 'auth_user_id' });
 
           if (error) throw error;
@@ -653,6 +688,7 @@
             .from('recruiters')
             .upsert([{
               auth_user_id: session.user.id,
+              email: pending.email,
               phone: pending.phone,
               linkedin: pending.linkedin
             }], { onConflict: 'auth_user_id' });
@@ -664,6 +700,7 @@
           return;
         }
       } catch (err) {
+        console.error('complete signup error:', err);
         postAuthErrorText.textContent = err.message || 'Please try signing up again.';
         showOnly(postAuthErrorBox);
       }
@@ -675,14 +712,11 @@
 
       const pendingRaw = localStorage.getItem(PENDING_KEY);
       if (pendingRaw) {
-        // Returned here after confirming email from a pending signup.
         pillsWrap.classList.add('hidden');
         await completeSignup(session, JSON.parse(pendingRaw));
         return;
       }
 
-      // Already have a session with nothing pending -- just route them
-      // to wherever they belong instead of showing the signup forms again.
       pillsWrap.classList.add('hidden');
       showOnly(finishingBox);
       await routeSignedInUser(session);
