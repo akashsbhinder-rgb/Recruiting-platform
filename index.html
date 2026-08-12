@@ -9,6 +9,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="icon" href="favicon.ico">
 <link rel="manifest" href="site.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
 
@@ -187,6 +188,24 @@
     opacity: 0;
     pointer-events: none;
   }
+
+  .status-box {
+    font-size: 14px;
+    color: var(--fg);
+    line-height: 1.5;
+  }
+
+  .status-box .muted {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .status-box .error-text {
+    color: var(--error);
+    font-size: 13px;
+    margin-top: 10px;
+  }
 </style>
 </head>
 
@@ -194,14 +213,14 @@
   <div class="card">
     <h1 id="heading">Make your next hire</h1>
 
-    <div class="pills" role="tablist">
+    <div class="pills" role="tablist" id="pills">
       <button class="pill active" id="btn-companies" role="tab" aria-selected="true">Companies</button>
       <button class="pill" id="btn-agencies" role="tab" aria-selected="false">Search firms</button>
     </div>
 
     <div class="fields">
 
-      <!-- Companies flow: single step, no "Next" -->
+      <!-- Companies flow -->
       <form id="form-companies" novalidate>
         <div class="row">
           <div class="field">
@@ -253,55 +272,53 @@
         <button type="submit" class="submit">Submit</button>
       </form>
 
+      <!-- Shown after a magic link has been sent -->
+      <div id="check-email" class="hidden status-box">
+        <div id="check-email-text">Check your email for a login link to finish signing up.</div>
+        <div class="muted">Click the link on this device or any device — once you do, we'll finish setting up your account here.</div>
+      </div>
+
+      <!-- Shown briefly while we finish creating the account after the magic-link redirect -->
+      <div id="finishing" class="hidden status-box">
+        <div>Finishing sign in…</div>
+      </div>
+
+      <!-- Shown if account creation fails after the magic-link redirect -->
+      <div id="post-auth-error" class="hidden status-box">
+        <div>Something went wrong finishing your signup.</div>
+        <div class="error-text" id="post-auth-error-text"></div>
+      </div>
+
     </div>
   </div>
 
   <script>
-    // Google Apps Script /exec URL
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHl_Yltqz4nSriGvxSKY35nQlEuE_q_NrIkE7UeRx47BwaxQaP4UMiX9948DQXlyyF/exec';
+    // ---- Supabase config ----
+    const SUPABASE_URL = 'https://cnayvrtkxgqpejhrlakm.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Onboarding page
     const ONBOARDING_URL = 'onboarding.html';
+    const PENDING_KEY = 'mp_pending_signup';
 
-    function generateSubmissionId() {
-      return 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    }
-
-    function submitToBackend(payload, button) {
-      const originalText = button.textContent;
-
-      button.disabled = true;
-      button.textContent = 'Submitting...';
-
-      return fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify(payload)
-      })
-        .then(() => {
-          button.textContent = 'Submitted ✓';
-          return true;
-        })
-        .catch(err => {
-          console.error('Submission failed:', err);
-          button.disabled = false;
-          button.textContent = originalText;
-          alert('Something went wrong submitting your info. Please try again.');
-          return false;
-        });
-    }
-
+    // ---- Mode switching (companies vs search firms) ----
     const body = document.body;
     const heading = document.getElementById('heading');
     const btnCompanies = document.getElementById('btn-companies');
     const btnAgencies = document.getElementById('btn-agencies');
     const formCompanies = document.getElementById('form-companies');
     const formAgencies = document.getElementById('form-agencies');
+    const checkEmailBox = document.getElementById('check-email');
+    const checkEmailText = document.getElementById('check-email-text');
+    const finishingBox = document.getElementById('finishing');
+    const postAuthErrorBox = document.getElementById('post-auth-error');
+    const postAuthErrorText = document.getElementById('post-auth-error-text');
+    const pillsWrap = document.getElementById('pills');
 
-    function setMode(mode) {
+    let mode = 'companies';
+
+    function setMode(next) {
+      mode = next;
       const isCompanies = mode === 'companies';
 
       body.dataset.mode = mode;
@@ -323,35 +340,27 @@
     btnCompanies.addEventListener('click', () => setMode('companies'));
     btnAgencies.addEventListener('click', () => setMode('agencies'));
 
-    // --- Validation helpers ---
+    function showOnly(el) {
+      [formCompanies, formAgencies, checkEmailBox, finishingBox, postAuthErrorBox].forEach(node => {
+        node.classList.toggle('hidden', node !== el);
+      });
+    }
 
+    // ---- Validation helpers ----
     function validateField(input, errorEl, customCheck) {
       const value = input.value.trim();
-
       let valid = value.length > 0;
-
-      if (valid && customCheck) {
-        valid = customCheck(value);
-      }
-
+      if (valid && customCheck) valid = customCheck(value);
       input.classList.toggle('invalid', !valid);
       errorEl.classList.toggle('show', !valid);
-
       return valid;
     }
 
-    const isEmail = v =>
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-    // Accepts formats like:
-    // (555) 123-4567
-    // 555-123-4567
-    // 555.123.4567
-    // +1 555 123 4567
     const isPhone = v => {
       const digitCount = (v.match(/\d/g) || []).length;
       const validChars = /^[\d\s()+\-.]+$/.test(v);
-
       return validChars && digitCount >= 10;
     };
 
@@ -362,8 +371,7 @@
       });
     }
 
-    // --- Companies form ---
-
+    // ---- Companies form ----
     const cFirst = document.getElementById('c-first');
     const cLast = document.getElementById('c-last');
     const cCompany = document.getElementById('c-company');
@@ -377,14 +385,11 @@
     const errCPhone = document.getElementById('err-c-phone');
 
     [
-      [cFirst, errCFirst],
-      [cLast, errCLast],
-      [cCompany, errCCompany],
-      [cEmail, errCEmail],
-      [cPhone, errCPhone]
+      [cFirst, errCFirst], [cLast, errCLast], [cCompany, errCCompany],
+      [cEmail, errCEmail], [cPhone, errCPhone]
     ].forEach(([input, err]) => clearFieldError(input, err));
 
-    formCompanies.addEventListener('submit', e => {
+    formCompanies.addEventListener('submit', async e => {
       e.preventDefault();
 
       const validFirst = validateField(cFirst, errCFirst);
@@ -393,41 +398,42 @@
       const validEmail = validateField(cEmail, errCEmail, isEmail);
       const validPhone = validateField(cPhone, errCPhone, isPhone);
 
-      if (validFirst && validLast && validCompany && validEmail && validPhone) {
+      if (!(validFirst && validLast && validCompany && validEmail && validPhone)) return;
 
-        const submitBtn =
-          formCompanies.querySelector('button[type="submit"]');
+      const submitBtn = formCompanies.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending login link…';
 
-        const payload = {
-          type: 'company',
-          firstName: cFirst.value.trim(),
-          lastName: cLast.value.trim(),
-          companyName: cCompany.value.trim(),
-          email: cEmail.value.trim(),
-          phone: cPhone.value.trim(),
-          submissionId: generateSubmissionId()
-        };
+      const email = cEmail.value.trim();
+      const pending = {
+        type: 'company',
+        firstName: cFirst.value.trim(),
+        lastName: cLast.value.trim(),
+        companyName: cCompany.value.trim(),
+        email,
+        phone: cPhone.value.trim()
+      };
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 
-        submitToBackend(payload, submitBtn).then(ok => {
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+      });
 
-          if (ok) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
 
-            const params = new URLSearchParams({
-              firstName: payload.firstName,
-              companyName: payload.companyName,
-              submissionId: payload.submissionId
-            });
-
-            window.location.href =
-              `${ONBOARDING_URL}?${params.toString()}`;
-          }
-
-        });
+      if (error) {
+        alert('Something went wrong sending your login link. Please try again.');
+        return;
       }
+
+      checkEmailText.textContent = `Check ${email} for a login link to finish signing up.`;
+      showOnly(checkEmailBox);
     });
 
-    // --- Search firms form ---
-
+    // ---- Search firms form ----
     const aEmail = document.getElementById('a-email');
     const aPhone = document.getElementById('a-phone');
     const aLinkedin = document.getElementById('a-linkedin');
@@ -437,34 +443,108 @@
     const errALinkedin = document.getElementById('err-a-linkedin');
 
     [
-      [aEmail, errAEmail],
-      [aPhone, errAPhone],
-      [aLinkedin, errALinkedin]
+      [aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin]
     ].forEach(([input, err]) => clearFieldError(input, err));
 
-    formAgencies.addEventListener('submit', e => {
+    formAgencies.addEventListener('submit', async e => {
       e.preventDefault();
 
       const validEmail = validateField(aEmail, errAEmail, isEmail);
       const validPhone = validateField(aPhone, errAPhone, isPhone);
       const validLinkedin = validateField(aLinkedin, errALinkedin);
 
-      if (validEmail && validPhone && validLinkedin) {
+      if (!(validEmail && validPhone && validLinkedin)) return;
 
-        const submitBtn =
-          formAgencies.querySelector('button[type="submit"]');
+      const submitBtn = formAgencies.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending login link…';
 
-        const payload = {
-          type: 'search_firm',
-          email: aEmail.value.trim(),
-          phone: aPhone.value.trim(),
-          linkedin: aLinkedin.value.trim(),
-          submissionId: generateSubmissionId()
-        };
+      const email = aEmail.value.trim();
+      const pending = {
+        type: 'search_firm',
+        email,
+        phone: aPhone.value.trim(),
+        linkedin: aLinkedin.value.trim()
+      };
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 
-        submitToBackend(payload, submitBtn);
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+      });
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+
+      if (error) {
+        alert('Something went wrong sending your login link. Please try again.');
+        return;
       }
+
+      checkEmailText.textContent = `Check ${email} for a login link to finish signing up.`;
+      showOnly(checkEmailBox);
     });
+
+    // ---- Finish signup once the magic link brings the user back ----
+    async function completeSignup(session, pending) {
+      showOnly(finishingBox);
+
+      try {
+        if (pending.type === 'company') {
+          const { error } = await supabaseClient
+            .from('companies')
+            .upsert([{
+              auth_user_id: session.user.id,
+              name: pending.companyName,
+              contact_first_name: pending.firstName,
+              last_name: pending.lastName,
+              email: pending.email,
+              phone: pending.phone
+            }], { onConflict: 'auth_user_id' });
+
+          if (error) throw error;
+
+          localStorage.removeItem(PENDING_KEY);
+          window.location.href = ONBOARDING_URL;
+          return;
+        }
+
+        if (pending.type === 'search_firm') {
+          const { error } = await supabaseClient
+            .from('recruiters')
+            .upsert([{
+              auth_user_id: session.user.id,
+              phone: pending.phone,
+              linkedin: pending.linkedin
+            }], { onConflict: 'auth_user_id' });
+
+          if (error) throw error;
+
+          localStorage.removeItem(PENDING_KEY);
+          finishingBox.querySelector('div').textContent = "You're in! We'll be in touch once roles are ready for you.";
+          return;
+        }
+      } catch (err) {
+        postAuthErrorText.textContent = err.message || 'Please try signing up again.';
+        showOnly(postAuthErrorBox);
+      }
+    }
+
+    async function init() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) return;
+
+      const pendingRaw = localStorage.getItem(PENDING_KEY);
+      if (!pendingRaw) return;
+
+      // Already signed in with a pending signup queued -- finish it and
+      // hide the mode pills, since we're mid-flow, not choosing a mode.
+      pillsWrap.classList.add('hidden');
+      await completeSignup(session, JSON.parse(pendingRaw));
+    }
+
+    init();
   </script>
 </body>
 </html>
