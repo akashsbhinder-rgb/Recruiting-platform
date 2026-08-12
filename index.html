@@ -175,6 +175,20 @@
     opacity: 0.88;
   }
 
+  .link-row {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .link-row a {
+    color: var(--fg);
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
   .fields {
     display: grid;
   }
@@ -220,7 +234,7 @@
 
     <div class="fields">
 
-      <!-- Companies flow -->
+      <!-- Companies signup -->
       <form id="form-companies" novalidate>
         <div class="row">
           <div class="field">
@@ -249,10 +263,17 @@
           <div class="error-msg" id="err-c-phone">Enter a valid phone number (at least 10 digits)</div>
         </div>
 
+        <div class="field">
+          <input type="password" id="c-password" placeholder="Create a password" required>
+          <div class="error-msg" id="err-c-password">Password must be at least 8 characters</div>
+        </div>
+
         <button type="submit" class="submit">Submit</button>
+
+        <div class="link-row">Already have an account? <a id="link-login-from-companies">Log in</a></div>
       </form>
 
-      <!-- Search firms flow -->
+      <!-- Search firms signup -->
       <form id="form-agencies" class="hidden" novalidate>
         <div class="field">
           <input type="email" id="a-email" placeholder="Work email" required>
@@ -269,21 +290,45 @@
           <div class="error-msg" id="err-a-linkedin">Please enter your LinkedIn profile</div>
         </div>
 
+        <div class="field">
+          <input type="password" id="a-password" placeholder="Create a password" required>
+          <div class="error-msg" id="err-a-password">Password must be at least 8 characters</div>
+        </div>
+
         <button type="submit" class="submit">Submit</button>
+
+        <div class="link-row">Already have an account? <a id="link-login-from-agencies">Log in</a></div>
       </form>
 
-      <!-- Shown after a magic link has been sent -->
+      <!-- Returning user login -->
+      <form id="form-login" class="hidden" novalidate>
+        <div class="field">
+          <input type="email" id="l-email" placeholder="Work email" required>
+          <div class="error-msg" id="err-l-email">Please enter a valid email</div>
+        </div>
+
+        <div class="field">
+          <input type="password" id="l-password" placeholder="Password" required>
+          <div class="error-msg" id="err-l-password">Please enter your password</div>
+        </div>
+
+        <button type="submit" class="submit">Log in</button>
+
+        <div class="link-row">New here? <a id="link-back-to-signup">Sign up</a></div>
+      </form>
+
+      <!-- Shown only if Supabase is still configured to require email confirmation -->
       <div id="check-email" class="hidden status-box">
-        <div id="check-email-text">Check your email for a login link to finish signing up.</div>
+        <div id="check-email-text">Check your email to confirm your account.</div>
         <div class="muted">Click the link on this device or any device — once you do, we'll finish setting up your account here.</div>
       </div>
 
-      <!-- Shown briefly while we finish creating the account after the magic-link redirect -->
+      <!-- Shown briefly while we finish creating the account / logging in -->
       <div id="finishing" class="hidden status-box">
-        <div>Finishing sign in…</div>
+        <div>Setting up your account…</div>
       </div>
 
-      <!-- Shown if account creation fails after the magic-link redirect -->
+      <!-- Shown if account setup fails after confirmation -->
       <div id="post-auth-error" class="hidden status-box">
         <div>Something went wrong finishing your signup.</div>
         <div class="error-text" id="post-auth-error-text"></div>
@@ -301,13 +346,14 @@
     const ONBOARDING_URL = 'onboarding.html';
     const PENDING_KEY = 'mp_pending_signup';
 
-    // ---- Mode switching (companies vs search firms) ----
+    // ---- View switching ----
     const body = document.body;
     const heading = document.getElementById('heading');
     const btnCompanies = document.getElementById('btn-companies');
     const btnAgencies = document.getElementById('btn-agencies');
     const formCompanies = document.getElementById('form-companies');
     const formAgencies = document.getElementById('form-agencies');
+    const formLogin = document.getElementById('form-login');
     const checkEmailBox = document.getElementById('check-email');
     const checkEmailText = document.getElementById('check-email-text');
     const finishingBox = document.getElementById('finishing');
@@ -315,13 +361,15 @@
     const postAuthErrorText = document.getElementById('post-auth-error-text');
     const pillsWrap = document.getElementById('pills');
 
+    const allViews = [formCompanies, formAgencies, formLogin, checkEmailBox, finishingBox, postAuthErrorBox];
+
     let mode = 'companies';
 
     function setMode(next) {
       mode = next;
       const isCompanies = mode === 'companies';
 
-      body.dataset.mode = mode;
+      body.dataset.mode = isCompanies ? 'companies' : 'agencies';
 
       btnCompanies.classList.toggle('active', isCompanies);
       btnAgencies.classList.toggle('active', !isCompanies);
@@ -329,22 +377,30 @@
       btnCompanies.setAttribute('aria-selected', isCompanies);
       btnAgencies.setAttribute('aria-selected', !isCompanies);
 
-      formCompanies.classList.toggle('hidden', !isCompanies);
-      formAgencies.classList.toggle('hidden', isCompanies);
-
+      pillsWrap.classList.remove('hidden');
       heading.textContent = isCompanies
         ? 'Make your next hire'
         : 'Grow your recruiting business';
+
+      showOnly(isCompanies ? formCompanies : formAgencies);
     }
 
     btnCompanies.addEventListener('click', () => setMode('companies'));
     btnAgencies.addEventListener('click', () => setMode('agencies'));
 
     function showOnly(el) {
-      [formCompanies, formAgencies, checkEmailBox, finishingBox, postAuthErrorBox].forEach(node => {
-        node.classList.toggle('hidden', node !== el);
-      });
+      allViews.forEach(node => node.classList.toggle('hidden', node !== el));
     }
+
+    function showLogin() {
+      pillsWrap.classList.add('hidden');
+      heading.textContent = 'Log in';
+      showOnly(formLogin);
+    }
+
+    document.getElementById('link-login-from-companies').addEventListener('click', showLogin);
+    document.getElementById('link-login-from-agencies').addEventListener('click', showLogin);
+    document.getElementById('link-back-to-signup').addEventListener('click', () => setMode(mode));
 
     // ---- Validation helpers ----
     function validateField(input, errorEl, customCheck) {
@@ -364,11 +420,47 @@
       return validChars && digitCount >= 10;
     };
 
+    const isStrongEnoughPassword = v => v.length >= 8;
+
     function clearFieldError(input, errorEl) {
       input.addEventListener('input', () => {
         input.classList.remove('invalid');
         errorEl.classList.remove('show');
       });
+    }
+
+    // Shared: after signUp, either we already have a session (Confirm email
+    // is off, the recommended setting) or we don't (Confirm email is on,
+    // and Supabase just sent a confirmation email instead).
+    async function signUpAndProceed(email, password, pending, submitBtn, originalText) {
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+      });
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+
+      if (error) {
+        console.error('signUp error:', error);
+        alert('Something went wrong creating your account: ' + error.message);
+        return;
+      }
+
+      if (data.session) {
+        // Confirm email is off -- account is ready immediately.
+        pillsWrap.classList.add('hidden');
+        await completeSignup(data.session, pending);
+        return;
+      }
+
+      // Confirm email is on -- wait for them to click the link in their inbox.
+      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
+      pillsWrap.classList.add('hidden');
+      showOnly(checkEmailBox);
     }
 
     // ---- Companies form ----
@@ -377,16 +469,18 @@
     const cCompany = document.getElementById('c-company');
     const cEmail = document.getElementById('c-email');
     const cPhone = document.getElementById('c-phone');
+    const cPassword = document.getElementById('c-password');
 
     const errCFirst = document.getElementById('err-c-first');
     const errCLast = document.getElementById('err-c-last');
     const errCCompany = document.getElementById('err-c-company');
     const errCEmail = document.getElementById('err-c-email');
     const errCPhone = document.getElementById('err-c-phone');
+    const errCPassword = document.getElementById('err-c-password');
 
     [
       [cFirst, errCFirst], [cLast, errCLast], [cCompany, errCCompany],
-      [cEmail, errCEmail], [cPhone, errCPhone]
+      [cEmail, errCEmail], [cPhone, errCPhone], [cPassword, errCPassword]
     ].forEach(([input, err]) => clearFieldError(input, err));
 
     formCompanies.addEventListener('submit', async e => {
@@ -397,13 +491,14 @@
       const validCompany = validateField(cCompany, errCCompany);
       const validEmail = validateField(cEmail, errCEmail, isEmail);
       const validPhone = validateField(cPhone, errCPhone, isPhone);
+      const validPassword = validateField(cPassword, errCPassword, isStrongEnoughPassword);
 
-      if (!(validFirst && validLast && validCompany && validEmail && validPhone)) return;
+      if (!(validFirst && validLast && validCompany && validEmail && validPhone && validPassword)) return;
 
       const submitBtn = formCompanies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending login link…';
+      submitBtn.textContent = 'Creating account…';
 
       const email = cEmail.value.trim();
       const pending = {
@@ -414,37 +509,23 @@
         email,
         phone: cPhone.value.trim()
       };
-      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname }
-      });
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-
-      if (error) {
-        console.error('signInWithOtp error:', error);
-        alert('Something went wrong sending your login link: ' + error.message);
-        return;
-      }
-
-      checkEmailText.textContent = `Check ${email} for a login link to finish signing up.`;
-      showOnly(checkEmailBox);
+      await signUpAndProceed(email, cPassword.value, pending, submitBtn, originalText);
     });
 
     // ---- Search firms form ----
     const aEmail = document.getElementById('a-email');
     const aPhone = document.getElementById('a-phone');
     const aLinkedin = document.getElementById('a-linkedin');
+    const aPassword = document.getElementById('a-password');
 
     const errAEmail = document.getElementById('err-a-email');
     const errAPhone = document.getElementById('err-a-phone');
     const errALinkedin = document.getElementById('err-a-linkedin');
+    const errAPassword = document.getElementById('err-a-password');
 
     [
-      [aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin]
+      [aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin], [aPassword, errAPassword]
     ].forEach(([input, err]) => clearFieldError(input, err));
 
     formAgencies.addEventListener('submit', async e => {
@@ -453,13 +534,14 @@
       const validEmail = validateField(aEmail, errAEmail, isEmail);
       const validPhone = validateField(aPhone, errAPhone, isPhone);
       const validLinkedin = validateField(aLinkedin, errALinkedin);
+      const validPassword = validateField(aPassword, errAPassword, isStrongEnoughPassword);
 
-      if (!(validEmail && validPhone && validLinkedin)) return;
+      if (!(validEmail && validPhone && validLinkedin && validPassword)) return;
 
       const submitBtn = formAgencies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending login link…';
+      submitBtn.textContent = 'Creating account…';
 
       const email = aEmail.value.trim();
       const pending = {
@@ -468,27 +550,81 @@
         phone: aPhone.value.trim(),
         linkedin: aLinkedin.value.trim()
       };
-      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+      await signUpAndProceed(email, aPassword.value, pending, submitBtn, originalText);
+    });
+
+    // ---- Login form (returning users) ----
+    const lEmail = document.getElementById('l-email');
+    const lPassword = document.getElementById('l-password');
+    const errLEmail = document.getElementById('err-l-email');
+    const errLPassword = document.getElementById('err-l-password');
+
+    [[lEmail, errLEmail], [lPassword, errLPassword]].forEach(([input, err]) => clearFieldError(input, err));
+
+    formLogin.addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const validEmail = validateField(lEmail, errLEmail, isEmail);
+      const validPassword = validateField(lPassword, errLPassword, v => v.length > 0);
+      if (!(validEmail && validPassword)) return;
+
+      const submitBtn = formLogin.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in…';
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: lEmail.value.trim(),
+        password: lPassword.value
       });
 
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
 
       if (error) {
-        console.error('signInWithOtp error:', error);
-        alert('Something went wrong sending your login link: ' + error.message);
+        console.error('signInWithPassword error:', error);
+        alert('Could not log in: ' + error.message);
         return;
       }
 
-      checkEmailText.textContent = `Check ${email} for a login link to finish signing up.`;
-      showOnly(checkEmailBox);
+      showOnly(finishingBox);
+      finishingBox.querySelector('div').textContent = 'Logging you in…';
+      await routeSignedInUser(data.session);
     });
 
-    // ---- Finish signup once the magic link brings the user back ----
+    // Where an already-authenticated user should land, based on which
+    // table they have a row in.
+    async function routeSignedInUser(session) {
+      const { data: company } = await supabaseClient
+        .from('companies')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (company) {
+        window.location.href = ONBOARDING_URL;
+        return;
+      }
+
+      const { data: recruiter } = await supabaseClient
+        .from('recruiters')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (recruiter) {
+        finishingBox.querySelector('div').textContent = "You're signed in. We'll be in touch once roles are ready for you.";
+        return;
+      }
+
+      // No row yet for either table -- shouldn't normally happen, default
+      // to onboarding so a company account can still get created there.
+      window.location.href = ONBOARDING_URL;
+    }
+
+    // ---- Finish signup once we have a session (immediately, or after
+    // clicking a confirmation-email link) ----
     async function completeSignup(session, pending) {
       showOnly(finishingBox);
 
@@ -538,12 +674,18 @@
       if (!session) return;
 
       const pendingRaw = localStorage.getItem(PENDING_KEY);
-      if (!pendingRaw) return;
+      if (pendingRaw) {
+        // Returned here after confirming email from a pending signup.
+        pillsWrap.classList.add('hidden');
+        await completeSignup(session, JSON.parse(pendingRaw));
+        return;
+      }
 
-      // Already signed in with a pending signup queued -- finish it and
-      // hide the mode pills, since we're mid-flow, not choosing a mode.
+      // Already have a session with nothing pending -- just route them
+      // to wherever they belong instead of showing the signup forms again.
       pillsWrap.classList.add('hidden');
-      await completeSignup(session, JSON.parse(pendingRaw));
+      showOnly(finishingBox);
+      await routeSignedInUser(session);
     }
 
     init();
