@@ -355,6 +355,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const ONBOARDING_URL = 'onboarding.html';
+    const RECRUITER_ONBOARDING_URL = 'recruiter_onboarding.html';
     const PENDING_KEY = 'mp_pending_signup';
 
     // ---- Show/hide password toggles ----
@@ -651,7 +652,11 @@
       const { data: recruiter } = await supabaseClient
         .from('recruiters').select('id').eq('auth_user_id', session.user.id).maybeSingle();
       if (recruiter) {
-        finishingBox.querySelector('div').textContent = "You're signed in. We'll be in touch once roles are ready for you.";
+        // TODO: once recruiter_dashboard.html exists, check whether this
+        // recruiter has already completed onboarding (e.g. years_experience
+        // is set) and route completed profiles there instead. For now every
+        // recruiter always lands back on onboarding, same as companies do.
+        window.location.href = RECRUITER_ONBOARDING_URL;
         return;
       }
 
@@ -716,7 +721,7 @@
           });
 
           localStorage.removeItem(PENDING_KEY);
-          finishingBox.querySelector('div').textContent = "You're in! We'll be in touch once roles are ready for you.";
+          window.location.href = RECRUITER_ONBOARDING_URL;
           return;
         }
       } catch (err) {
