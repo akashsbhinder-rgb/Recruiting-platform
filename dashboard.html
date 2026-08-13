@@ -11,21 +11,44 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --ink: #14181c;
+      --paper: #fafbf9;
+      --paper-dim: #f1f3f1;
+      --steel: #dbdfe0;
+      --steel-dim: #868d91;
+      --blueprint: #1f3a5f;
+      --blueprint-bg: #e8eef3;
+      --earn: #2b6e4f;
+      --earn-bg: #e7f1eb;
+      --alert: #a23b2e;
+      --alert-bg: #f8eae8;
+      --gold: #9c7a3f;
+      --gold-bg: #f4eee0;
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
     html, body, #root { margin: 0; min-height: 100%; }
-    body { background: #fafaf9; }
+    body { background: var(--paper); }
+    ::selection { background: var(--blueprint); color: var(--paper); }
+
     #boot-error {
       display: none;
       max-width: 760px;
       margin: 48px auto;
       padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #111;
+      font-family: var(--font-sans);
+      color: var(--ink);
     }
     #boot-error pre {
       white-space: pre-wrap;
       background: #f7f7f7;
       padding: 12px;
-      border-radius: 8px;
+      border-radius: 4px;
       overflow: auto;
     }
   </style>
@@ -58,6 +81,26 @@ const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const LOGIN_URL = "index.html";
 const NEW_ROLE_URL = "onboarding.html";
+
+// ---------- design tokens (mirrors the :root CSS vars above) ----------
+const T = {
+  ink: "#14181c",
+  paper: "#fafbf9",
+  paperDim: "#f1f3f1",
+  steel: "#dbdfe0",
+  steelDim: "#868d91",
+  blueprint: "#1f3a5f",
+  blueprintBg: "#e8eef3",
+  earn: "#2b6e4f",
+  earnBg: "#e7f1eb",
+  alert: "#a23b2e",
+  alertBg: "#f8eae8",
+  gold: "#9c7a3f",
+  goldBg: "#f4eee0",
+  serif: "'Newsreader', Georgia, serif",
+  sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  mono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+};
 
 const isRejected = (s) => (s.status || "").toLowerCase() === "rejected";
 const isPlaced = (s) => (s.status || "").toLowerCase() === "placed";
@@ -166,24 +209,141 @@ async function sendMessage(session, roleId, candidateId, body) {
   if (error) throw new Error(`Failed sending message: ${error.message}`);
 }
 
+// ---------- formatting ----------
+function money(v) {
+  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
+}
+
+function formatWhen(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function Mono({ children, style }) {
+  return <span style={{ fontFamily: T.mono, ...style }}>{children}</span>;
+}
+
+// ---------- structural chrome ----------
+function TopBar({ companyName, onLogout }) {
+  return (
+    <div style={{ background: T.ink, color: T.paper }}>
+      <div
+        style={{
+          maxWidth: 1100,
+          margin: "0 auto",
+          padding: "16px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+          <a href={LOGIN_URL} style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: T.paper, textDecoration: "none", letterSpacing: "-0.01em" }}>
+            MakePlacement
+          </a>
+          <span
+            style={{
+              fontFamily: T.mono,
+              fontSize: 10.5,
+              letterSpacing: "0.08em",
+              color: "#8fa6bd",
+              border: "1px solid #33445a",
+              padding: "2px 7px",
+              borderRadius: 3,
+              textTransform: "uppercase",
+            }}
+          >
+            Client
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          {companyName && <div style={{ fontSize: 13, color: "#a8afb5" }}>{companyName}</div>}
+          <button
+            onClick={onLogout}
+            style={{ background: "none", border: "none", fontSize: 13, color: T.paper, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans, padding: 0 }}
+          >
+            Log out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Eyebrow({ children }) {
+  return (
+    <div
+      style={{
+        fontFamily: T.mono,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.09em",
+        textTransform: "uppercase",
+        color: T.blueprint,
+        marginBottom: 8,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ eyebrow, title, action }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 26, flexWrap: "wrap", gap: 14 }}>
+      <div>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <div style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 500, letterSpacing: "-0.015em", color: T.ink }}>{title}</div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function PrimaryButton(props) {
+  return (
+    <button
+      {...props}
+      style={{
+        fontSize: 13,
+        fontWeight: 600,
+        color: T.paper,
+        background: T.ink,
+        border: "none",
+        padding: "10px 18px",
+        borderRadius: 3,
+        cursor: props.disabled ? "default" : "pointer",
+        opacity: props.disabled ? 0.55 : 1,
+        fontFamily: T.sans,
+        ...props.style,
+      }}
+    />
+  );
+}
+
 // ---------- small UI bits ----------
-function Badge({ children, tone = "default" }) {
+function Tag({ children, tone = "default" }) {
   const tones = {
-    default: { bg: "#f0f0ee", fg: "#555" },
-    live: { bg: "#e6f4ea", fg: "#1e7a37" },
-    paused: { bg: "#fdf0dc", fg: "#a15c00" },
-    filled: { bg: "#eaeaf7", fg: "#4b4bb0" },
-    rejected: { bg: "#fbe9e9", fg: "#b42318" },
-    placed: { bg: "#e6f4ea", fg: "#1e7a37" },
+    default: { fg: T.steelDim, border: T.steel, bg: "transparent" },
+    live: { fg: T.blueprint, border: T.blueprint, bg: T.blueprintBg },
+    paused: { fg: T.gold, border: T.gold, bg: T.goldBg },
+    filled: { fg: T.earn, border: T.earn, bg: T.earnBg },
+    rejected: { fg: T.alert, border: T.alert, bg: T.alertBg },
+    placed: { fg: T.earn, border: T.earn, bg: T.earnBg },
   };
   const t = tones[tone] || tones.default;
   return (
     <span
       style={{
-        fontSize: 12,
+        fontFamily: T.mono,
+        fontSize: 10.5,
         fontWeight: 600,
-        padding: "3px 9px",
-        borderRadius: 999,
+        letterSpacing: "0.05em",
+        textTransform: "uppercase",
+        padding: "3px 8px",
+        borderRadius: 3,
+        border: `1px solid ${t.border}`,
         background: t.bg,
         color: t.fg,
         whiteSpace: "nowrap",
@@ -196,9 +356,9 @@ function Badge({ children, tone = "default" }) {
 
 function IconButton({ children, onClick, tone = "default", disabled }) {
   const tones = {
-    default: { border: "#ddd", fg: "#111", bg: "#fff" },
-    danger: { border: "#f3c9c4", fg: "#b42318", bg: "#fff" },
-    primary: { border: "#111", fg: "#fff", bg: "#111" },
+    default: { border: T.steel, fg: T.ink, bg: "#fff" },
+    danger: { border: "#e3bab3", fg: T.alert, bg: "#fff" },
+    primary: { border: T.ink, fg: "#fff", bg: T.ink },
   };
   const t = tones[tone];
   return (
@@ -209,13 +369,13 @@ function IconButton({ children, onClick, tone = "default", disabled }) {
         fontSize: 12.5,
         fontWeight: 600,
         padding: "6px 11px",
-        borderRadius: 7,
+        borderRadius: 3,
         border: `1px solid ${t.border}`,
         background: t.bg,
         color: t.fg,
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.5 : 1,
-        fontFamily: "inherit",
+        fontFamily: T.sans,
       }}
     >
       {children}
@@ -223,14 +383,44 @@ function IconButton({ children, onClick, tone = "default", disabled }) {
   );
 }
 
-function money(v) {
-  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
+// A left accent bar carries status color across every card in the app --
+// the one repeated device that ties roles, candidates, and messages together.
+function LedgerCard({ accent = T.steel, children, style, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex",
+        border: `1px solid ${T.steel}`,
+        borderLeft: `4px solid ${accent}`,
+        borderRadius: 3,
+        background: "#fff",
+        cursor: onClick ? "pointer" : "default",
+        ...style,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+    </div>
+  );
 }
 
-function formatWhen(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+function EmptyFrame({ title, body, action }) {
+  return (
+    <div
+      style={{
+        border: `1.5px dashed ${T.steel}`,
+        borderRadius: 4,
+        padding: "56px 24px",
+        textAlign: "center",
+        maxWidth: 420,
+        margin: "40px auto",
+      }}
+    >
+      <div style={{ fontFamily: T.serif, fontSize: 20, color: T.ink, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13.5, color: T.steelDim, marginBottom: action ? 20 : 0 }}>{body}</div>
+      {action}
+    </div>
+  );
 }
 
 // ---------- message composer + feed ----------
@@ -265,15 +455,15 @@ function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
           minHeight: 60,
           padding: 10,
           fontSize: 13,
-          borderRadius: 8,
-          border: "1px solid #ddd",
+          borderRadius: 3,
+          border: `1px solid ${T.steel}`,
           outline: "none",
           resize: "vertical",
-          fontFamily: "inherit",
+          fontFamily: T.sans,
           marginBottom: 8,
         }}
       />
-      {error && <div style={{ color: "#b42318", fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      {error && <div style={{ color: T.alert, fontSize: 12, marginBottom: 8 }}>{error}</div>}
       <IconButton tone="primary" onClick={handleSend} disabled={sending || !text.trim()}>
         {sending ? "Sending…" : buttonLabel}
       </IconButton>
@@ -283,15 +473,15 @@ function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
 
 function MessageFeed({ messages, emptyLabel }) {
   if (messages.length === 0) {
-    return <div style={{ fontSize: 12.5, color: "#c4c4c4", fontStyle: "italic", marginBottom: 10 }}>{emptyLabel}</div>;
+    return <div style={{ fontSize: 12.5, color: T.steelDim, fontStyle: "italic", marginBottom: 10 }}>{emptyLabel}</div>;
   }
   return (
     <div style={{ marginBottom: 12 }}>
       {messages.map((m) => (
-        <div key={m.id} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0ee" }}>
+        <div key={m.id} style={{ padding: "8px 0", borderBottom: `1px solid ${T.paperDim}` }}>
           <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontSize: 11, color: "#c4c4c4", marginTop: 3 }}>
-            {m.sender_type === "company" ? "You" : "Recruiter"} · {formatWhen(m.created_at)}
+          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.steelDim, marginTop: 3 }}>
+            {m.sender_type === "company" ? "you" : "recruiter"} · {formatWhen(m.created_at)}
           </div>
         </div>
       ))}
@@ -304,19 +494,19 @@ function BenchUpdatesPanel({ messages, onSend }) {
   const broadcasts = messages.filter((m) => !m.candidate_id);
 
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", padding: 18, marginBottom: 24 }}>
+    <LedgerCard accent={T.blueprint} style={{ padding: 18, marginBottom: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: open ? 14 : 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Updates to the bench</div>
         <button
           onClick={() => setOpen((o) => !o)}
-          style={{ background: "none", border: "none", fontSize: 12.5, color: "#111", textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
+          style={{ background: "none", border: "none", fontSize: 12.5, color: T.ink, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans }}
         >
           {open ? "Hide" : broadcasts.length > 0 ? `View (${broadcasts.length})` : "Send an update"}
         </button>
       </div>
       {open && (
         <div>
-          <div style={{ fontSize: 12, color: "#8a8a8a", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: T.steelDim, marginBottom: 10 }}>
             Visible to every recruiter with a candidate currently in this role's pipeline.
           </div>
           <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
@@ -327,7 +517,7 @@ function BenchUpdatesPanel({ messages, onSend }) {
           />
         </div>
       )}
-    </div>
+    </LedgerCard>
   );
 }
 
@@ -337,12 +527,12 @@ function CandidateFeedbackThread({ messages, onSend }) {
     <div style={{ marginTop: 10 }}>
       <button
         onClick={() => setOpen((o) => !o)}
-        style={{ background: "none", border: "none", fontSize: 12, color: "#111", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+        style={{ background: "none", border: "none", fontSize: 12, color: T.ink, textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}
       >
         {open ? "Hide feedback" : messages.length > 0 ? `Feedback (${messages.length})` : "Add feedback"}
       </button>
       {open && (
-        <div style={{ marginTop: 10, borderTop: "1px solid #f0f0ee", paddingTop: 10 }}>
+        <div style={{ marginTop: 10, borderTop: `1px solid ${T.paperDim}`, paddingTop: 10 }}>
           <MessageFeed messages={messages} emptyLabel="No feedback sent yet." />
           <MessageComposer
             onSend={onSend}
@@ -357,81 +547,70 @@ function CandidateFeedbackThread({ messages, onSend }) {
 
 // ---------- Roles overview ----------
 function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
+  const liveCount = roles.filter((r) => (r.status || "live").toLowerCase() === "live").length;
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 24 }}>
-        <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.01em" }}>Your roles</div>
-        <a
-          href={NEW_ROLE_URL}
-          style={{
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: "#fff",
-            background: "#111",
-            padding: "10px 18px",
-            borderRadius: 8,
-            textDecoration: "none",
-          }}
-        >
-          + Post new role
-        </a>
-      </div>
+      <SectionHeader
+        eyebrow={`${roles.length} role${roles.length === 1 ? "" : "s"} on file · ${liveCount} live`}
+        title="Your roles"
+        action={<PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>+ Post new role</PrimaryButton>}
+      />
 
       {roles.length === 0 && (
-        <div style={{ textAlign: "center", padding: "80px 24px", maxWidth: 380, margin: "0 auto" }}>
-          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>No roles posted yet</div>
-          <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>Use "Post new role" above to get your first role in front of recruiters.</div>
-        </div>
+        <EmptyFrame
+          title="No roles posted yet"
+          body='Use "Post new role" above to get your first role in front of recruiters.'
+        />
       )}
 
-      <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         {roles.map((role) => {
           const c = counts[role.id] || { active: 0, rejected: 0, placed: 0 };
           const status = (role.status || "live").toLowerCase();
+          const accent = status === "live" ? T.blueprint : status === "filled" ? T.earn : T.gold;
           return (
-            <div
-              key={role.id}
-              style={{
-                border: "1px solid #ececea",
-                borderRadius: 14,
-                padding: 22,
-                background: "#fff",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 16,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ cursor: "pointer", flex: 1, minWidth: 220 }} onClick={() => onOpenRole(role.id)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <div style={{ fontSize: 17, fontWeight: 600 }}>{role.name}</div>
-                  <Badge tone={status}>{status}</Badge>
+            <LedgerCard key={role.id} accent={accent}>
+              <div
+                style={{
+                  padding: "18px 20px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ cursor: "pointer", flex: 1, minWidth: 220 }} onClick={() => onOpenRole(role.id)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                    <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500 }}>{role.name}</div>
+                    <Tag tone={status}>{status}</Tag>
+                  </div>
+                  <div style={{ fontSize: 13, color: T.steelDim }}>
+                    <Mono>{money(role.min_salary)} – {money(role.max_salary)}</Mono>
+                  </div>
                 </div>
-                <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>
-                  {money(role.min_salary)} – {money(role.max_salary)}
+
+                <div style={{ display: "flex", gap: 6 }} onClick={() => onOpenRole(role.id)}>
+                  <Tag>{c.active} active</Tag>
+                  <Tag tone="rejected">{c.rejected} rejected</Tag>
+                  <Tag tone="placed">{c.placed} placed</Tag>
+                </div>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <IconButton onClick={() => onOpenRole(role.id)}>View pipeline</IconButton>
+                  {status === "live" && (
+                    <IconButton onClick={() => onToggleRoleStatus(role, "paused")}>Pause</IconButton>
+                  )}
+                  {status === "paused" && (
+                    <IconButton onClick={() => onToggleRoleStatus(role, "live")}>Reopen</IconButton>
+                  )}
+                  {status !== "filled" && (
+                    <IconButton onClick={() => onToggleRoleStatus(role, "filled")}>Mark filled</IconButton>
+                  )}
                 </div>
               </div>
-
-              <div style={{ display: "flex", gap: 8 }} onClick={() => onOpenRole(role.id)}>
-                <Badge>{c.active} active</Badge>
-                <Badge tone="rejected">{c.rejected} rejected</Badge>
-                <Badge tone="placed">{c.placed} placed</Badge>
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <IconButton onClick={() => onOpenRole(role.id)}>View pipeline</IconButton>
-                {status === "live" && (
-                  <IconButton onClick={() => onToggleRoleStatus(role, "paused")}>Pause</IconButton>
-                )}
-                {status === "paused" && (
-                  <IconButton onClick={() => onToggleRoleStatus(role, "live")}>Reopen</IconButton>
-                )}
-                {status !== "filled" && (
-                  <IconButton onClick={() => onToggleRoleStatus(role, "filled")}>Mark filled</IconButton>
-                )}
-              </div>
-            </div>
+            </LedgerCard>
           );
         })}
       </div>
@@ -443,44 +622,37 @@ function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
 function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onReject, onPlace, onRestore, feedbackMessages, onSendFeedback }) {
   const rejected = isRejected(candidate);
   const placed = isPlaced(candidate);
+  const accent = placed ? T.earn : rejected ? T.alert : T.steel;
 
   return (
-    <div
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 10,
-        padding: 14,
-        background: "#fff",
-        marginBottom: 10,
-      }}
-    >
+    <LedgerCard accent={accent} style={{ padding: 14, marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
           {recruiterLabel && (
-            <div style={{ fontSize: 12, color: "#9a9a9a", marginTop: 2 }}>via {recruiterLabel}</div>
+            <div style={{ fontSize: 12, color: T.steelDim, marginTop: 2 }}>via {recruiterLabel}</div>
           )}
         </div>
-        {rejected && <Badge tone="rejected">Rejected</Badge>}
-        {placed && <Badge tone="placed">Placed</Badge>}
+        {rejected && <Tag tone="rejected">Rejected</Tag>}
+        {placed && <Tag tone="placed">Placed</Tag>}
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
         {candidate.linkedin && (
-          <a href={candidate.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "#4b6bfb" }}>
+          <a href={candidate.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blueprint }}>
             LinkedIn
           </a>
         )}
         {candidate.resume_url && (
-          <a href={candidate.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "#4b6bfb" }}>
+          <a href={candidate.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blueprint }}>
             Resume
           </a>
         )}
-        {candidate.email && <span style={{ fontSize: 12.5, color: "#9a9a9a" }}>{candidate.email}</span>}
+        {candidate.email && <span style={{ fontSize: 12.5, color: T.steelDim }}>{candidate.email}</span>}
       </div>
 
       {candidate.notes && (
-        <div style={{ fontSize: 13, color: "#555", marginTop: 8, whiteSpace: "pre-wrap" }}>{candidate.notes}</div>
+        <div style={{ fontSize: 13, color: "#444", marginTop: 8, whiteSpace: "pre-wrap" }}>{candidate.notes}</div>
       )}
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -499,7 +671,7 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
       </div>
 
       <CandidateFeedbackThread messages={feedbackMessages} onSend={onSendFeedback} />
-    </div>
+    </LedgerCard>
   );
 }
 
@@ -560,16 +732,16 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 22 }}>
         <button
           onClick={onBack}
-          style={{ background: "none", border: "none", color: "#8a8a8a", fontSize: 13.5, cursor: "pointer", padding: 0 }}
+          style={{ background: "none", border: "none", color: T.steelDim, fontSize: 13, cursor: "pointer", padding: 0, fontFamily: T.mono }}
         >
-          ← All roles
+          ← all roles
         </button>
-        <div style={{ fontSize: 24, fontWeight: 600, marginTop: 8 }}>{role.name}</div>
-        <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>
-          {money(role.min_salary)} – {money(role.max_salary)}
+        <div style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, marginTop: 10, letterSpacing: "-0.01em" }}>{role.name}</div>
+        <div style={{ fontSize: 13.5, color: T.steelDim }}>
+          <Mono>{money(role.min_salary)} – {money(role.max_salary)}</Mono>
         </div>
       </div>
 
@@ -585,7 +757,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`,
-          gap: 16,
+          gap: 18,
           overflowX: "auto",
           paddingBottom: 8,
         }}
@@ -596,8 +768,20 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
           );
           return (
             <div key={stage.id}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
-                {stage.name} ({inStage.length})
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  paddingBottom: 8,
+                  borderBottom: `2px solid ${T.blueprint}`,
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: T.ink }}>
+                  {stage.name}
+                </div>
+                <div style={{ fontFamily: T.mono, fontSize: 11.5, color: T.steelDim }}>[{inStage.length}]</div>
               </div>
               {inStage.map(renderCandidateCard)}
               {inStage.length === 0 && (
@@ -609,16 +793,16 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
       </div>
 
       {(rejected.length > 0 || placed.length > 0) && (
-        <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div style={{ marginTop: 44, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
-              Rejected ({rejected.length})
+            <div style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", color: T.steelDim, textTransform: "uppercase", marginBottom: 10, borderBottom: `2px solid ${T.alert}`, paddingBottom: 8 }}>
+              Rejected [{rejected.length}]
             </div>
             {rejected.map(renderCandidateCard)}
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
-              Placed ({placed.length})
+            <div style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", color: T.steelDim, textTransform: "uppercase", marginBottom: 10, borderBottom: `2px solid ${T.earn}`, paddingBottom: 8 }}>
+              Placed [{placed.length}]
             </div>
             {placed.map(renderCandidateCard)}
           </div>
@@ -667,6 +851,11 @@ function ClientDashboard() {
     });
   }, []);
 
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = LOGIN_URL;
+  };
+
   const refreshRoleCounts = async (roleIds) => setCounts(await fetchRoleCandidateCounts(roleIds));
 
   const openRole = async (roleId) => {
@@ -710,7 +899,8 @@ function ClientDashboard() {
   if (session === undefined || loading) {
     return (
       <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#8a8a8a" }}>Loading…</div>
+        <TopBar companyName={company ? company.name : ""} onLogout={handleLogout} />
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.steelDim, fontFamily: T.mono, fontSize: 13 }}>loading…</div>
       </div>
     );
   }
@@ -718,7 +908,8 @@ function ClientDashboard() {
   if (error) {
     return (
       <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#b42318" }}>{error}</div>
+        <TopBar companyName={company ? company.name : ""} onLogout={handleLogout} />
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.alert }}>{error}</div>
       </div>
     );
   }
@@ -727,7 +918,8 @@ function ClientDashboard() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "40px 24px 100px" }}>
+      <TopBar companyName={company ? company.name : ""} onLogout={handleLogout} />
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "44px 28px 100px" }}>
         {!selectedRole && (
           <RolesOverview
             roles={roles}
@@ -756,9 +948,9 @@ function ClientDashboard() {
 
 const pageWrap = {
   minHeight: "100vh",
-  background: "#fafaf9",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  color: "#111",
+  background: T.paper,
+  fontFamily: T.sans,
+  color: T.ink,
 };
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
