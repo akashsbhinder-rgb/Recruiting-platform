@@ -17,9 +17,9 @@
     html, body, #root { margin: 0; min-height: 100%; }
     body { background: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     ::selection { background: #111214; color: #fff; }
-    button, input, textarea { font-family: inherit; }
+    button, input, textarea, select { font-family: inherit; }
 
-    button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible {
       outline: 2px solid #3b6fe0;
       outline-offset: 2px;
     }
@@ -119,7 +119,7 @@ function formatWhen(iso) {
     " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-// ---------- icons (hand-drawn, feather-style, inherit currentColor) ----------
+// ---------- icons ----------
 function Icon({ name, size = 18, style }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", style };
   switch (name) {
@@ -157,12 +157,14 @@ function Icon({ name, size = 18, style }) {
       return <svg {...common}><path d="M3 11v2a1 1 0 0 0 1 1h1l2 6h2l-1-6h4l6 4V6l-6 4H5a1 1 0 0 0-1 1Z" /></svg>;
     case "users":
       return <svg {...common}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+    case "mail":
+      return <svg {...common}><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22 6 12 13 2 6" /></svg>;
     default:
       return null;
   }
 }
 
-// ---------- small building blocks (mirrors the recruiter dashboard) ----------
+// ---------- small building blocks ----------
 function Pill({ children, tone, style, ...rest }) {
   const tones = {
     default: { bg: T.pillBg, fg: T.ink },
@@ -174,22 +176,7 @@ function Pill({ children, tone, style, ...rest }) {
   };
   const t = tones[tone] || tones.default;
   return (
-    <span
-      {...rest}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        fontSize: 12.5,
-        fontWeight: 600,
-        padding: "5px 11px",
-        borderRadius: 999,
-        background: t.bg,
-        color: t.fg,
-        whiteSpace: "nowrap",
-        ...style,
-      }}
-    >
+    <span {...rest} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, padding: "5px 11px", borderRadius: 999, background: t.bg, color: t.fg, whiteSpace: "nowrap", ...style }}>
       {children}
     </span>
   );
@@ -201,20 +188,9 @@ function GhostButton({ children, active, decorative, style, ...rest }) {
       {...rest}
       title={decorative ? "Coming soon" : rest.title}
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 13,
-        fontWeight: 500,
-        padding: "8px 14px",
-        borderRadius: 999,
-        border: `1px solid ${active ? T.ink : T.line}`,
-        background: active ? T.ink : "#fff",
-        color: active ? "#fff" : decorative ? T.faint : T.ink,
-        cursor: decorative ? "default" : "pointer",
-        opacity: decorative ? 0.7 : 1,
-        fontFamily: T.sans,
-        ...style,
+        display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, padding: "8px 14px", borderRadius: 999,
+        border: `1px solid ${active ? T.ink : T.line}`, background: active ? T.ink : "#fff", color: active ? "#fff" : decorative ? T.faint : T.ink,
+        cursor: decorative ? "default" : "pointer", opacity: decorative ? 0.7 : 1, fontFamily: T.sans, ...style,
       }}
     >
       {children}
@@ -226,19 +202,7 @@ function PrimaryButton(props) {
   return (
     <button
       {...props}
-      style={{
-        background: T.ink,
-        color: "#fff",
-        border: "none",
-        borderRadius: 10,
-        padding: "10px 18px",
-        fontSize: 13.5,
-        fontWeight: 600,
-        cursor: props.disabled ? "default" : "pointer",
-        opacity: props.disabled ? 0.55 : 1,
-        fontFamily: T.sans,
-        ...props.style,
-      }}
+      style={{ background: T.ink, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, cursor: props.disabled ? "default" : "pointer", opacity: props.disabled ? 0.55 : 1, fontFamily: T.sans, ...props.style }}
     />
   );
 }
@@ -247,43 +211,18 @@ function SecondaryButton(props) {
   return (
     <button
       {...props}
-      style={{
-        background: T.pillBg,
-        color: T.ink,
-        border: "none",
-        borderRadius: 10,
-        padding: "10px 18px",
-        fontSize: 13.5,
-        fontWeight: 600,
-        cursor: "pointer",
-        fontFamily: T.sans,
-        ...props.style,
-      }}
+      style={{ background: T.pillBg, color: T.ink, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: T.sans, ...props.style }}
     />
   );
 }
 
 const inputStyle = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "10px 13px",
-  fontSize: 13.5,
-  borderRadius: 10,
-  border: `1px solid ${T.line}`,
-  outline: "none",
-  color: T.ink,
-  background: "#fff",
-  fontFamily: T.sans,
-  marginBottom: 12,
+  width: "100%", boxSizing: "border-box", padding: "10px 13px", fontSize: 13.5, borderRadius: 10,
+  border: `1px solid ${T.line}`, outline: "none", color: T.ink, background: "#fff", fontFamily: T.sans, marginBottom: 12,
 };
 
 const sectionLabelStyle = {
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.05em",
-  color: T.sub,
-  textTransform: "uppercase",
-  marginBottom: 6,
+  fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", color: T.sub, textTransform: "uppercase", marginBottom: 8,
 };
 
 function EmptyState({ icon, title, body, actions }) {
@@ -293,29 +232,106 @@ function EmptyState({ icon, title, body, actions }) {
         <Icon name={icon} size={20} />
       </div>
       <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13.5, color: T.sub, maxWidth: 360, margin: "6px auto 0" }}>{body}</div>
+      <div style={{ fontSize: 13.5, color: T.sub, maxWidth: 380, margin: "6px auto 0" }}>{body}</div>
       {actions && <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>{actions}</div>}
     </div>
   );
 }
 
+// A centered overlay dialog -- used for anything that changes state in a
+// way that's hard to undo (marking a role filled) or that should always
+// carry an explanation (rejecting a candidate).
+function Modal({ onClose, children, width = 460 }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(17,18,20,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 24, width: "100%", maxWidth: width, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ title, body, confirmLabel, onCancel, onConfirm, danger }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const go = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      await onConfirm();
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+      setSubmitting(false);
+    }
+  };
+  return (
+    <Modal onClose={onCancel}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: T.ink }}>{title}</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 18, lineHeight: 1.5 }}>{body}</div>
+      {error && <div style={{ color: T.red, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <SecondaryButton onClick={onCancel} disabled={submitting}>Cancel</SecondaryButton>
+        <PrimaryButton onClick={go} disabled={submitting} style={danger ? { background: T.red } : {}}>
+          {submitting ? "Working\u2026" : confirmLabel}
+        </PrimaryButton>
+      </div>
+    </Modal>
+  );
+}
+
+function RejectModal({ candidate, onCancel, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    if (!reason.trim()) {
+      setError("Add a reason \u2014 it goes straight to the recruiter who submitted them.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await onConfirm(reason.trim());
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onCancel}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: T.ink }}>Reject {candidate.name}?</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 14, lineHeight: 1.5 }}>
+        This note is sent directly to the recruiter who submitted them, so keep it specific and constructive.
+      </div>
+      <textarea
+        autoFocus
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="e.g. Strong background, but we need more hands-on infra experience for this role."
+        style={{ ...inputStyle, minHeight: 90, resize: "vertical" }}
+      />
+      {error && <div style={{ color: T.red, fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <SecondaryButton onClick={onCancel} disabled={submitting}>Cancel</SecondaryButton>
+        <PrimaryButton onClick={submit} disabled={submitting} style={{ background: T.red }}>
+          {submitting ? "Rejecting\u2026" : "Reject & send feedback"}
+        </PrimaryButton>
+      </div>
+    </Modal>
+  );
+}
+
 // ---------- data ----------
 async function getMyCompany(session) {
-  const { data, error } = await supabaseClient
-    .from("companies")
-    .select("*")
-    .eq("auth_user_id", session.user.id)
-    .maybeSingle();
+  const { data, error } = await supabaseClient.from("companies").select("*").eq("auth_user_id", session.user.id).maybeSingle();
   if (error) throw new Error(`Failed loading company: ${error.message}`);
   return data;
 }
 
 async function fetchRoles(companyId) {
-  const { data, error } = await supabaseClient
-    .from("roles")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabaseClient.from("roles").select("*").eq("company_id", companyId).order("created_at", { ascending: false });
   if (error) throw new Error(`Failed loading roles: ${error.message}`);
   return data || [];
 }
@@ -346,6 +362,13 @@ async function fetchCandidates(roleId) {
   return data || [];
 }
 
+async function fetchCandidatesForRoles(roleIds) {
+  if (roleIds.length === 0) return [];
+  const { data, error } = await supabaseClient.from("candidates").select("*").in("role_id", roleIds);
+  if (error) throw new Error(`Failed loading candidates: ${error.message}`);
+  return data || [];
+}
+
 async function fetchRecruiters(recruiterIds) {
   if (recruiterIds.length === 0) return {};
   const { data, error } = await supabaseClient.from("recruiters").select("id, firm_name").in("id", recruiterIds);
@@ -353,6 +376,13 @@ async function fetchRecruiters(recruiterIds) {
   const map = {};
   (data || []).forEach((r) => (map[r.id] = r.firm_name));
   return map;
+}
+
+async function fetchRoleApplications(roleIds) {
+  if (roleIds.length === 0) return [];
+  const { data, error } = await supabaseClient.from("role_applications").select("*").in("role_id", roleIds);
+  if (error) throw new Error(`Failed loading recruiter applications: ${error.message}`);
+  return data || [];
 }
 
 async function updateCandidate(id, patch) {
@@ -371,9 +401,16 @@ async function fetchRoleMessages(roleId) {
   return data || [];
 }
 
-async function sendMessage(session, roleId, candidateId, body) {
+async function fetchAllMessages(roleIds) {
+  if (roleIds.length === 0) return [];
+  const { data, error } = await supabaseClient.from("messages").select("*").in("role_id", roleIds).order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed loading messages: ${error.message}`);
+  return data || [];
+}
+
+async function sendMessage(session, roleId, candidateId, recruiterId, body) {
   const { error } = await supabaseClient.from("messages").insert([
-    { role_id: roleId, candidate_id: candidateId || null, sender_id: session.user.id, sender_type: "company", body },
+    { role_id: roleId, candidate_id: candidateId || null, recruiter_id: recruiterId || null, sender_id: session.user.id, sender_type: "company", body },
   ]);
   if (error) throw new Error(`Failed sending message: ${error.message}`);
 }
@@ -383,9 +420,7 @@ function Logomark() {
   return (
     <div style={{ width: 26, height: 26, borderRadius: 7, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
-        <line x1="4" y1="7" x2="20" y2="7" />
-        <line x1="4" y1="12" x2="20" y2="12" />
-        <line x1="4" y1="17" x2="14" y2="17" />
+        <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" />
       </svg>
     </div>
   );
@@ -393,11 +428,11 @@ function Logomark() {
 
 const NAV_ITEMS = [
   { key: "roles", label: "Roles", live: true },
-  { key: "messages", label: "Messages", live: false },
+  { key: "messages", label: "Messages", live: true },
   { key: "calls", label: "Calls", live: false },
 ];
 
-function TopNav({ tab, onTabChange, companyName, onLogout }) {
+function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const initial = (companyName || "C").trim().charAt(0).toUpperCase();
 
@@ -419,18 +454,16 @@ function TopNav({ tab, onTabChange, companyName, onLogout }) {
                   onClick={item.live ? () => onTabChange(item.key) : undefined}
                   title={item.live ? undefined : "Coming soon"}
                   style={{
-                    background: "none",
-                    border: "none",
-                    padding: "4px 0",
-                    fontSize: 13.5,
-                    fontWeight: isActiveTab ? 700 : 500,
-                    color: item.live ? (isActiveTab ? T.ink : T.sub) : T.faint,
-                    cursor: item.live ? "pointer" : "default",
-                    borderBottom: isActiveTab ? `2px solid ${T.ink}` : "2px solid transparent",
-                    fontFamily: T.sans,
+                    background: "none", border: "none", padding: "4px 0", fontSize: 13.5, fontWeight: isActiveTab ? 700 : 500,
+                    color: item.live ? (isActiveTab ? T.ink : T.sub) : T.faint, cursor: item.live ? "pointer" : "default",
+                    borderBottom: isActiveTab ? `2px solid ${T.ink}` : "2px solid transparent", fontFamily: T.sans,
+                    display: "inline-flex", alignItems: "center", gap: 6,
                   }}
                 >
                   {item.label}
+                  {item.key === "messages" && unreadHint > 0 && (
+                    <span style={{ background: T.red, color: "#fff", fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: "1px 6px" }}>{unreadHint}</span>
+                  )}
                 </button>
               );
             })}
@@ -448,10 +481,7 @@ function TopNav({ tab, onTabChange, companyName, onLogout }) {
           </button>
 
           <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              style={{ width: 32, height: 32, borderRadius: "50%", background: T.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
+            <button onClick={() => setMenuOpen((o) => !o)} style={{ width: 32, height: 32, borderRadius: "50%", background: T.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {initial}
             </button>
             {menuOpen && (
@@ -459,10 +489,7 @@ function TopNav({ tab, onTabChange, companyName, onLogout }) {
                 <a href={NEW_ROLE_URL} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", fontSize: 13, color: T.ink, textDecoration: "none" }}>
                   <Icon name="plus" size={14} /> Post a role
                 </a>
-                <button
-                  onClick={onLogout}
-                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: T.ink, background: "none", border: "none", borderTop: `1px solid ${T.lineSoft}`, cursor: "pointer", fontFamily: T.sans }}
-                >
+                <button onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: T.ink, background: "none", border: "none", borderTop: `1px solid ${T.lineSoft}`, cursor: "pointer", fontFamily: T.sans }}>
                   <Icon name="logout" size={14} /> Log out
                 </button>
               </div>
@@ -476,9 +503,7 @@ function TopNav({ tab, onTabChange, companyName, onLogout }) {
 
 // ---------- messages ----------
 function MessageFeed({ messages, emptyLabel }) {
-  if (messages.length === 0) {
-    return <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>{emptyLabel}</div>;
-  }
+  if (messages.length === 0) return <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>{emptyLabel}</div>;
   return (
     <div>
       {messages.map((m) => (
@@ -512,30 +537,21 @@ function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
 
   return (
     <div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={placeholder}
-        style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
-      />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
       {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>{error}</div>}
-      <PrimaryButton onClick={handleSend} disabled={sending || !text.trim()}>
-        {sending ? "Sending\u2026" : buttonLabel}
-      </PrimaryButton>
+      <PrimaryButton onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "Sending\u2026" : buttonLabel}</PrimaryButton>
     </div>
   );
 }
 
 function BenchUpdatesPanel({ messages, onSend }) {
   const [open, setOpen] = useState(false);
-  const broadcasts = messages.filter((m) => !m.candidate_id);
-
+  const broadcasts = messages.filter((m) => !m.candidate_id && !m.recruiter_id);
   return (
-    <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+    <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: T.ink }}>
-          <Icon name="megaphone" size={15} style={{ color: T.blue }} />
-          Updates to the bench
+          <Icon name="megaphone" size={15} style={{ color: T.blue }} /> Updates to the bench
         </div>
         <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", fontSize: 12.5, color: T.ink, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans }}>
           {open ? "Hide" : broadcasts.length > 0 ? `View (${broadcasts.length})` : "Send an update"}
@@ -543,15 +559,39 @@ function BenchUpdatesPanel({ messages, onSend }) {
       </div>
       {open && (
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: T.sub, marginBottom: 10 }}>
-            Visible to every recruiter with a candidate currently in this role's pipeline.
-          </div>
+          <div style={{ fontSize: 12, color: T.sub, marginBottom: 10 }}>Visible to every recruiter with a candidate currently in this role's pipeline.</div>
           <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
           <div style={{ marginTop: broadcasts.length ? 10 : 0 }}>
             <MessageComposer onSend={onSend} placeholder="e.g. We're prioritizing candidates with security clearance this week." buttonLabel="Send to bench" />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function RecruitersPanel({ recruiters, onMessage }) {
+  const [openId, setOpenId] = useState(null);
+  if (recruiters.length === 0) return null;
+  return (
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+        <Icon name="users" size={15} /> Recruiters on this role ({recruiters.length})
+      </div>
+      <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Message one directly, outside of a specific candidate's thread.</div>
+      {recruiters.map((r) => (
+        <div key={r.id} style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10, marginTop: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{r.firm_name || "Recruiter"}</span>
+            <GhostButton onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? "Close" : "Message"}</GhostButton>
+          </div>
+          {openId === r.id && (
+            <div style={{ marginTop: 10 }}>
+              <MessageComposer onSend={(body) => onMessage(r.id, body)} placeholder={`Message to ${r.firm_name || "this recruiter"}`} buttonLabel="Send" />
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -567,7 +607,7 @@ function CandidateFeedbackThread({ messages, onSend }) {
         <div style={{ marginTop: 10, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
           <MessageFeed messages={messages} emptyLabel="No feedback sent yet." />
           <div style={{ marginTop: messages.length ? 10 : 0 }}>
-            <MessageComposer onSend={onSend} placeholder="e.g. Not enough hands-on infra experience for this role." buttonLabel="Send to recruiter" />
+            <MessageComposer onSend={onSend} placeholder="e.g. Great communicator, but light on the specific stack we need." buttonLabel="Send to recruiter" />
           </div>
         </div>
       )}
@@ -576,7 +616,7 @@ function CandidateFeedbackThread({ messages, onSend }) {
 }
 
 // ---------- candidate card ----------
-function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onReject, onPlace, onRestore, feedbackMessages, onSendFeedback }) {
+function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onRequestReject, onPlace, onRestore, feedbackMessages, onSendFeedback }) {
   const rejected = isRejected(candidate);
   const placed = isPlaced(candidate);
 
@@ -602,10 +642,8 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {isActive(candidate) && (
           <>
-            <GhostButton active onClick={onAdvance}>
-              {nextStageName ? `Advance \u2192 ${nextStageName}` : "Mark placed"}
-            </GhostButton>
-            <GhostButton onClick={onReject} style={{ color: T.red, borderColor: "#e3bab3" }}>Reject</GhostButton>
+            <GhostButton active onClick={onAdvance}>{nextStageName ? `Advance \u2192 ${nextStageName}` : "Mark placed"}</GhostButton>
+            <GhostButton onClick={onRequestReject} style={{ color: T.red, borderColor: "#e3bab3" }}>Reject</GhostButton>
             {nextStageName && <GhostButton onClick={onPlace}>Mark placed</GhostButton>}
           </>
         )}
@@ -618,7 +656,9 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
 }
 
 // ---------- pipeline (kanban by stage) ----------
-function PipelineView({ role, stages, candidates, recruiterMap, messages, session, refresh, refreshMessages }) {
+function PipelineView({ role, stages, candidates, recruiterMap, roleRecruiters, messages, session, refresh, refreshMessages }) {
+  const [rejectingCandidate, setRejectingCandidate] = useState(null);
+
   const stageById = {};
   stages.forEach((s) => (stageById[s.id] = s));
 
@@ -655,11 +695,11 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
         else await updateCandidate(c.id, { status: "placed" });
       })}
       onPlace={() => act(async () => updateCandidate(c.id, { status: "placed" }))}
-      onReject={() => act(async () => updateCandidate(c.id, { status: "rejected" }))}
+      onRequestReject={() => setRejectingCandidate(c)}
       onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
       feedbackMessages={messagesForCandidate(c.id)}
       onSendFeedback={async (body) => {
-        await sendMessage(session, role.id, c.id, body);
+        await sendMessage(session, role.id, c.id, c.recruiter_id, body);
         await refreshMessages();
       }}
     />
@@ -667,7 +707,8 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
 
   return (
     <div>
-      <BenchUpdatesPanel messages={messages} onSend={async (body) => { await sendMessage(session, role.id, null, body); await refreshMessages(); }} />
+      <BenchUpdatesPanel messages={messages} onSend={async (body) => { await sendMessage(session, role.id, null, null, body); await refreshMessages(); }} />
+      <RecruitersPanel recruiters={roleRecruiters} onMessage={async (recruiterId, body) => { await sendMessage(session, role.id, null, recruiterId, body); await refreshMessages(); }} />
 
       <div className="mp-pipeline-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`, gap: 18, overflowX: "auto", paddingBottom: 8 }}>
         {columns.map((stage) => {
@@ -697,31 +738,38 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
           </div>
         </div>
       )}
+
+      {rejectingCandidate && (
+        <RejectModal
+          candidate={rejectingCandidate}
+          onCancel={() => setRejectingCandidate(null)}
+          onConfirm={async (reason) => {
+            await updateCandidate(rejectingCandidate.id, { status: "rejected" });
+            await sendMessage(session, role.id, rejectingCandidate.id, rejectingCandidate.recruiter_id, reason);
+            setRejectingCandidate(null);
+            await refresh();
+            await refreshMessages();
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ---------- role status control ----------
-function statusTone(status) {
-  const s = (status || "live").toLowerCase();
-  if (s === "filled") return "filled";
-  if (s === "paused") return "paused";
-  return "live";
-}
-
-function RoleStatusActions({ role, onToggle }) {
+function RoleStatusActions({ role, onPause, onReopen, onRequestFilled }) {
   const status = (role.status || "live").toLowerCase();
   return (
     <div style={{ display: "flex", gap: 8 }}>
-      {status === "live" && <GhostButton onClick={() => onToggle(role, "paused")}><Icon name="pause" size={13} /> Pause</GhostButton>}
-      {status === "paused" && <GhostButton onClick={() => onToggle(role, "live")}><Icon name="play" size={13} /> Reopen</GhostButton>}
-      {status !== "filled" && <GhostButton onClick={() => onToggle(role, "filled")}><Icon name="checkCircle" size={13} /> Mark filled</GhostButton>}
+      {status === "live" && <GhostButton onClick={() => onPause(role)}><Icon name="pause" size={13} /> Pause</GhostButton>}
+      {(status === "paused" || status === "filled") && <GhostButton onClick={() => onReopen(role)}><Icon name="play" size={13} /> Reopen</GhostButton>}
+      {status !== "filled" && <GhostButton onClick={() => onRequestFilled(role)}><Icon name="checkCircle" size={13} /> Mark filled</GhostButton>}
     </div>
   );
 }
 
 // ---------- hero role card ----------
-function HeroRoleCard({ role, counts, expanded, onToggleExpand, onToggleStatus, children }) {
+function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, children }) {
   const status = (role.status || "live").toLowerCase();
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 16, overflow: "hidden", background: "#fff", marginBottom: 28 }}>
@@ -735,7 +783,7 @@ function HeroRoleCard({ role, counts, expanded, onToggleExpand, onToggleStatus, 
             <div style={{ fontSize: 26, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em", marginBottom: 4 }}>{role.name}</div>
             <div style={{ fontSize: 14.5, color: T.sub }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}{role.hiring_goals ? ` \u00b7 Target: ${role.hiring_goals}` : ""}</div>
           </div>
-          <RoleStatusActions role={role} onToggle={onToggleStatus} />
+          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} />
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
@@ -745,9 +793,7 @@ function HeroRoleCard({ role, counts, expanded, onToggleExpand, onToggleStatus, 
         </div>
 
         <div style={{ marginTop: 20 }}>
-          <PrimaryButton onClick={onToggleExpand}>
-            {expanded ? "Hide pipeline" : "View pipeline"}
-          </PrimaryButton>
+          <PrimaryButton onClick={onToggleExpand}>{expanded ? "Hide pipeline" : "View pipeline"}</PrimaryButton>
         </div>
       </div>
 
@@ -777,6 +823,149 @@ function CompactRoleCard({ role, counts, onFocus }) {
   );
 }
 
+// ---------- messages inbox ----------
+function EmployerInbox({ session, roles }) {
+  const [messages, setMessages] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [recruiterMap, setRecruiterMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expandedKey, setExpandedKey] = useState(null);
+  const [newMsgRole, setNewMsgRole] = useState("");
+  const [newMsgRecruiter, setNewMsgRecruiter] = useState("");
+
+  const roleIds = roles.map((r) => r.id);
+
+  const loadAll = async () => {
+    if (roleIds.length === 0) { setLoading(false); return; }
+    try {
+      const [msgs, cands, apps] = await Promise.all([
+        fetchAllMessages(roleIds),
+        fetchCandidatesForRoles(roleIds),
+        fetchRoleApplications(roleIds),
+      ]);
+      setMessages(msgs);
+      setCandidates(cands);
+      setApplications(apps);
+      const recruiterIds = [...new Set([...cands.map((c) => c.recruiter_id), ...apps.map((a) => a.recruiter_id)].filter(Boolean))];
+      setRecruiterMap(await fetchRecruiters(recruiterIds));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAll(); }, [roles.length]);
+
+  useEffect(() => {
+    if (roleIds.length === 0) return;
+    const channel = supabaseClient
+      .channel("employer-inbox")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+        const row = payload.new || payload.old;
+        if (row && roleIds.includes(row.role_id)) loadAll();
+      })
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [roles.length]);
+
+  const roleById = {};
+  roles.forEach((r) => (roleById[r.id] = r));
+  const candidateById = {};
+  candidates.forEach((c) => (candidateById[c.id] = c));
+
+  const threads = {};
+  messages.forEach((m) => {
+    const key = `${m.role_id}:${m.candidate_id || ""}:${m.recruiter_id || ""}`;
+    if (!threads[key]) threads[key] = { key, role_id: m.role_id, candidate_id: m.candidate_id, recruiter_id: m.recruiter_id, messages: [] };
+    threads[key].messages.push(m);
+  });
+  const threadList = Object.values(threads).sort((a, b) => {
+    const at = a.messages[a.messages.length - 1].created_at;
+    const bt = b.messages[b.messages.length - 1].created_at;
+    return new Date(bt) - new Date(at);
+  });
+
+  const threadLabel = (t) => {
+    if (t.candidate_id) {
+      const c = candidateById[t.candidate_id];
+      return c ? `${c.name} \u2014 feedback` : "Candidate feedback";
+    }
+    if (t.recruiter_id) return `Direct: ${recruiterMap[t.recruiter_id] || "Recruiter"}`;
+    return "Bench update";
+  };
+
+  const send = async (roleId, candidateId, recruiterId, body) => {
+    await sendMessage(session, roleId, candidateId, recruiterId, body);
+    await loadAll();
+  };
+
+  const applicationsForRole = (roleId) => applications.filter((a) => a.role_id === roleId);
+
+  if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"Loading messages\u2026"}</div>;
+  if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
+
+  return (
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: T.ink, marginBottom: 4 }}>Messages</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 22 }}>Every conversation with recruiters across your roles, updating live.</div>
+
+      {roles.length > 0 && (
+        <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 24 }}>
+          <div style={sectionLabelStyle}>New message</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: newMsgRole && newMsgRecruiter ? 10 : 0 }}>
+            <select value={newMsgRole} onChange={(e) => { setNewMsgRole(e.target.value); setNewMsgRecruiter(""); }} style={{ ...inputStyle, marginBottom: 0, width: 220 }}>
+              <option value="">{"Select a role\u2026"}</option>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+            <select value={newMsgRecruiter} onChange={(e) => setNewMsgRecruiter(e.target.value)} disabled={!newMsgRole} style={{ ...inputStyle, marginBottom: 0, width: 220 }}>
+              <option value="">{"Select a recruiter\u2026"}</option>
+              {applicationsForRole(newMsgRole).map((a) => (
+                <option key={a.recruiter_id} value={a.recruiter_id}>{recruiterMap[a.recruiter_id] || "Recruiter"}</option>
+              ))}
+            </select>
+          </div>
+          {newMsgRole && newMsgRecruiter && (
+            <MessageComposer onSend={(body) => send(newMsgRole, null, newMsgRecruiter, body)} placeholder="Write a message\u2026" buttonLabel="Send" />
+          )}
+        </div>
+      )}
+
+      {threadList.length === 0 ? (
+        <EmptyState icon="mail" title="No messages yet" body="Conversations with recruiters about your roles and candidates will show up here as soon as they start." />
+      ) : (
+        threadList.map((t) => {
+          const role = roleById[t.role_id];
+          const open = expandedKey === t.key;
+          const last = t.messages[t.messages.length - 1];
+          return (
+            <div key={t.key} style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
+              <div onClick={() => setExpandedKey(open ? null : t.key)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{threadLabel(t)}</div>
+                  <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{role ? role.name : "Role"}</div>
+                  {!open && <div style={{ fontSize: 12.5, color: T.sub, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{last.body}</div>}
+                </div>
+                <div style={{ fontSize: 11, color: T.faint, whiteSpace: "nowrap" }}>{formatWhen(last.created_at)}</div>
+              </div>
+              {open && (
+                <div style={{ marginTop: 14, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 14 }}>
+                  <MessageFeed messages={t.messages} emptyLabel="" />
+                  <div style={{ marginTop: 10 }}>
+                    <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // ---------- main ----------
 function ClientDashboard() {
   const [session, setSession] = useState(undefined);
@@ -790,8 +979,10 @@ function ClientDashboard() {
   const [stages, setStages] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [recruiterMap, setRecruiterMap] = useState({});
+  const [roleRecruiters, setRoleRecruiters] = useState([]);
   const [messages, setMessages] = useState([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [confirmFilledRole, setConfirmFilledRole] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -827,12 +1018,14 @@ function ClientDashboard() {
   const loadPipeline = async (roleId) => {
     setPipelineLoading(true);
     try {
-      const [s, c, m] = await Promise.all([fetchStages(roleId), fetchCandidates(roleId), fetchRoleMessages(roleId)]);
+      const [s, c, m, apps] = await Promise.all([fetchStages(roleId), fetchCandidates(roleId), fetchRoleMessages(roleId), fetchRoleApplications([roleId])]);
       setStages(s);
       setCandidates(c);
       setMessages(m);
-      const recruiterIds = [...new Set(c.map((x) => x.recruiter_id).filter(Boolean))];
-      setRecruiterMap(await fetchRecruiters(recruiterIds));
+      const recruiterIds = [...new Set([...c.map((x) => x.recruiter_id), ...apps.map((a) => a.recruiter_id)].filter(Boolean))];
+      const map = await fetchRecruiters(recruiterIds);
+      setRecruiterMap(map);
+      setRoleRecruiters(apps.map((a) => ({ id: a.recruiter_id, firm_name: map[a.recruiter_id] })));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -863,13 +1056,21 @@ function ClientDashboard() {
     setMessages(await fetchRoleMessages(focusedId));
   };
 
+  // Live updates while a pipeline is open, so status changes and new
+  // messages show up without the employer needing to refresh.
+  useEffect(() => {
+    if (!focusedId || !expanded) return;
+    const channel = supabaseClient
+      .channel(`pipeline-${focusedId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `role_id=eq.${focusedId}` }, () => { refreshPipeline(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `role_id=eq.${focusedId}` }, () => { refreshMessages(); })
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [focusedId, expanded]);
+
   const toggleRoleStatus = async (role, status) => {
-    try {
-      await updateRoleStatus(role.id, status);
-      setRoles((prev) => prev.map((r) => (r.id === role.id ? { ...r, status } : r)));
-    } catch (err) {
-      alert(err.message || "Couldn't update role status.");
-    }
+    await updateRoleStatus(role.id, status);
+    setRoles((prev) => prev.map((r) => (r.id === role.id ? { ...r, status } : r)));
   };
 
   if (session === undefined || loading) {
@@ -888,89 +1089,99 @@ function ClientDashboard() {
 
   return (
     <div style={pageWrap}>
-      <TopNav tab={tab} onTabChange={setTab} companyName={company.name} onLogout={handleLogout} />
+      <TopNav tab={tab} onTabChange={setTab} companyName={company.name} onLogout={handleLogout} unreadHint={0} />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 100px" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>Welcome, {firstName}!</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <Pill>{liveCount} live role{liveCount === 1 ? "" : "s"}</Pill>
-              <Pill tone="live">{totalInterviewing} interviewing</Pill>
-              <Pill tone="placed">{totalPlaced} placed</Pill>
-            </div>
-          </div>
-          <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> Post new role</span>
-          </PrimaryButton>
-        </div>
-
-        <div style={{ height: 1, background: T.line, margin: "26px 0 28px" }} />
-
-        {roles.length === 0 ? (
-          <EmptyState
-            icon="briefcase"
-            title="No roles posted yet"
-            body="Post your first role to start getting candidates from recruiters on MakePlacement."
-            actions={<PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>Post a role</PrimaryButton>}
-          />
-        ) : (
+        {tab === "roles" && (
           <>
-            {focusedRole && (
-              <HeroRoleCard
-                role={focusedRole}
-                counts={counts[focusedRole.id] || { active: 0, rejected: 0, placed: 0 }}
-                expanded={expanded}
-                onToggleExpand={toggleExpand}
-                onToggleStatus={toggleRoleStatus}
-              >
-                {pipelineLoading ? (
-                  <div style={{ fontSize: 13, color: T.sub }}>{"Loading pipeline\u2026"}</div>
-                ) : (
-                  <PipelineView
-                    role={focusedRole}
-                    stages={stages}
-                    candidates={candidates}
-                    recruiterMap={recruiterMap}
-                    messages={messages}
-                    session={session}
-                    refresh={refreshPipeline}
-                    refreshMessages={refreshMessages}
-                  />
-                )}
-              </HeroRoleCard>
-            )}
-
-            {otherRoles.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: T.sub, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 14 }}>
-                  Other roles ({otherRoles.length})
-                </div>
-                <div className="mp-other-roles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
-                  {otherRoles.map((role) => (
-                    <CompactRoleCard
-                      key={role.id}
-                      role={role}
-                      counts={counts[role.id] || { active: 0, rejected: 0, placed: 0 }}
-                      onFocus={() => focusRole(role.id)}
-                    />
-                  ))}
+                <div style={{ fontSize: 28, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>Welcome back, {firstName}!</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                  <Pill>{liveCount} live role{liveCount === 1 ? "" : "s"}</Pill>
+                  <Pill tone="live">{totalInterviewing} interviewing</Pill>
+                  <Pill tone="placed">{totalPlaced} placed</Pill>
                 </div>
               </div>
+              <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> Post new role</span>
+              </PrimaryButton>
+            </div>
+
+            <div style={{ height: 1, background: T.line, margin: "26px 0 28px" }} />
+
+            {roles.length === 0 ? (
+              <EmptyState
+                icon="briefcase"
+                title="No roles posted yet"
+                body="Post your first role to start getting candidates from recruiters on MakePlacement."
+                actions={<PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>Post a role</PrimaryButton>}
+              />
+            ) : (
+              <>
+                {focusedRole && (
+                  <HeroRoleCard
+                    role={focusedRole}
+                    counts={counts[focusedRole.id] || { active: 0, rejected: 0, placed: 0 }}
+                    expanded={expanded}
+                    onToggleExpand={toggleExpand}
+                    onPause={(r) => toggleRoleStatus(r, "paused")}
+                    onReopen={(r) => toggleRoleStatus(r, "live")}
+                    onRequestFilled={(r) => setConfirmFilledRole(r)}
+                  >
+                    {pipelineLoading ? (
+                      <div style={{ fontSize: 13, color: T.sub }}>{"Loading pipeline\u2026"}</div>
+                    ) : (
+                      <PipelineView
+                        role={focusedRole}
+                        stages={stages}
+                        candidates={candidates}
+                        recruiterMap={recruiterMap}
+                        roleRecruiters={roleRecruiters}
+                        messages={messages}
+                        session={session}
+                        refresh={refreshPipeline}
+                        refreshMessages={refreshMessages}
+                      />
+                    )}
+                  </HeroRoleCard>
+                )}
+
+                {otherRoles.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.sub, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 14 }}>
+                      Other roles ({otherRoles.length})
+                    </div>
+                    <div className="mp-other-roles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+                      {otherRoles.map((role) => (
+                        <CompactRoleCard key={role.id} role={role} counts={counts[role.id] || { active: 0, rejected: 0, placed: 0 }} onFocus={() => focusRole(role.id)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
+
+        {tab === "messages" && <EmployerInbox session={session} roles={roles} />}
       </div>
+
+      {confirmFilledRole && (
+        <ConfirmModal
+          title={`Mark "${confirmFilledRole.name}" as filled?`}
+          body="This tells recruiters the role is no longer open for new candidates. Double-check with your hiring team that someone has actually been placed before confirming \u2014 you can always reopen it later if that changes."
+          confirmLabel="Mark as filled"
+          danger
+          onCancel={() => setConfirmFilledRole(null)}
+          onConfirm={async () => { await toggleRoleStatus(confirmFilledRole, "filled"); setConfirmFilledRole(null); }}
+        />
+      )}
     </div>
   );
 }
 
-const pageWrap = {
-  minHeight: "100vh",
-  background: "#fff",
-  fontFamily: T.sans,
-  color: T.ink,
-};
+const pageWrap = { minHeight: "100vh", background: "#fff", fontFamily: T.sans, color: T.ink };
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
     root.render(<ClientDashboard />);
