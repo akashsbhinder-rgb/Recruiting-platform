@@ -360,6 +360,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const ONBOARDING_URL = 'onboarding.html';
+    const DASHBOARD_URL = 'dashboard.html';
     const RECRUITER_ONBOARDING_URL = 'recruiter_onboarding.html';
     const RECRUITER_DASHBOARD_URL = 'recruiter_dashboard.html';
     const PENDING_KEY = 'mp_pending_signup';
@@ -643,24 +644,33 @@
       await routeSignedInUser(data.session);
     });
 
+    // Sends a returning, already-signed-in user to the right place:
+    //   - a company that has posted at least one role -> straight to the dashboard
+    //   - a company that hasn't posted a role yet -> the role-posting wizard
+    //   - a recruiter who's finished their profile -> straight to the dashboard
+    //   - a recruiter who hasn't -> the recruiter onboarding wizard
+    // Uses replace() rather than href so the onboarding page doesn't linger
+    // in browser history -- pressing Back shouldn't land you back on it.
     async function routeSignedInUser(session) {
       const { data: company } = await supabaseClient
-        .from('companies').select('id').eq('auth_user_id', session.user.id).maybeSingle();
+        .from("companies").select("id").eq("auth_user_id", session.user.id).maybeSingle();
       if (company) {
-        window.location.href = ONBOARDING_URL;
+        const { data: existingRole } = await supabaseClient
+          .from("roles").select("id").eq("company_id", company.id).limit(1).maybeSingle();
+        window.location.replace(existingRole ? DASHBOARD_URL : ONBOARDING_URL);
         return;
       }
 
       const { data: recruiter } = await supabaseClient
-        .from('recruiters').select('id, years_experience').eq('auth_user_id', session.user.id).maybeSingle();
+        .from("recruiters").select("id, years_experience").eq("auth_user_id", session.user.id).maybeSingle();
       if (recruiter) {
         // years_experience is only set once the onboarding steps are
         // completed and submitted -- use it as the "profile finished" signal.
-        window.location.href = recruiter.years_experience ? RECRUITER_DASHBOARD_URL : RECRUITER_ONBOARDING_URL;
+        window.location.replace(recruiter.years_experience ? RECRUITER_DASHBOARD_URL : RECRUITER_ONBOARDING_URL);
         return;
       }
 
-      window.location.href = ONBOARDING_URL;
+      window.location.replace(ONBOARDING_URL);
     }
 
     // Tries a plain insert; if a row already exists for this account
@@ -684,22 +694,20 @@
       throw insertErr;
     }
 
-    // Company name itself is collected on the first page of onboarding,
-    // not here -- "name" here is the contact's full name (first + optional last).
+    // Company name is intentionally left blank here -- it's collected as
+    // its own field on the first page of onboarding, not assumed from the
+    // contact's name. "name" here is the contact's full name (first +
+    // optional last), used for greetings, not the company name.
     async function completeSignup(session, pending) {
       showOnly(finishingBox);
 
       try {
         if (pending.type === 'company') {
-          const fullName = pending.lastName
-            ? `${pending.firstName} ${pending.lastName}`
-            : pending.firstName;
-
           await insertOrUpdate('companies', 'auth_user_id', session.user.id, {
             auth_user_id: session.user.id,
             contact_first_name: pending.firstName,
             last_name: pending.lastName,
-            name: fullName,
+            name: '',
             email: pending.email
           });
 
