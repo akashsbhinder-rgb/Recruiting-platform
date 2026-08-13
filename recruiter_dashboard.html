@@ -143,6 +143,64 @@ async function fetchMyCandidates(recruiterId) {
   return data || [];
 }
 
+// RLS on messages restricts what comes back automatically: broadcasts
+// (candidate_id null) for any role this recruiter has a candidate in,
+// plus feedback (candidate_id set) only on this recruiter's own candidates.
+async function fetchMessagesForRoles(roleIds) {
+  if (roleIds.length === 0) return [];
+  const { data, error } = await supabaseClient
+    .from("messages")
+    .select("*")
+    .in("role_id", roleIds)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed loading messages: ${error.message}`);
+  return data || [];
+}
+
+function formatWhen(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// ---------- message feed (read-only -- recruiters don't send yet) ----------
+function MessageFeed({ messages, emptyLabel }) {
+  if (messages.length === 0) {
+    return <div style={{ fontSize: 12, color: "#c4c4c4", fontStyle: "italic" }}>{emptyLabel}</div>;
+  }
+  return (
+    <div>
+      {messages.map((m) => (
+        <div key={m.id} style={{ padding: "7px 0", borderBottom: "1px solid #f0f0ee" }}>
+          <div style={{ fontSize: 12.5, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
+          <div style={{ fontSize: 10.5, color: "#c4c4c4", marginTop: 2 }}>{formatWhen(m.created_at)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RoleUpdatesBanner({ messages }) {
+  const [open, setOpen] = useState(messages.length > 0 && messages.length <= 2);
+  if (messages.length === 0) return null;
+  return (
+    <div style={{ border: "1px solid #eee", borderRadius: 10, background: "#fafaf9", padding: "10px 14px", marginBottom: 10 }}>
+      <div
+        onClick={() => setOpen((o) => !o)}
+        style={{ fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", justifyContent: "space-between" }}
+      >
+        <span>Updates from company ({messages.length})</span>
+        <span style={{ color: "#8a8a8a" }}>{open ? "Hide" : "Show"}</span>
+      </div>
+      {open && (
+        <div style={{ marginTop: 8 }}>
+          <MessageFeed messages={messages} emptyLabel="" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- small UI bits ----------
 function Badge({ children, tone = "default" }) {
   const tones = {
@@ -543,16 +601,11 @@ function BrowseRoles({ recruiterId }) {
 }
 
 // ---------- my candidates ----------
-function MyCandidateCard({ candidate, roleName, companyName, stageName }) {
+function MyCandidateCard({ candidate, stageName, feedbackMessages }) {
   return (
     <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 16, background: "#fff", marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
-          <div style={{ fontSize: 12.5, color: "#8a8a8a", marginTop: 2 }}>
-            {roleName} {companyName ? `at ${companyName}` : ""}
-          </div>
-        </div>
+        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
         {isRejected(candidate) && <Badge tone="rejected">Rejected</Badge>}
         {isPlaced(candidate) && <Badge tone="placed">Placed</Badge>}
         {isActive(candidate) && <Badge>{stageName || "In review"}</Badge>}
@@ -560,6 +613,36 @@ function MyCandidateCard({ candidate, roleName, companyName, stageName }) {
       <div style={{ fontSize: 11.5, color: "#c4c4c4", marginTop: 8 }}>
         Submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
       </div>
+      {feedbackMessages.length > 0 && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #f0f0ee", paddingTop: 10 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8a8a8a", marginBottom: 6 }}>
+            Feedback from company ({feedbackMessages.length})
+          </div>
+          <MessageFeed messages={feedbackMessages} emptyLabel="" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RoleGroup({ role, companyName, candidates, stageMap, messages }) {
+  const roleMessages = messages.filter((m) => m.role_id === role.id);
+  const broadcasts = roleMessages.filter((m) => !m.candidate_id);
+  const messagesForCandidate = (candidateId) => roleMessages.filter((m) => m.candidate_id === candidateId);
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>{role.name}</div>
+      <div style={{ fontSize: 12.5, color: "#8a8a8a", marginBottom: 10 }}>{companyName}</div>
+      <RoleUpdatesBanner messages={broadcasts} />
+      {candidates.map((c) => (
+        <MyCandidateCard
+          key={c.id}
+          candidate={c}
+          stageName={stageMap[c.stage_id]}
+          feedbackMessages={messagesForCandidate(c.id)}
+        />
+      ))}
     </div>
   );
 }
@@ -569,6 +652,7 @@ function MyCandidates({ recruiterId }) {
   const [roleMap, setRoleMap] = useState({});
   const [companyMap, setCompanyMap] = useState({});
   const [stageMap, setStageMap] = useState({});
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -582,13 +666,14 @@ function MyCandidates({ recruiterId }) {
         const roleIds = [...new Set(cands.map((c) => c.role_id))];
         const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
 
-        const [rolesRes, stagesRes] = await Promise.all([
+        const [rolesRes, stagesRes, msgs] = await Promise.all([
           roleIds.length
             ? supabaseClient.from("roles").select("id, name, company_id").in("id", roleIds)
             : Promise.resolve({ data: [] }),
           stageIds.length
             ? supabaseClient.from("role_stages").select("id, name").in("id", stageIds)
             : Promise.resolve({ data: [] }),
+          fetchMessagesForRoles(roleIds),
         ]);
 
         const rMap = {};
@@ -598,6 +683,8 @@ function MyCandidates({ recruiterId }) {
         const sMap = {};
         (stagesRes.data || []).forEach((s) => (sMap[s.id] = s.name));
         setStageMap(sMap);
+
+        setMessages(msgs);
 
         const companyIds = [...new Set(Object.values(rMap).map((r) => r.company_id))];
         setCompanyMap(await fetchCompaniesByIds(companyIds));
@@ -615,18 +702,25 @@ function MyCandidates({ recruiterId }) {
     return <div style={{ color: "#8a8a8a", fontSize: 14 }}>You haven't submitted any candidates yet. Browse live roles to get started.</div>;
   }
 
+  const candidatesByRole = {};
+  candidates.forEach((c) => {
+    (candidatesByRole[c.role_id] = candidatesByRole[c.role_id] || []).push(c);
+  });
+
   return (
     <div>
       <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>My candidates</div>
-      {candidates.map((c) => {
-        const role = roleMap[c.role_id];
+      {Object.keys(candidatesByRole).map((roleId) => {
+        const role = roleMap[roleId];
+        if (!role) return null;
         return (
-          <MyCandidateCard
-            key={c.id}
-            candidate={c}
-            roleName={role ? role.name : "Role"}
-            companyName={role ? companyMap[role.company_id] : ""}
-            stageName={stageMap[c.stage_id]}
+          <RoleGroup
+            key={roleId}
+            role={role}
+            companyName={companyMap[role.company_id]}
+            candidates={candidatesByRole[roleId]}
+            stageMap={stageMap}
+            messages={messages}
           />
         );
       })}
