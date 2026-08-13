@@ -37,6 +37,9 @@
       .mp-filter-chips { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     }
 
+    @keyframes mpBellPulse { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
+    .mp-bell-pulse { animation: mpBellPulse 0.6s ease; }
+
     #boot-error {
       display: none;
       max-width: 760px;
@@ -260,6 +263,18 @@ function EmptyState({ icon, title, body, actions }) {
   );
 }
 
+function ToastStack({ toasts }) {
+  return (
+    <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 8, zIndex: 300 }}>
+      {toasts.map((t) => (
+        <div key={t.id} style={{ background: T.ink, color: "#fff", padding: "12px 16px", borderRadius: 10, fontSize: 13, boxShadow: "0 10px 30px rgba(0,0,0,0.25)", maxWidth: 320 }}>
+          {t.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ---------- data ----------
 async function getMyRecruiter(session) {
   const { data, error } = await supabaseClient.from("recruiters").select("*").eq("auth_user_id", session.user.id).maybeSingle();
@@ -383,7 +398,7 @@ function Logomark() {
   );
 }
 
-function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnread, onMarkNotifsRead, onSelectNotification }) {
+function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnread, onMarkNotifsRead, onSelectNotification, bellPulse }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const initial = (recruiter.firm_name || "R").trim().charAt(0).toUpperCase();
@@ -428,6 +443,7 @@ function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnr
           <div style={{ position: "relative" }}>
             <button
               onClick={() => { const next = !notifOpen; setNotifOpen(next); if (next) onMarkNotifsRead(); }}
+              className={bellPulse ? "mp-bell-pulse" : ""}
               style={{ position: "relative", background: "none", border: "none", color: T.sub, cursor: "pointer", padding: 6, display: "flex" }}
             >
               <Icon name="bell" size={18} />
@@ -1382,7 +1398,17 @@ function RecruiterDashboard() {
 
   const [notifItems, setNotifItems] = useState([]);
   const [notifSeenAt, setNotifSeenAt] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const [bellPulse, setBellPulse] = useState(false);
   const notifKey = recruiter ? `mp_notif_seen_recruiter_${recruiter.id}` : null;
+
+  const pushToast = (text) => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((prev) => [...prev, { id, text }]);
+    setBellPulse(true);
+    setTimeout(() => setBellPulse(false), 650);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+  };
 
   useEffect(() => {
     if (!notifKey) return;
@@ -1442,13 +1468,20 @@ function RecruiterDashboard() {
   useEffect(() => {
     if (!recruiter || appliedRoleIds.size === 0) return;
     loadNotifications();
+    const roleIds = [...appliedRoleIds];
     const channel = supabaseClient
       .channel(`recruiter-notifications-${recruiter.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
-        const row = payload.new || payload.old;
-        if (row && appliedRoleIds.has(row.role_id)) loadNotifications();
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        const row = payload.new;
+        if (row && appliedRoleIds.has(row.role_id) && row.sender_type === "company") {
+          loadNotifications();
+          pushToast("New message from a company");
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiter.id}` }, () => loadNotifications())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiter.id}` }, (payload) => {
+        loadNotifications();
+        if (payload.new) pushToast(`Update on ${payload.new.name}`);
+      })
       .subscribe();
     return () => { supabaseClient.removeChannel(channel); };
   }, [recruiter && recruiter.id, appliedRoleIds.size]);
@@ -1482,12 +1515,14 @@ function RecruiterDashboard() {
         notifUnread={notifUnreadCount}
         onMarkNotifsRead={markNotifsRead}
         onSelectNotification={goToNotification}
+        bellPulse={bellPulse}
       />
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
         {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} />}
         {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} />}
         {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} />}
       </div>
+      <ToastStack toasts={toasts} />
     </div>
   );
 }
