@@ -902,7 +902,11 @@ function EmployerInbox({ session, roles }) {
     await loadAll();
   };
 
-  const applicationsForRole = (roleId) => applications.filter((a) => a.role_id === roleId);
+  const applicationsForRole = (roleId) => {
+    const fromApps = applications.filter((a) => a.role_id === roleId).map((a) => a.recruiter_id);
+    const fromCandidates = candidates.filter((c) => c.role_id === roleId).map((c) => c.recruiter_id).filter(Boolean);
+    return [...new Set([...fromApps, ...fromCandidates])].map((recruiter_id) => ({ recruiter_id }));
+  };
 
   if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"Loading messages\u2026"}</div>;
   if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
@@ -1025,7 +1029,7 @@ function ClientDashboard() {
       const recruiterIds = [...new Set([...c.map((x) => x.recruiter_id), ...apps.map((a) => a.recruiter_id)].filter(Boolean))];
       const map = await fetchRecruiters(recruiterIds);
       setRecruiterMap(map);
-      setRoleRecruiters(apps.map((a) => ({ id: a.recruiter_id, firm_name: map[a.recruiter_id] })));
+      setRoleRecruiters(recruiterIds.map((id) => ({ id, firm_name: map[id] })));
     } catch (err) {
       setError(err.message);
     } finally {
