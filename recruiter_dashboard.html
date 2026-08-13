@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard | MakePlacement</title>
+  <title>Browse roles | MakePlacement</title>
 
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -11,30 +11,37 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
 
     :root {
-      --ink: #14181c;
-      --paper: #fafbf9;
-      --paper-dim: #f1f3f1;
-      --steel: #dbdfe0;
-      --steel-dim: #868d91;
-      --blueprint: #1f3a5f;
-      --blueprint-bg: #e8eef3;
-      --earn: #2b6e4f;
-      --earn-bg: #e7f1eb;
-      --alert: #a23b2e;
-      --alert-bg: #f8eae8;
-      --gold: #9c7a3f;
-      --gold-bg: #f4eee0;
+      --ink: #111214;
+      --ink-soft: #3a3b40;
+      --muted: #85868c;
+      --muted-2: #b3b4b9;
+      --border: #e7e7ea;
+      --border-strong: #d7d7dc;
+      --paper: #ffffff;
+      --wash: #f7f7f8;
+      --blue: #3b5bfb;
+      --blue-soft: #eaeeff;
+      --green: #1f8a4c;
+      --green-soft: #e8f6ee;
+      --red: #c23a2e;
+      --red-soft: #fbebe9;
+      --amber: #a5720f;
+      --amber-soft: #fbf1de;
       --font-serif: 'Newsreader', Georgia, serif;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --shadow-card: 0 1px 2px rgba(17,18,20,0.04);
+      --shadow-pop: 0 12px 32px rgba(17,18,20,0.12);
     }
 
+    * { box-sizing: border-box; }
     html, body, #root { margin: 0; min-height: 100%; }
-    body { background: var(--paper); }
-    ::selection { background: var(--blueprint); color: var(--paper); }
+    body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    button { font-family: inherit; }
+    ::selection { background: var(--blue-soft); color: var(--ink); }
 
     #boot-error {
       display: none;
@@ -48,7 +55,7 @@
       white-space: pre-wrap;
       background: #f7f7f7;
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 8px;
       overflow: auto;
     }
   </style>
@@ -73,7 +80,7 @@
   </script>
 
   <script type="text/babel" data-presets="react">
-const { useState, useEffect } = React;
+const { useState, useEffect, useMemo } = React;
 
 // ---------- Supabase config ----------
 const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
@@ -81,26 +88,6 @@ const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const LOGIN_URL = "index.html";
 const RECRUITER_ONBOARDING_URL = "recruiter_onboarding.html";
-
-// ---------- design tokens (mirrors the :root CSS vars above) ----------
-const T = {
-  ink: "#14181c",
-  paper: "#fafbf9",
-  paperDim: "#f1f3f1",
-  steel: "#dbdfe0",
-  steelDim: "#868d91",
-  blueprint: "#1f3a5f",
-  blueprintBg: "#e8eef3",
-  earn: "#2b6e4f",
-  earnBg: "#e7f1eb",
-  alert: "#a23b2e",
-  alertBg: "#f8eae8",
-  gold: "#9c7a3f",
-  goldBg: "#f4eee0",
-  serif: "'Newsreader', Georgia, serif",
-  sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  mono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
-};
 
 const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
 const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
@@ -122,6 +109,12 @@ function estimateEarnings(minSalary, maxSalary) {
   const high = Number(maxSalary) * PLATFORM_FEE_PCT * RECRUITER_SHARE_PCT;
   if (!isFinite(low) || !isFinite(high)) return null;
   return { low, high };
+}
+
+function feePct() {
+  // Effective take-home as a % of salary, mirroring the "17.5% first year
+  // salary + bonus" line shown on role cards.
+  return `${Math.round(PLATFORM_FEE_PCT * 1000) / 10}%`;
 }
 
 // ---------- data ----------
@@ -217,79 +210,162 @@ function formatWhen(iso) {
     " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-function Mono({ children, style }) {
-  return <span style={{ fontFamily: T.mono, ...style }}>{children}</span>;
+// ---------- little visual helpers ----------
+
+// Deterministic gradient per company, so cards feel photographic/branded
+// without needing real uploaded images.
+const GRADIENTS = [
+  ["#bcd4ff", "#eef2ff"],
+  ["#ffd6c2", "#fff3e6"],
+  ["#c9f0d8", "#eefbf2"],
+  ["#f4d3ee", "#fbeaf8"],
+  ["#d6d0ff", "#f0edff"],
+  ["#ffe1a8", "#fff6e3"],
+  ["#c6ecf0", "#eafbfd"],
+];
+function gradientFor(seed) {
+  let h = 0;
+  for (let i = 0; i < (seed || "").length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const [a, b] = GRADIENTS[h % GRADIENTS.length];
+  const angle = 120 + (h % 90);
+  return `linear-gradient(${angle}deg, ${a}, ${b})`;
+}
+function initialsFor(name) {
+  if (!name) return "•";
+  return name.trim().charAt(0).toUpperCase();
+}
+
+function IconBriefcase({ size = 22, color = "var(--blue)" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="7" width="18" height="12" rx="2.2" stroke={color} strokeWidth="1.7" />
+      <path d="M8 7V5.6C8 4.7 8.7 4 9.6 4h4.8c.9 0 1.6.7 1.6 1.6V7" stroke={color} strokeWidth="1.7" />
+      <path d="M3 12h18" stroke={color} strokeWidth="1.7" />
+    </svg>
+  );
+}
+function IconCalendar({ size = 22, color = "var(--blue)" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.2" stroke={color} strokeWidth="1.7" />
+      <path d="M3.5 9.5h17" stroke={color} strokeWidth="1.7" />
+      <path d="M8 3.5v3M16 3.5v3" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconSearch({ size = 16, color = "var(--muted)" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="11" cy="11" r="7" stroke={color} strokeWidth="2" />
+      <path d="M21 21l-4.3-4.3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconHeart({ size = 17, filled }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "#e0524a" : "none"}>
+      <path
+        d="M12 20.2s-7.6-4.6-9.9-9.2C.6 7.4 2.6 4 6.3 4c2 0 3.6 1.1 4.7 2.6C12.1 5.1 13.7 4 15.7 4c3.7 0 5.7 3.4 4.2 7-2.3 4.6-9.9 9.2-9.9 9.2z"
+        stroke={filled ? "#e0524a" : "var(--muted)"}
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 // ---------- structural chrome ----------
-function TopBar({ recruiterLabel, tab, onTabChange, onLogout }) {
+function TopNav({ recruiterLabel, tab, onTabChange, onLogout }) {
+  const tabs = [
+    ["browse", "Browse"],
+    ["mine", "My candidates"],
+  ];
   return (
-    <div style={{ background: T.ink, color: T.paper }}>
+    <div style={{ borderBottom: "1px solid var(--border)", background: "var(--paper)" }}>
       <div
         style={{
-          maxWidth: 1100,
+          maxWidth: 1240,
           margin: "0 auto",
-          padding: "14px 28px",
+          padding: "0 28px",
+          height: 64,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 12,
+          gap: 34,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 26, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            <a href={LOGIN_URL} style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: T.paper, textDecoration: "none", letterSpacing: "-0.01em" }}>
-              MakePlacement
-            </a>
-            <span
+        <a href={LOGIN_URL} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flexShrink: 0 }}>
+          <span
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 7,
+              background: "var(--ink)",
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "var(--font-serif)",
+            }}
+          >
+            M
+          </span>
+          <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.01em" }}>
+            MakePlacement
+          </span>
+        </a>
+
+        <div style={{ display: "flex", gap: 26, flex: 1 }}>
+          {tabs.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => onTabChange(key)}
               style={{
-                fontFamily: T.mono,
-                fontSize: 10.5,
-                letterSpacing: "0.08em",
-                color: "#a8c6a8",
-                border: "1px solid #3a5a3f",
-                padding: "2px 7px",
-                borderRadius: 3,
-                textTransform: "uppercase",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "22px 0",
+                fontSize: 14.5,
+                fontWeight: 600,
+                color: tab === key ? "var(--ink)" : "var(--muted)",
+                borderBottom: tab === key ? "2px solid var(--ink)" : "2px solid transparent",
+                marginBottom: -1,
               }}
             >
-              Recruiter
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 4 }}>
-            {[
-              ["browse", "Browse roles"],
-              ["mine", "My candidates"],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => onTabChange(key)}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: "7px 13px",
-                  borderRadius: 3,
-                  border: "none",
-                  background: tab === key ? "#fff" : "transparent",
-                  color: tab === key ? T.ink : "#c7ccd0",
-                  cursor: "pointer",
-                  fontFamily: T.sans,
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+              {label}
+            </button>
+          ))}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          {recruiterLabel && <div style={{ fontSize: 13, color: "#a8afb5" }}>{recruiterLabel}</div>}
-          <a href={RECRUITER_ONBOARDING_URL} style={{ fontSize: 13, color: T.paper, textDecoration: "underline" }}>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+          <a
+            href={RECRUITER_ONBOARDING_URL}
+            style={{ fontSize: 13.5, color: "var(--muted)", textDecoration: "none" }}
+          >
             Edit profile
           </a>
+          <div style={{ width: 1, height: 20, background: "var(--border)" }} />
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              background: "var(--blue-soft)",
+              color: "var(--blue)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+            title={recruiterLabel}
+          >
+            {initialsFor(recruiterLabel)}
+          </div>
           <button
             onClick={onLogout}
-            style={{ background: "none", border: "none", fontSize: 13, color: T.paper, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans, padding: 0 }}
+            style={{ background: "none", border: "none", fontSize: 13.5, color: "var(--muted)", cursor: "pointer", padding: 0 }}
           >
             Log out
           </button>
@@ -299,30 +375,70 @@ function TopBar({ recruiterLabel, tab, onTabChange, onLogout }) {
   );
 }
 
-function Eyebrow({ children }) {
+function PageHeader({ title, subtitle, action }) {
   return (
-    <div
-      style={{
-        fontFamily: T.mono,
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: "0.09em",
-        textTransform: "uppercase",
-        color: T.blueprint,
-        marginBottom: 8,
-      }}
-    >
-      {children}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 14, marginBottom: 22 }}>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--ink)", marginBottom: 4 }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 14, color: "var(--muted)" }}>{subtitle}</div>}
+      </div>
+      {action}
     </div>
   );
 }
 
-function SectionHeader({ eyebrow, title }) {
+function SearchBar({ value, onChange, placeholder }) {
   return (
-    <div style={{ marginBottom: 26 }}>
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <div style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 500, letterSpacing: "-0.015em", color: T.ink }}>{title}</div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: "12px 16px",
+        marginBottom: 14,
+        background: "var(--paper)",
+      }}
+    >
+      <IconSearch />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{ border: "none", outline: "none", fontSize: 14, flex: 1, fontFamily: "inherit", color: "var(--ink)" }}
+      />
     </div>
+  );
+}
+
+function Pill({ children, tone = "default", small }) {
+  const tones = {
+    default: { fg: "var(--muted)", border: "var(--border)", bg: "transparent" },
+    live: { fg: "var(--green)", border: "var(--green)", bg: "var(--green-soft)" },
+    rejected: { fg: "var(--red)", border: "var(--red)", bg: "var(--red-soft)" },
+    placed: { fg: "var(--green)", border: "var(--green)", bg: "var(--green-soft)" },
+    paused: { fg: "var(--amber)", border: "var(--amber)", bg: "var(--amber-soft)" },
+  };
+  const t = tones[tone] || tones.default;
+  return (
+    <span
+      style={{
+        fontSize: small ? 11 : 12,
+        fontWeight: 600,
+        padding: small ? "3px 8px" : "4px 10px",
+        borderRadius: 999,
+        border: `1px solid ${t.border}`,
+        background: t.bg,
+        color: t.fg,
+        whiteSpace: "nowrap",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+      }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -331,16 +447,35 @@ function PrimaryButton(props) {
     <button
       {...props}
       style={{
-        background: T.ink,
-        color: T.paper,
+        background: "var(--ink)",
+        color: "#fff",
         border: "none",
-        borderRadius: 3,
+        borderRadius: 8,
         padding: "10px 18px",
         fontSize: 13.5,
         fontWeight: 600,
         cursor: props.disabled ? "default" : "pointer",
-        opacity: props.disabled ? 0.6 : 1,
-        fontFamily: T.sans,
+        opacity: props.disabled ? 0.55 : 1,
+        fontFamily: "inherit",
+        ...props.style,
+      }}
+    />
+  );
+}
+function SecondaryButton(props) {
+  return (
+    <button
+      {...props}
+      style={{
+        background: "var(--wash)",
+        color: "var(--ink)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        padding: "10px 18px",
+        fontSize: 13.5,
+        fontWeight: 600,
+        cursor: "pointer",
+        fontFamily: "inherit",
         ...props.style,
       }}
     />
@@ -350,118 +485,135 @@ function PrimaryButton(props) {
 const inputStyle = {
   width: "100%",
   boxSizing: "border-box",
-  padding: "10px 13px",
+  padding: "11px 13px",
   fontSize: 13.5,
-  borderRadius: 3,
-  border: `1px solid ${T.steel}`,
+  borderRadius: 8,
+  border: "1px solid var(--border)",
   outline: "none",
-  color: T.ink,
+  color: "var(--ink)",
   background: "#fff",
-  fontFamily: T.sans,
-  marginBottom: 12,
+  fontFamily: "inherit",
+  marginBottom: 10,
 };
 
-function Tag({ children, tone = "default" }) {
-  const tones = {
-    default: { fg: T.steelDim, border: T.steel, bg: "transparent" },
-    live: { fg: T.blueprint, border: T.blueprint, bg: T.blueprintBg },
-    rejected: { fg: T.alert, border: T.alert, bg: T.alertBg },
-    placed: { fg: T.earn, border: T.earn, bg: T.earnBg },
-  };
-  const t = tones[tone] || tones.default;
-  return (
-    <span
-      style={{
-        fontFamily: T.mono,
-        fontSize: 10.5,
-        fontWeight: 600,
-        letterSpacing: "0.05em",
-        textTransform: "uppercase",
-        padding: "3px 8px",
-        borderRadius: 3,
-        border: `1px solid ${t.border}`,
-        background: t.bg,
-        color: t.fg,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function LedgerCard({ accent = T.steel, children, style }) {
+// A dashed-border, centered-icon empty state -- mirrors the reference
+// screenshots exactly (soft blue icon chip, bold heading, muted line, CTAs).
+function EmptyState({ icon, title, body, actions }) {
   return (
     <div
       style={{
-        border: `1px solid ${T.steel}`,
-        borderLeft: `4px solid ${accent}`,
-        borderRadius: 3,
-        background: "#fff",
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function EmptyFrame({ title, body }) {
-  return (
-    <div
-      style={{
-        border: `1.5px dashed ${T.steel}`,
-        borderRadius: 4,
-        padding: "56px 24px",
+        border: "1px dashed var(--border-strong)",
+        borderRadius: 14,
+        padding: "70px 24px",
         textAlign: "center",
-        maxWidth: 420,
-        margin: "40px auto",
       }}
     >
-      <div style={{ fontFamily: T.serif, fontSize: 20, color: T.ink, marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13.5, color: T.steelDim }}>{body}</div>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 11,
+          background: "var(--blue-soft)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 18px",
+        }}
+      >
+        {icon}
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: actions ? 20 : 0 }}>{body}</div>
+      {actions && <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>{actions}</div>}
     </div>
   );
 }
 
+// ---------- role card (browse grid) ----------
+function RoleCard({ role, companyName, onOpen, favorited, onToggleFavorite }) {
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        cursor: "pointer",
+        borderRadius: 14,
+        overflow: "hidden",
+        border: "1px solid var(--border)",
+        background: "#fff",
+        boxShadow: "var(--shadow-card)",
+        transition: "transform .12s ease, box-shadow .12s ease",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(17,18,20,0.09)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
+    >
+      <div style={{ position: "relative", height: 130, background: gradientFor(companyName || role.name) }}>
+        <div style={{ position: "absolute", top: 10, left: 10 }}>
+          <Pill tone="live" small>● Live</Pill>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+          style={{
+            position: "absolute", top: 8, right: 8,
+            width: 30, height: 30, borderRadius: "50%",
+            border: "none", background: "rgba(255,255,255,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <IconHeart filled={favorited} />
+        </button>
+        <div
+          style={{
+            position: "absolute", bottom: 10, left: 10,
+            width: 34, height: 34, borderRadius: 9,
+            background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 700, color: "var(--ink)",
+          }}
+        >
+          {initialsFor(companyName)}
+        </div>
+      </div>
+
+      <div style={{ padding: "13px 14px 15px" }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>
+          {companyName || "Company"}
+        </div>
+        <div style={{ fontSize: 13.5, color: "var(--ink-soft)", marginBottom: 8, lineHeight: 1.3 }}>
+          {role.name}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+          {role.hiring_goals ? `Target: ${role.hiring_goals}` : "Open pipeline"}
+        </div>
+        <div style={{ fontSize: 12.5, color: "var(--ink)" }}>
+          <span style={{ fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 2 }}>{feePct()}</span>
+          {" "}first year salary + bonus
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+          {money(role.min_salary)} – {money(role.max_salary)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- role detail (slide-over) ----------
 function MessageFeed({ messages, emptyLabel }) {
   if (messages.length === 0) {
-    return <div style={{ fontSize: 12, color: "#c4c4c4", fontStyle: "italic" }}>{emptyLabel}</div>;
+    return <div style={{ fontSize: 12.5, color: "var(--muted-2)", fontStyle: "italic" }}>{emptyLabel}</div>;
   }
   return (
     <div>
       {messages.map((m) => (
-        <div key={m.id} style={{ padding: "7px 0", borderBottom: `1px solid ${T.paperDim}` }}>
-          <div style={{ fontSize: 12.5, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.steelDim, marginTop: 2 }}>{formatWhen(m.created_at)}</div>
+        <div key={m.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--wash)" }}>
+          <div style={{ fontSize: 12.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap" }}>{m.body}</div>
+          <div style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 2 }}>{formatWhen(m.created_at)}</div>
         </div>
       ))}
     </div>
   );
 }
 
-function RoleUpdatesBanner({ messages }) {
-  const [open, setOpen] = useState(messages.length > 0 && messages.length <= 2);
-  if (messages.length === 0) return null;
-  return (
-    <LedgerCard accent={T.blueprint} style={{ padding: "10px 14px", marginBottom: 10 }}>
-      <div
-        onClick={() => setOpen((o) => !o)}
-        style={{ fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", justifyContent: "space-between" }}
-      >
-        <span>Updates from company ({messages.length})</span>
-        <span style={{ color: T.steelDim }}>{open ? "Hide" : "Show"}</span>
-      </div>
-      {open && (
-        <div style={{ marginTop: 8 }}>
-          <MessageFeed messages={messages} emptyLabel="" />
-        </div>
-      )}
-    </LedgerCard>
-  );
-}
-
-// ---------- submit candidate form ----------
 function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
   const [form, setForm] = useState({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -491,176 +643,172 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
 
   if (done) {
     return (
-      <div style={{ padding: "16px 0" }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Candidate submitted</div>
-        <div style={{ fontSize: 13, color: T.steelDim, marginBottom: 12 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Candidate submitted</div>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
           {form.name} has been added to {role.name}'s pipeline.
         </div>
-        <button
+        <SecondaryButton
           onClick={() => {
             setForm({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
             setDone(false);
           }}
-          style={{ fontSize: 13, color: T.ink, background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}
         >
           Submit another candidate
-        </button>
+        </SecondaryButton>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Submit a candidate</div>
-      <input
-        style={inputStyle}
-        placeholder="Candidate full name *"
-        value={form.name}
-        onChange={(e) => set({ name: e.target.value })}
-      />
-      <input
-        style={inputStyle}
-        placeholder="Email (optional)"
-        value={form.email}
-        onChange={(e) => set({ email: e.target.value })}
-      />
-      <input
-        style={inputStyle}
-        placeholder="linkedin.com/in/... (optional)"
-        value={form.linkedin}
-        onChange={(e) => set({ linkedin: e.target.value })}
-      />
-      <input
-        style={inputStyle}
-        placeholder="Resume link (optional)"
-        value={form.resumeUrl}
-        onChange={(e) => set({ resumeUrl: e.target.value })}
-      />
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Submit a candidate</div>
+      <input style={inputStyle} placeholder="Candidate full name *" value={form.name} onChange={(e) => set({ name: e.target.value })} />
+      <input style={inputStyle} placeholder="Email (optional)" value={form.email} onChange={(e) => set({ email: e.target.value })} />
+      <input style={inputStyle} placeholder="linkedin.com/in/... (optional)" value={form.linkedin} onChange={(e) => set({ linkedin: e.target.value })} />
+      <input style={inputStyle} placeholder="Resume link (optional)" value={form.resumeUrl} onChange={(e) => set({ resumeUrl: e.target.value })} />
       <textarea
         style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
         placeholder="Why this candidate is a fit (optional)"
         value={form.notes}
         onChange={(e) => set({ notes: e.target.value })}
       />
-      {error && <div style={{ color: T.alert, fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
-      <PrimaryButton type="submit" disabled={submitting}>
+      {error && <div style={{ color: "var(--red)", fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
+      <PrimaryButton type="submit" disabled={submitting} style={{ width: "100%" }}>
         {submitting ? "Submitting…" : "Submit candidate"}
       </PrimaryButton>
     </form>
   );
 }
 
-// ---------- role card + detail ----------
-function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId }) {
+const sectionLabelStyle = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  color: "var(--muted)",
+  textTransform: "uppercase",
+  marginBottom: 7,
+};
+
+function RoleDetailPanel({ role, companyName, detail, recruiterId, onClose }) {
   const earnings = estimateEarnings(role.min_salary, role.max_salary);
   return (
-    <LedgerCard accent={T.blueprint} style={{ marginBottom: 12, overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", justifyContent: "flex-end" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(17,18,20,0.35)" }} />
       <div
-        onClick={onToggle}
-        style={{ padding: "18px 20px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}
+        style={{
+          position: "relative",
+          width: "min(760px, 100%)",
+          height: "100%",
+          background: "#fff",
+          boxShadow: "var(--shadow-pop)",
+          overflowY: "auto",
+        }}
       >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500 }}>{role.name}</div>
-            <Tag tone="live">live</Tag>
+        <div style={{ height: 150, background: gradientFor(companyName || role.name), position: "relative" }}>
+          <button
+            onClick={onClose}
+            style={{
+              position: "absolute", top: 16, right: 16,
+              width: 34, height: 34, borderRadius: "50%",
+              border: "none", background: "rgba(255,255,255,0.9)",
+              cursor: "pointer", fontSize: 16, fontWeight: 600,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: "0 36px 48px" }}>
+          <div
+            style={{
+              width: 52, height: 52, borderRadius: 12, background: "#fff",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.15)", display: "flex",
+              alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700,
+              marginTop: -26, marginBottom: 14, border: "1px solid var(--border)",
+            }}
+          >
+            {initialsFor(companyName)}
           </div>
-          <div style={{ fontSize: 13, color: T.steelDim, marginBottom: 10 }}>
-            {companyName || "Company"} · <Mono>{money(role.min_salary)} – {money(role.max_salary)}</Mono>
-            {role.hiring_goals ? ` · Target: ${role.hiring_goals}` : ""}
+
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>{companyName || "Company"}</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 10 }}>{role.name}</div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+            <Pill tone="live">● Live</Pill>
+            <Pill>{money(role.min_salary)} – {money(role.max_salary)}</Pill>
+            {role.hiring_goals && <Pill>Target: {role.hiring_goals}</Pill>}
           </div>
+
           {earnings && (
             <div
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                fontFamily: T.mono,
-                fontSize: 12,
-                fontWeight: 600,
-                color: T.earn,
-                background: T.earnBg,
-                padding: "5px 10px",
-                borderRadius: 3,
-                border: `1px solid ${T.earn}`,
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 13, fontWeight: 700, color: "var(--green)",
+                background: "var(--green-soft)", padding: "8px 14px",
+                borderRadius: 8, marginBottom: 26,
               }}
             >
-              est. earnings {money(Math.round(earnings.low))} – {money(Math.round(earnings.high))}
+              Est. earnings {money(Math.round(earnings.low))} – {money(Math.round(earnings.high))}
             </div>
           )}
-        </div>
-        <div style={{ fontSize: 13, color: T.ink, textDecoration: "underline", whiteSpace: "nowrap" }}>
-          {expanded ? "Hide details" : "View details"}
-        </div>
-      </div>
 
-      {expanded && (
-        <div style={{ padding: "0 20px 24px", borderTop: `1px solid ${T.paperDim}` }}>
           {!detail ? (
-            <div style={{ fontSize: 13, color: T.steelDim, paddingTop: 16 }}>Loading role details…</div>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>Loading role details…</div>
           ) : (
-            <div style={{ paddingTop: 18, display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 34 }}>
               <div>
                 {role.description && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 22 }}>
                     <div style={sectionLabelStyle}>About this role</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
+                    <div style={{ fontSize: 13.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{role.description}</div>
                   </div>
                 )}
-
                 {detail.qualities.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 22 }}>
                     <div style={sectionLabelStyle}>Ideal candidate qualities</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>
-                      {detail.qualities.map((q) => (
-                        <li key={q.id}>{q.quality}</li>
-                      ))}
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6 }}>
+                      {detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}
                     </ul>
                   </div>
                 )}
-
                 {detail.traits.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 22 }}>
                     <div style={sectionLabelStyle}>Traits to avoid</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>
-                      {detail.traits.map((t) => (
-                        <li key={t.id}>{t.trait}</li>
-                      ))}
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6 }}>
+                      {detail.traits.map((t) => <li key={t.id}>{t.trait}</li>)}
                     </ul>
                   </div>
                 )}
-
                 {detail.references.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 22 }}>
                     <div style={sectionLabelStyle}>Profiles referenced</div>
                     {detail.references.map((r) => (
-                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 6 }}>
-                        <div style={{ color: "#333" }}>{r.note}</div>
-                        {r.linkedin && <div style={{ color: T.steelDim, fontSize: 12.5 }}>{r.linkedin}</div>}
+                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 8 }}>
+                        <div style={{ color: "var(--ink-soft)" }}>{r.note}</div>
+                        {r.linkedin && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>{r.linkedin}</div>}
                       </div>
                     ))}
                   </div>
                 )}
-
                 {role.recruiting_advice && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 22 }}>
                     <div style={sectionLabelStyle}>Recruiting advice</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div>
+                    <div style={{ fontSize: 13.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{role.recruiting_advice}</div>
                   </div>
                 )}
-
                 {role.hm_intro && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 22 }}>
                     <div style={sectionLabelStyle}>Hiring manager intro</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.hm_intro}</div>
+                    <div style={{ fontSize: 13.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{role.hm_intro}</div>
                   </div>
                 )}
-
                 {detail.stages.length > 0 && (
                   <div>
                     <div style={sectionLabelStyle}>Interview stages</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {detail.stages.map((s, i) => (
-                        <span key={s.id} style={{ fontFamily: T.mono, fontSize: 12, padding: "5px 10px", borderRadius: 3, border: `1px solid ${T.steel}` }}>
+                        <span key={s.id} style={{ fontSize: 12.5, padding: "6px 11px", borderRadius: 999, border: "1px solid var(--border)" }}>
                           {i + 1}. {s.name}
                         </span>
                       ))}
@@ -669,30 +817,16 @@ function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId }
                 )}
               </div>
 
-              <div style={{ background: T.paperDim, border: `1px solid ${T.steel}`, borderRadius: 3, padding: 16, alignSelf: "start" }}>
-                <SubmitCandidateForm
-                  role={role}
-                  firstStageId={detail.stages[0] ? detail.stages[0].id : null}
-                  recruiterId={recruiterId}
-                />
+              <div style={{ background: "var(--wash)", border: "1px solid var(--border)", borderRadius: 12, padding: 18, alignSelf: "start" }}>
+                <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} />
               </div>
             </div>
           )}
         </div>
-      )}
-    </LedgerCard>
+      </div>
+    </div>
   );
 }
-
-const sectionLabelStyle = {
-  fontFamily: T.mono,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.05em",
-  color: T.steelDim,
-  textTransform: "uppercase",
-  marginBottom: 6,
-};
 
 // ---------- browse roles ----------
 function BrowseRoles({ recruiterId }) {
@@ -700,8 +834,10 @@ function BrowseRoles({ recruiterId }) {
   const [companyMap, setCompanyMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
+  const [query, setQuery] = useState("");
+  const [openId, setOpenId] = useState(null);
   const [detailCache, setDetailCache] = useState({});
+  const [favorites, setFavorites] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -717,12 +853,8 @@ function BrowseRoles({ recruiterId }) {
     })();
   }, []);
 
-  const toggle = async (roleId) => {
-    if (expandedId === roleId) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(roleId);
+  const openRole = async (roleId) => {
+    setOpenId(roleId);
     if (!detailCache[roleId]) {
       try {
         const d = await fetchRoleDetail(roleId);
@@ -733,54 +865,111 @@ function BrowseRoles({ recruiterId }) {
     }
   };
 
-  if (loading) return <div style={{ color: T.steelDim, fontSize: 13, fontFamily: T.mono }}>loading roles…</div>;
-  if (error) return <div style={{ color: T.alert, fontSize: 14 }}>{error}</div>;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter((r) => {
+      const company = (companyMap[r.company_id] || "").toLowerCase();
+      return r.name.toLowerCase().includes(q) || company.includes(q);
+    });
+  }, [roles, companyMap, query]);
+
+  if (loading) return <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading roles…</div>;
+  if (error) return <div style={{ color: "var(--red)", fontSize: 14 }}>{error}</div>;
+
+  const openRoleObj = roles.find((r) => r.id === openId);
 
   return (
     <div>
-      <SectionHeader eyebrow={`${roles.length} open role${roles.length === 1 ? "" : "s"}`} title="Live roles" />
-      {roles.length === 0 ? (
-        <EmptyFrame title="No live roles right now" body="Check back soon — new roles show up here as clients post them." />
-      ) : (
-        roles.map((role) => (
-          <RoleCard
-            key={role.id}
-            role={role}
-            companyName={companyMap[role.company_id]}
-            expanded={expandedId === role.id}
-            onToggle={() => toggle(role.id)}
-            detail={detailCache[role.id]}
-            recruiterId={recruiterId}
-          />
-        ))
+      <PageHeader
+        title="Browse roles"
+        subtitle="Live searches you can submit candidates to right now."
+        action={<div style={{ fontSize: 13.5, color: "var(--muted)" }}>{filtered.length} role{filtered.length === 1 ? "" : "s"}</div>}
+      />
+
+      <SearchBar value={query} onChange={setQuery} placeholder="Search roles, companies, and more…" />
+
+      {roles.length === 0 && (
+        <EmptyState
+          icon={<IconBriefcase />}
+          title="No live roles right now"
+          body="Check back soon — new roles show up here as clients post them."
+        />
+      )}
+
+      {roles.length > 0 && filtered.length === 0 && (
+        <EmptyState
+          icon={<IconSearch color="var(--blue)" size={20} />}
+          title="No roles match your search"
+          body="Try a different company name or role title."
+          actions={<SecondaryButton onClick={() => setQuery("")}>Clear search</SecondaryButton>}
+        />
+      )}
+
+      {filtered.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>
+          {filtered.map((role) => (
+            <RoleCard
+              key={role.id}
+              role={role}
+              companyName={companyMap[role.company_id]}
+              onOpen={() => openRole(role.id)}
+              favorited={!!favorites[role.id]}
+              onToggleFavorite={() => setFavorites((f) => ({ ...f, [role.id]: !f[role.id] }))}
+            />
+          ))}
+        </div>
+      )}
+
+      {openRoleObj && (
+        <RoleDetailPanel
+          role={openRoleObj}
+          companyName={companyMap[openRoleObj.company_id]}
+          detail={detailCache[openRoleObj.id]}
+          recruiterId={recruiterId}
+          onClose={() => setOpenId(null)}
+        />
       )}
     </div>
   );
 }
 
 // ---------- my candidates ----------
-function MyCandidateCard({ candidate, stageName, feedbackMessages }) {
-  const accent = isPlaced(candidate) ? T.earn : isRejected(candidate) ? T.alert : T.steel;
+function RoleUpdatesBanner({ messages }) {
+  const [open, setOpen] = useState(messages.length > 0 && messages.length <= 2);
+  if (messages.length === 0) return null;
   return (
-    <LedgerCard accent={accent} style={{ padding: 16, marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
-        {isRejected(candidate) && <Tag tone="rejected">Rejected</Tag>}
-        {isPlaced(candidate) && <Tag tone="placed">Placed</Tag>}
-        {isActive(candidate) && <Tag>{stageName || "In review"}</Tag>}
+    <div style={{ border: "1px solid var(--border)", borderLeft: "3px solid var(--blue)", borderRadius: 8, padding: "10px 14px", marginBottom: 10, background: "var(--blue-soft)" }}>
+      <div onClick={() => setOpen((o) => !o)} style={{ fontSize: 12.5, fontWeight: 700, cursor: "pointer", display: "flex", justifyContent: "space-between", color: "var(--ink)" }}>
+        <span>Updates from company ({messages.length})</span>
+        <span style={{ color: "var(--muted)" }}>{open ? "Hide" : "Show"}</span>
       </div>
-      <div style={{ fontFamily: T.mono, fontSize: 11, color: "#c4c4c4", marginTop: 8 }}>
+      {open && <div style={{ marginTop: 8 }}><MessageFeed messages={messages} emptyLabel="" /></div>}
+    </div>
+  );
+}
+
+function MyCandidateCard({ candidate, stageName, feedbackMessages }) {
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, marginBottom: 10, background: "#fff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 700 }}>{candidate.name}</div>
+        {isRejected(candidate) && <Pill tone="rejected">Rejected</Pill>}
+        {isPlaced(candidate) && <Pill tone="placed">Placed</Pill>}
+        {isActive(candidate) && <Pill>{stageName || "In review"}</Pill>}
+      </div>
+      <div style={{ fontSize: 11.5, color: "var(--muted-2)", marginTop: 8 }}>
         submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
       </div>
       {feedbackMessages.length > 0 && (
-        <div style={{ marginTop: 10, borderTop: `1px solid ${T.paperDim}`, paddingTop: 10 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.steelDim, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        <div style={{ marginTop: 10, borderTop: "1px solid var(--wash)", paddingTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Feedback from company ({feedbackMessages.length})
           </div>
           <MessageFeed messages={feedbackMessages} emptyLabel="" />
         </div>
       )}
-    </LedgerCard>
+    </div>
   );
 }
 
@@ -791,22 +980,17 @@ function RoleGroup({ role, companyName, candidates, stageMap, messages }) {
 
   return (
     <div style={{ marginBottom: 30 }}>
-      <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, marginBottom: 2 }}>{role.name}</div>
-      <div style={{ fontSize: 12.5, color: T.steelDim, marginBottom: 10 }}>{companyName}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{role.name}</div>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10 }}>{companyName}</div>
       <RoleUpdatesBanner messages={broadcasts} />
       {candidates.map((c) => (
-        <MyCandidateCard
-          key={c.id}
-          candidate={c}
-          stageName={stageMap[c.stage_id]}
-          feedbackMessages={messagesForCandidate(c.id)}
-        />
+        <MyCandidateCard key={c.id} candidate={c} stageName={stageMap[c.stage_id]} feedbackMessages={messagesForCandidate(c.id)} />
       ))}
     </div>
   );
 }
 
-function MyCandidates({ recruiterId }) {
+function MyCandidates({ recruiterId, onBrowse }) {
   const [candidates, setCandidates] = useState([]);
   const [roleMap, setRoleMap] = useState({});
   const [companyMap, setCompanyMap] = useState({});
@@ -826,12 +1010,8 @@ function MyCandidates({ recruiterId }) {
         const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
 
         const [rolesRes, stagesRes, msgs] = await Promise.all([
-          roleIds.length
-            ? supabaseClient.from("roles").select("id, name, company_id").in("id", roleIds)
-            : Promise.resolve({ data: [] }),
-          stageIds.length
-            ? supabaseClient.from("role_stages").select("id, name").in("id", stageIds)
-            : Promise.resolve({ data: [] }),
+          roleIds.length ? supabaseClient.from("roles").select("id, name, company_id").in("id", roleIds) : Promise.resolve({ data: [] }),
+          stageIds.length ? supabaseClient.from("role_stages").select("id, name").in("id", stageIds) : Promise.resolve({ data: [] }),
           fetchMessagesForRoles(roleIds),
         ]);
 
@@ -855,8 +1035,8 @@ function MyCandidates({ recruiterId }) {
     })();
   }, [recruiterId]);
 
-  if (loading) return <div style={{ color: T.steelDim, fontSize: 13, fontFamily: T.mono }}>loading your candidates…</div>;
-  if (error) return <div style={{ color: T.alert, fontSize: 14 }}>{error}</div>;
+  if (loading) return <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading your candidates…</div>;
+  if (error) return <div style={{ color: "var(--red)", fontSize: 14 }}>{error}</div>;
 
   const candidatesByRole = {};
   candidates.forEach((c) => {
@@ -865,9 +1045,14 @@ function MyCandidates({ recruiterId }) {
 
   return (
     <div>
-      <SectionHeader eyebrow={`${candidates.length} submitted`} title="My candidates" />
+      <PageHeader title="My candidates" subtitle="Everyone you've submitted, grouped by role." />
       {candidates.length === 0 ? (
-        <EmptyFrame title="No candidates submitted yet" body="Browse live roles to submit your first candidate." />
+        <EmptyState
+          icon={<IconCalendar />}
+          title="No candidates submitted yet"
+          body="Kickstart your pipeline with roles that match your expertise."
+          actions={<SecondaryButton onClick={onBrowse}>Browse roles</SecondaryButton>}
+        />
       ) : (
         Object.keys(candidatesByRole).map((roleId) => {
           const role = roleMap[roleId];
@@ -926,7 +1111,7 @@ function RecruiterDashboard() {
   if (session === undefined || loading) {
     return (
       <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.steelDim, fontFamily: T.mono, fontSize: 13 }}>loading…</div>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "var(--muted)", fontSize: 13.5 }}>Loading…</div>
       </div>
     );
   }
@@ -934,22 +1119,17 @@ function RecruiterDashboard() {
   if (error) {
     return (
       <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.alert }}>{error}</div>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "var(--red)" }}>{error}</div>
       </div>
     );
   }
 
   return (
     <div style={pageWrap}>
-      <TopBar
-        recruiterLabel={recruiter.firm_name || ""}
-        tab={tab}
-        onTabChange={setTab}
-        onLogout={handleLogout}
-      />
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 100px" }}>
+      <TopNav recruiterLabel={recruiter.firm_name || ""} tab={tab} onTabChange={setTab} onLogout={handleLogout} />
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "36px 28px 100px" }}>
         {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} />}
-        {tab === "mine" && <MyCandidates recruiterId={recruiter.id} />}
+        {tab === "mine" && <MyCandidates recruiterId={recruiter.id} onBrowse={() => setTab("browse")} />}
       </div>
     </div>
   );
@@ -957,9 +1137,9 @@ function RecruiterDashboard() {
 
 const pageWrap = {
   minHeight: "100vh",
-  background: T.paper,
-  fontFamily: T.sans,
-  color: T.ink,
+  background: "var(--paper)",
+  fontFamily: "var(--font-sans)",
+  color: "var(--ink)",
 };
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
