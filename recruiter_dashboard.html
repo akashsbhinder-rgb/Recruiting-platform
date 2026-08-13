@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard | MakePlacement</title>
+
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.10/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html, body, #root { margin: 0; min-height: 100%; }
+    body { background: #fafaf9; }
+    #boot-error {
+      display: none;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #111;
+    }
+    #boot-error pre {
+      white-space: pre-wrap;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 8px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="boot-error">
+    <h2>We couldn't load the dashboard.</h2>
+    <p>Please refresh the page. If the problem continues, contact support.</p>
+    <pre id="boot-error-detail"></pre>
+  </div>
+
+  <script>
+    window.addEventListener("error", function (event) {
+      const box = document.getElementById("boot-error");
+      const detail = document.getElementById("boot-error-detail");
+      if (box && detail && !document.getElementById("root").hasChildNodes()) {
+        box.style.display = "block";
+        detail.textContent = event.error ? (event.error.stack || event.error.message) : event.message;
+      }
+    });
+  </script>
+
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+// ---------- Supabase config ----------
+const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const LOGIN_URL = "index.html";
+const RECRUITER_ONBOARDING_URL = "recruiter_onboarding.html";
+
+const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
+const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
+const isActive = (c) => !isRejected(c) && !isPlaced(c);
+
+function money(v) {
+  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
+}
+
+// ---------- data ----------
+async function getMyRecruiter(session) {
+  const { data, error } = await supabaseClient
+    .from("recruiters")
+    .select("*")
+    .eq("auth_user_id", session.user.id)
+    .maybeSingle();
+  if (error) throw new Error(`Failed loading your profile: ${error.message}`);
+  return data;
+}
+
+async function fetchLiveRoles() {
+  const { data, error } = await supabaseClient
+    .from("roles")
+    .select("*")
+    .eq("status", "live")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed loading roles: ${error.message}`);
+  return data || [];
+}
+
+async function fetchCompaniesByIds(companyIds) {
+  if (companyIds.length === 0) return {};
+  const { data, error } = await supabaseClient.from("companies").select("id, name").in("id", companyIds);
+  if (error) throw new Error(`Failed loading companies: ${error.message}`);
+  const map = {};
+  (data || []).forEach((c) => (map[c.id] = c.name));
+  return map;
+}
+
+async function fetchRoleDetail(roleId) {
+  const [stagesRes, qualitiesRes, traitsRes, referencesRes] = await Promise.all([
+    supabaseClient.from("role_stages").select("*").eq("role_id", roleId).order("position"),
+    supabaseClient.from("role_qualities").select("*").eq("role_id", roleId),
+    supabaseClient.from("role_traits_to_avoid").select("*").eq("role_id", roleId),
+    supabaseClient.from("role_candidate_references").select("*").eq("role_id", roleId),
+  ]);
+  if (stagesRes.error) throw new Error(`Failed loading stages: ${stagesRes.error.message}`);
+  if (qualitiesRes.error) throw new Error(`Failed loading qualities: ${qualitiesRes.error.message}`);
+  if (traitsRes.error) throw new Error(`Failed loading traits: ${traitsRes.error.message}`);
+  if (referencesRes.error) throw new Error(`Failed loading references: ${referencesRes.error.message}`);
+  return {
+    stages: stagesRes.data || [],
+    qualities: qualitiesRes.data || [],
+    traits: traitsRes.data || [],
+    references: referencesRes.data || [],
+  };
+}
+
+async function submitCandidate(roleId, recruiterId, firstStageId, form) {
+  const { error } = await supabaseClient.from("candidates").insert([
+    {
+      role_id: roleId,
+      recruiter_id: recruiterId,
+      name: form.name,
+      email: form.email || null,
+      linkedin: form.linkedin || null,
+      resume_url: form.resumeUrl || null,
+      notes: form.notes || null,
+      stage_id: firstStageId || null,
+      status: "active",
+    },
+  ]);
+  if (error) throw new Error(`Failed submitting candidate: ${error.message}`);
+}
+
+async function fetchMyCandidates(recruiterId) {
+  const { data, error } = await supabaseClient
+    .from("candidates")
+    .select("*")
+    .eq("recruiter_id", recruiterId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed loading your candidates: ${error.message}`);
+  return data || [];
+}
+
+// ---------- small UI bits ----------
+function Badge({ children, tone = "default" }) {
+  const tones = {
+    default: { bg: "#f0f0ee", fg: "#555" },
+    live: { bg: "#e6f4ea", fg: "#1e7a37" },
+    rejected: { bg: "#fbe9e9", fg: "#b42318" },
+    placed: { bg: "#e6f4ea", fg: "#1e7a37" },
+  };
+  const t = tones[tone] || tones.default;
+  return (
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        padding: "3px 9px",
+        borderRadius: 999,
+        background: t.bg,
+        color: t.fg,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function PrimaryButton(props) {
+  return (
+    <button
+      {...props}
+      style={{
+        background: "#111",
+        color: "#fff",
+        border: "none",
+        borderRadius: 8,
+        padding: "10px 18px",
+        fontSize: 13.5,
+        fontWeight: 600,
+        cursor: props.disabled ? "default" : "pointer",
+        opacity: props.disabled ? 0.6 : 1,
+        fontFamily: "inherit",
+        ...props.style,
+      }}
+    />
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 13px",
+  fontSize: 13.5,
+  borderRadius: 8,
+  border: "1px solid #ddd",
+  outline: "none",
+  color: "#111",
+  background: "#fff",
+  fontFamily: "inherit",
+  marginBottom: 12,
+};
+
+// ---------- top bar ----------
+function TopBar({ recruiterLabel, tab, onTabChange, onLogout }) {
+  return (
+    <div style={{ borderBottom: "1px solid #eee", background: "#fff" }}>
+      <div
+        style={{
+          maxWidth: 1040,
+          margin: "0 auto",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          <a
+            href={LOGIN_URL}
+            style={{ fontFamily: "'Newsreader', Georgia, serif", fontSize: 19, fontWeight: 500, color: "#111", textDecoration: "none" }}
+          >
+            MakePlacement
+          </a>
+          <div style={{ display: "flex", gap: 4 }}>
+            {[
+              ["browse", "Browse roles"],
+              ["mine", "My candidates"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => onTabChange(key)}
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  padding: "7px 13px",
+                  borderRadius: 7,
+                  border: "none",
+                  background: tab === key ? "#111" : "transparent",
+                  color: tab === key ? "#fff" : "#555",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          {recruiterLabel && <div style={{ fontSize: 13, color: "#8a8a8a" }}>{recruiterLabel}</div>}
+          <a href={RECRUITER_ONBOARDING_URL} style={{ fontSize: 13, color: "#111", textDecoration: "underline" }}>
+            Edit profile
+          </a>
+          <button
+            onClick={onLogout}
+            style={{ background: "none", border: "none", fontSize: 13, color: "#111", textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Log out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- submit candidate form ----------
+function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
+  const [form, setForm] = useState({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      setError("Candidate name is required.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitCandidate(role.id, recruiterId, firstStageId, form);
+      setDone(true);
+      onSubmitted && onSubmitted();
+    } catch (err) {
+      setError(err.message || "Something went wrong submitting this candidate.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div style={{ padding: "16px 0" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Candidate submitted</div>
+        <div style={{ fontSize: 13, color: "#8a8a8a", marginBottom: 12 }}>
+          {form.name} has been added to {role.name}'s pipeline.
+        </div>
+        <button
+          onClick={() => {
+            setForm({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
+            setDone(false);
+          }}
+          style={{ fontSize: 13, color: "#111", background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0 }}
+        >
+          Submit another candidate
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Submit a candidate</div>
+      <input
+        style={inputStyle}
+        placeholder="Candidate full name *"
+        value={form.name}
+        onChange={(e) => set({ name: e.target.value })}
+      />
+      <input
+        style={inputStyle}
+        placeholder="Email (optional)"
+        value={form.email}
+        onChange={(e) => set({ email: e.target.value })}
+      />
+      <input
+        style={inputStyle}
+        placeholder="linkedin.com/in/... (optional)"
+        value={form.linkedin}
+        onChange={(e) => set({ linkedin: e.target.value })}
+      />
+      <input
+        style={inputStyle}
+        placeholder="Resume link (optional)"
+        value={form.resumeUrl}
+        onChange={(e) => set({ resumeUrl: e.target.value })}
+      />
+      <textarea
+        style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
+        placeholder="Why this candidate is a fit (optional)"
+        value={form.notes}
+        onChange={(e) => set({ notes: e.target.value })}
+      />
+      {error && <div style={{ color: "#b42318", fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
+      <PrimaryButton type="submit" disabled={submitting}>
+        {submitting ? "Submitting…" : "Submit candidate"}
+      </PrimaryButton>
+    </form>
+  );
+}
+
+// ---------- role card + detail ----------
+function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId }) {
+  return (
+    <div style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", marginBottom: 14, overflow: "hidden" }}>
+      <div
+        onClick={onToggle}
+        style={{ padding: 20, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}
+      >
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div style={{ fontSize: 17, fontWeight: 600 }}>{role.name}</div>
+            <Badge tone="live">live</Badge>
+          </div>
+          <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>
+            {companyName || "Company"} · {money(role.min_salary)} – {money(role.max_salary)}
+            {role.hiring_goals ? ` · Target: ${role.hiring_goals}` : ""}
+          </div>
+        </div>
+        <div style={{ fontSize: 13, color: "#111", textDecoration: "underline" }}>
+          {expanded ? "Hide details" : "View details"}
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: "0 20px 24px", borderTop: "1px solid #f0f0ee" }}>
+          {!detail ? (
+            <div style={{ fontSize: 13, color: "#8a8a8a", paddingTop: 16 }}>Loading role details…</div>
+          ) : (
+            <div style={{ paddingTop: 16, display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28 }}>
+              <div>
+                {role.description && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>About this role</div>
+                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
+                  </div>
+                )}
+
+                {detail.qualities.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Ideal candidate qualities</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>
+                      {detail.qualities.map((q) => (
+                        <li key={q.id}>{q.quality}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {detail.traits.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Traits to avoid</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>
+                      {detail.traits.map((t) => (
+                        <li key={t.id}>{t.trait}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {detail.references.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Profiles referenced</div>
+                    {detail.references.map((r) => (
+                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 6 }}>
+                        <div style={{ color: "#333" }}>{r.note}</div>
+                        {r.linkedin && <div style={{ color: "#8a8a8a", fontSize: 12.5 }}>{r.linkedin}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {role.recruiting_advice && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Recruiting advice</div>
+                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div>
+                  </div>
+                )}
+
+                {role.hm_intro && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Hiring manager intro</div>
+                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.hm_intro}</div>
+                  </div>
+                )}
+
+                {detail.stages.length > 0 && (
+                  <div>
+                    <div style={sectionLabelStyle}>Interview stages</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {detail.stages.map((s, i) => (
+                        <span key={s.id} style={{ fontSize: 12.5, padding: "5px 10px", borderRadius: 20, border: "1px solid #ddd" }}>
+                          {i + 1}. {s.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: "#fafaf9", border: "1px solid #eee", borderRadius: 10, padding: 16, alignSelf: "start" }}>
+                <SubmitCandidateForm
+                  role={role}
+                  firstStageId={detail.stages[0] ? detail.stages[0].id : null}
+                  recruiterId={recruiterId}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const sectionLabelStyle = {
+  fontSize: 11.5,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  color: "#9a9a9a",
+  textTransform: "uppercase",
+  marginBottom: 6,
+};
+
+// ---------- browse roles ----------
+function BrowseRoles({ recruiterId }) {
+  const [roles, setRoles] = useState([]);
+  const [companyMap, setCompanyMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+  const [detailCache, setDetailCache] = useState({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetchLiveRoles();
+        setRoles(r);
+        setCompanyMap(await fetchCompaniesByIds([...new Set(r.map((x) => x.company_id))]));
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const toggle = async (roleId) => {
+    if (expandedId === roleId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(roleId);
+    if (!detailCache[roleId]) {
+      try {
+        const d = await fetchRoleDetail(roleId);
+        setDetailCache((prev) => ({ ...prev, [roleId]: d }));
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+  };
+
+  if (loading) return <div style={{ color: "#8a8a8a", fontSize: 14 }}>Loading roles…</div>;
+  if (error) return <div style={{ color: "#b42318", fontSize: 14 }}>{error}</div>;
+  if (roles.length === 0) {
+    return <div style={{ color: "#8a8a8a", fontSize: 14 }}>No live roles right now. Check back soon.</div>;
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>Live roles</div>
+      {roles.map((role) => (
+        <RoleCard
+          key={role.id}
+          role={role}
+          companyName={companyMap[role.company_id]}
+          expanded={expandedId === role.id}
+          onToggle={() => toggle(role.id)}
+          detail={detailCache[role.id]}
+          recruiterId={recruiterId}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------- my candidates ----------
+function MyCandidateCard({ candidate, roleName, companyName, stageName }) {
+  return (
+    <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 16, background: "#fff", marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
+          <div style={{ fontSize: 12.5, color: "#8a8a8a", marginTop: 2 }}>
+            {roleName} {companyName ? `at ${companyName}` : ""}
+          </div>
+        </div>
+        {isRejected(candidate) && <Badge tone="rejected">Rejected</Badge>}
+        {isPlaced(candidate) && <Badge tone="placed">Placed</Badge>}
+        {isActive(candidate) && <Badge>{stageName || "In review"}</Badge>}
+      </div>
+      <div style={{ fontSize: 11.5, color: "#c4c4c4", marginTop: 8 }}>
+        Submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+      </div>
+    </div>
+  );
+}
+
+function MyCandidates({ recruiterId }) {
+  const [candidates, setCandidates] = useState([]);
+  const [roleMap, setRoleMap] = useState({});
+  const [companyMap, setCompanyMap] = useState({});
+  const [stageMap, setStageMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const cands = await fetchMyCandidates(recruiterId);
+        setCandidates(cands);
+
+        const roleIds = [...new Set(cands.map((c) => c.role_id))];
+        const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
+
+        const [rolesRes, stagesRes] = await Promise.all([
+          roleIds.length
+            ? supabaseClient.from("roles").select("id, name, company_id").in("id", roleIds)
+            : Promise.resolve({ data: [] }),
+          stageIds.length
+            ? supabaseClient.from("role_stages").select("id, name").in("id", stageIds)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        const rMap = {};
+        (rolesRes.data || []).forEach((r) => (rMap[r.id] = r));
+        setRoleMap(rMap);
+
+        const sMap = {};
+        (stagesRes.data || []).forEach((s) => (sMap[s.id] = s.name));
+        setStageMap(sMap);
+
+        const companyIds = [...new Set(Object.values(rMap).map((r) => r.company_id))];
+        setCompanyMap(await fetchCompaniesByIds(companyIds));
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [recruiterId]);
+
+  if (loading) return <div style={{ color: "#8a8a8a", fontSize: 14 }}>Loading your candidates…</div>;
+  if (error) return <div style={{ color: "#b42318", fontSize: 14 }}>{error}</div>;
+  if (candidates.length === 0) {
+    return <div style={{ color: "#8a8a8a", fontSize: 14 }}>You haven't submitted any candidates yet. Browse live roles to get started.</div>;
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>My candidates</div>
+      {candidates.map((c) => {
+        const role = roleMap[c.role_id];
+        return (
+          <MyCandidateCard
+            key={c.id}
+            candidate={c}
+            roleName={role ? role.name : "Role"}
+            companyName={role ? companyMap[role.company_id] : ""}
+            stageName={stageMap[c.stage_id]}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------- main ----------
+function RecruiterDashboard() {
+  const [session, setSession] = useState(undefined);
+  const [recruiter, setRecruiter] = useState(null);
+  const [tab, setTab] = useState("browse");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        window.location.href = LOGIN_URL;
+        return;
+      }
+      setSession(session);
+      try {
+        const r = await getMyRecruiter(session);
+        if (!r) {
+          window.location.href = LOGIN_URL;
+          return;
+        }
+        setRecruiter(r);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = LOGIN_URL;
+  };
+
+  if (session === undefined || loading) {
+    return (
+      <div style={pageWrap}>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#8a8a8a" }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={pageWrap}>
+        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#b42318" }}>{error}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={pageWrap}>
+      <TopBar
+        recruiterLabel={recruiter.firm_name || ""}
+        tab={tab}
+        onTabChange={setTab}
+        onLogout={handleLogout}
+      />
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "36px 24px 100px" }}>
+        {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} />}
+        {tab === "mine" && <MyCandidates recruiterId={recruiter.id} />}
+      </div>
+    </div>
+  );
+}
+
+const pageWrap = {
+  minHeight: "100vh",
+  background: "#fafaf9",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  color: "#111",
+};
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<RecruiterDashboard />);
+  </script>
+</body>
+</html>
