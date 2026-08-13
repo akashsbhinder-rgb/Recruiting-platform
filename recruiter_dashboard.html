@@ -334,6 +334,12 @@ async function fetchMyCandidates(recruiterId) {
   return data || [];
 }
 
+async function fetchMyCandidatesForRole(roleId, recruiterId) {
+  const { data, error } = await supabaseClient.from("candidates").select("*").eq("role_id", roleId).eq("recruiter_id", recruiterId).order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed loading your candidates: ${error.message}`);
+  return data || [];
+}
+
 async function fetchMessagesForRoles(roleIds) {
   if (roleIds.length === 0) return [];
   const { data, error } = await supabaseClient.from("messages").select("*").in("role_id", roleIds).order("created_at", { ascending: true });
@@ -792,6 +798,7 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
   const hasActiveFilters = query !== "" || minSalary !== "" || activeFilters.size > 0;
 
   let visible = roles.filter((r) => {
+    if (appliedRoleIds.has(r.id)) return false;
     const company = companyMap[r.company_id] || "";
     if (query) {
       const q = query.toLowerCase();
@@ -903,7 +910,8 @@ function CandidatePillTone(c) {
   return "live";
 }
 
-function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages }) {
+function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages, onSendFeedback }) {
+  const showThread = feedbackMessages.length > 0 || !!onSendFeedback;
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 15, marginBottom: 10, background: "#fff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -914,10 +922,15 @@ function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages }) {
         <Pill tone={CandidatePillTone(candidate)}>{isPlaced(candidate) ? "Placed" : isRejected(candidate) ? "Rejected" : stageName || "In review"}</Pill>
       </div>
       <div style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
-      {feedbackMessages.length > 0 && (
+      {showThread && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>Notes from company ({feedbackMessages.length})</div>
-          <MessageFeed messages={feedbackMessages} emptyLabel="" />
+          <MessageFeed messages={feedbackMessages} emptyLabel="No notes yet." />
+          {onSendFeedback && (
+            <div style={{ marginTop: 10 }}>
+              <MessageComposer onSend={onSendFeedback} placeholder="Reply to the company\u2026" buttonLabel="Reply" />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -971,13 +984,128 @@ function KanbanBoard({ candidates, roleMap, companyMap }) {
   );
 }
 
+// ---------- role workspace (one role, fully focused) ----------
+function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
+  const [detail, setDetail] = useState(null);
+  const [candidates, setCandidates] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = async () => {
+    try {
+      const [d, cands, roleMsgs] = await Promise.all([
+        fetchRoleDetail(role.id),
+        fetchMyCandidatesForRole(role.id, recruiterId),
+        fetchMessagesForRoles([role.id]),
+      ]);
+      setDetail(d);
+      setCandidates(cands);
+      const myCandidateIds = new Set(cands.map((c) => c.id));
+      setMessages(roleMsgs.filter((m) => (
+        (m.recruiter_id === recruiterId && !m.candidate_id) ||
+        (m.candidate_id && myCandidateIds.has(m.candidate_id)) ||
+        (!m.candidate_id && !m.recruiter_id)
+      )));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { setLoading(true); load(); }, [role.id]);
+
+  useEffect(() => {
+    const channel = supabaseClient
+      .channel(`role-workspace-${role.id}-${recruiterId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `role_id=eq.${role.id}` }, (payload) => {
+        const row = payload.new || payload.old;
+        if (row && row.recruiter_id === recruiterId) load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `role_id=eq.${role.id}` }, () => load())
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [role.id, recruiterId]);
+
+  if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"Loading role\u2026"}</div>;
+  if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
+
+  const stageMap = {};
+  (detail.stages || []).forEach((s) => (stageMap[s.id] = s.name));
+  const broadcasts = messages.filter((m) => !m.candidate_id && !m.recruiter_id);
+  const directMessages = messages.filter((m) => m.recruiter_id === recruiterId && !m.candidate_id);
+  const messagesForCandidate = (candidateId) => messages.filter((m) => m.candidate_id === candidateId);
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: T.sub, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 18, fontFamily: T.sans }}>
+        <Icon name="chevronDown" size={13} style={{ transform: "rotate(90deg)" }} /> All my roles
+      </button>
+
+      <div style={{ fontSize: 24, fontWeight: 700, color: T.ink, marginBottom: 4 }}>{role.name}</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 4 }}>{companyName}</div>
+      <div style={{ fontSize: 13, color: T.sub, marginBottom: 24 }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}</div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 28 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 14 }}>Your candidates ({candidates.length})</div>
+          {candidates.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic", marginBottom: 20 }}>{"No candidates submitted yet \u2014 use the form to submit your first one."}</div>
+          ) : (
+            candidates.map((c) => (
+              <MyCandidateCard
+                key={c.id}
+                candidate={c}
+                stageName={stageMap[c.stage_id]}
+                feedbackMessages={messagesForCandidate(c.id)}
+                onSendFeedback={async (body) => { await sendRecruiterMessage(session, recruiterId, role.id, c.id, null, body); await load(); }}
+              />
+            ))
+          )}
+
+          {role.description && (
+            <div style={{ marginTop: 24 }}>
+              <div style={sectionLabelStyle}>About this role</div>
+              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
+            </div>
+          )}
+          {detail.qualities.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <div style={sectionLabelStyle}>Ideal candidate qualities</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}</ul>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+            <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} onSubmitted={load} />
+          </div>
+
+          <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>Updates from {companyName || "the company"}</div>
+            <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
+          </div>
+
+          <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>Message {companyName || "the company"} directly</div>
+            <MessageFeed messages={directMessages} emptyLabel="No messages yet." />
+            <div style={{ marginTop: directMessages.length ? 10 : 0 }}>
+              <MessageComposer onSend={(body) => sendRecruiterMessage(session, recruiterId, role.id, null, null, body).then(load)} placeholder="Write a message\u2026" buttonLabel="Send" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- my roles ----------
-function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse }) {
+function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, onFocusRole }) {
   const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
   const [candidates, setCandidates] = useState([]);
-  const [stageMap, setStageMap] = useState({});
-  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [view, setView] = useState("list");
@@ -991,14 +1119,6 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse }) {
       setRoles(r);
       setCompanyMap(await fetchCompaniesByIds([...new Set(r.map((x) => x.company_id))]));
       setCandidates(cands);
-
-      const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
-      const stagesRes = stageIds.length ? await supabaseClient.from("role_stages").select("id, name").in("id", stageIds) : { data: [] };
-      const sMap = {};
-      (stagesRes.data || []).forEach((s) => (sMap[s.id] = s.name));
-      setStageMap(sMap);
-
-      setMessages(await fetchMessagesForRoles(roleIds));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1008,21 +1128,13 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse }) {
 
   useEffect(() => { loadAll(); }, [appliedRoleIds.size]);
 
-  useEffect(() => {
-    if (roleIds.length === 0) return;
-    const channel = supabaseClient
-      .channel(`my-roles-${recruiterId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiterId}` }, () => loadAll())
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
-        const row = payload.new || payload.old;
-        if (row && roleIds.includes(row.role_id)) loadAll();
-      })
-      .subscribe();
-    return () => { supabaseClient.removeChannel(channel); };
-  }, [appliedRoleIds.size, recruiterId]);
-
   if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"loading your roles\u2026"}</div>;
   if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
+
+  const focusedRole = roles.find((r) => r.id === focusRoleId);
+  if (focusedRole) {
+    return <RoleWorkspace role={focusedRole} companyName={companyMap[focusedRole.company_id]} recruiterId={recruiterId} session={session} onBack={() => onFocusRole(null)} />;
+  }
 
   const candidatesByRole = {};
   candidates.forEach((c) => { (candidatesByRole[c.role_id] = candidatesByRole[c.role_id] || []).push(c); });
@@ -1032,7 +1144,7 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: T.ink }}>My roles</div>
-          <div style={{ fontSize: 13.5, color: T.sub, marginTop: 2 }}>Roles you've applied to, updating live as things change.</div>
+          <div style={{ fontSize: 13.5, color: T.sub, marginTop: 2 }}>Roles you've applied to. Click one to submit candidates and message the company.</div>
         </div>
         {candidates.length > 0 && (
           <GhostButton onClick={() => setView((v) => (v === "list" ? "kanban" : "list"))}>
@@ -1047,9 +1159,27 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse }) {
       ) : view === "kanban" ? (
         <KanbanBoard candidates={candidates} roleMap={Object.fromEntries(roles.map((r) => [r.id, r]))} companyMap={companyMap} />
       ) : (
-        roles.map((role) => (
-          <RoleGroup key={role.id} role={role} companyName={companyMap[role.company_id]} candidates={candidatesByRole[role.id] || []} stageMap={stageMap} messages={messages} />
-        ))
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(255px, 1fr))", gap: 16 }}>
+          {roles.map((role) => {
+            const mine = candidatesByRole[role.id] || [];
+            const activeCount = mine.filter(isActive).length;
+            return (
+              <button
+                key={role.id}
+                onClick={() => onFocusRole(role.id)}
+                style={{ textAlign: "left", border: `1px solid ${T.line}`, borderRadius: 14, padding: 16, background: "#fff", cursor: "pointer", fontFamily: T.sans }}
+              >
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, marginBottom: 3 }}>{companyMap[role.company_id] || "Company"}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{role.name}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  <Pill>{mine.length} submitted</Pill>
+                  <Pill tone="live">{activeCount} interviewing</Pill>
+                </div>
+                <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600 }}>Open workspace {"\u2192"}</div>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -1179,6 +1309,7 @@ function RecruiterDashboard() {
   const [recruiter, setRecruiter] = useState(null);
   const [tab, setTab] = useState("browse");
   const [appliedRoleIds, setAppliedRoleIds] = useState(() => new Set());
+  const [focusRoleId, setFocusRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -1205,17 +1336,21 @@ function RecruiterDashboard() {
     window.location.href = LOGIN_URL;
   };
 
-  const handleApplied = (roleId) => setAppliedRoleIds((prev) => new Set([...prev, roleId]));
+  const handleApplied = (roleId) => {
+    setAppliedRoleIds((prev) => new Set([...prev, roleId]));
+    setFocusRoleId(roleId);
+    setTab("myroles");
+  };
 
   if (session === undefined || loading) return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.sub, fontSize: 13 }}>{"loading\u2026"}</div></div>;
   if (error) return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.red }}>{error}</div></div>;
 
   return (
     <div style={pageWrap}>
-      <TopNav tab={tab} onTabChange={setTab} recruiter={recruiter} onLogout={handleLogout} />
+      <TopNav tab={tab} onTabChange={(t) => { setTab(t); if (t !== "myroles") setFocusRoleId(null); }} recruiter={recruiter} onLogout={handleLogout} />
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
         {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} />}
-        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} />}
+        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} />}
         {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} />}
       </div>
     </div>
