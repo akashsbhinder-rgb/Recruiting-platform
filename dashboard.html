@@ -37,6 +37,9 @@
       .mp-pipeline-grid { grid-template-columns: 1fr !important; overflow-x: visible !important; }
     }
 
+    @keyframes mpBellPulse { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
+    .mp-bell-pulse { animation: mpBellPulse 0.6s ease; }
+
     #boot-error {
       display: none;
       max-width: 760px;
@@ -252,6 +255,18 @@ function Modal({ onClose, children, width = 460 }) {
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 24, width: "100%", maxWidth: width, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
         {children}
       </div>
+    </div>
+  );
+}
+
+function ToastStack({ toasts }) {
+  return (
+    <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 8, zIndex: 300 }}>
+      {toasts.map((t) => (
+        <div key={t.id} style={{ background: T.ink, color: "#fff", padding: "12px 16px", borderRadius: 10, fontSize: 13, boxShadow: "0 10px 30px rgba(0,0,0,0.25)", maxWidth: 320 }}>
+          {t.text}
+        </div>
+      ))}
     </div>
   );
 }
@@ -521,6 +536,18 @@ function recruiterLabel(profile) {
   return profile.firm_name || recruiterName(profile) || "Recruiter";
 }
 
+function recruiterFullLabel(profile) {
+  if (!profile) return "Recruiter";
+  const name = recruiterName(profile);
+  if (name && profile.firm_name) return `${name} \u2014 ${profile.firm_name}`;
+  return name || profile.firm_name || "Recruiter";
+}
+
+function externalUrl(url) {
+  if (!url) return "";
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 async function fetchRoleApplications(roleIds) {
   if (roleIds.length === 0) return [];
   const { data, error } = await supabaseClient.from("role_applications").select("*").in("role_id", roleIds);
@@ -636,7 +663,7 @@ const NAV_ITEMS = [
   { key: "messages", label: "Messages", live: true },
 ];
 
-function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint, notifications, notifUnread, onMarkNotifsRead, onSelectNotification }) {
+function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint, notifications, notifUnread, onMarkNotifsRead, onSelectNotification, bellPulse }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const initial = (companyName || "C").trim().charAt(0).toUpperCase();
@@ -684,6 +711,7 @@ function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint, notificat
           <div style={{ position: "relative" }}>
             <button
               onClick={() => { const next = !notifOpen; setNotifOpen(next); if (next) onMarkNotifsRead(); }}
+              className={bellPulse ? "mp-bell-pulse" : ""}
               style={{ position: "relative", background: "none", border: "none", color: T.sub, cursor: "pointer", padding: 6, display: "flex" }}
             >
               <Icon name="bell" size={18} />
@@ -802,33 +830,43 @@ function BenchUpdatesPanel({ messages, onSend }) {
   );
 }
 
-function RecruitersPanel({ recruiters, onMessage }) {
+function RecruitersModal({ role, recruiters, loading, onClose, onMessage }) {
   const [openId, setOpenId] = useState(null);
-  if (recruiters.length === 0) return null;
   return (
-    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-        <Icon name="users" size={15} /> Recruiters on this role ({recruiters.length})
-      </div>
-      <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Message one directly, outside of a specific candidate's thread.</div>
-      {recruiters.map((r) => (
-        <div key={r.id} style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10, marginTop: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{recruiterLabel(r)}</div>
-              {recruiterName(r) && r.firm_name && <div style={{ fontSize: 12, color: T.sub, marginTop: 1 }}>{recruiterName(r)}</div>}
-              {r.email && <div style={{ fontSize: 12, color: T.sub, marginTop: 1 }}>{r.email}</div>}
+    <Modal onClose={onClose} width={480}>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 2, color: T.ink }}>Recruiters on {role.name}</div>
+      <div style={{ fontSize: 13, color: T.sub, marginBottom: 18 }}>{recruiters.length} recruiter{recruiters.length === 1 ? "" : "s"} working this role.</div>
+      {loading ? (
+        <div style={{ fontSize: 13, color: T.sub }}>{"Loading\u2026"}</div>
+      ) : recruiters.length === 0 ? (
+        <div style={{ fontSize: 13, color: T.faint, fontStyle: "italic" }}>No recruiters yet.</div>
+      ) : (
+        <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          {recruiters.map((r) => (
+            <div key={r.id} style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: T.ink, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                  {(recruiterName(r) || r.firm_name || "R").trim().charAt(0).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{recruiterName(r) || "Recruiter"}</div>
+                  <div style={{ fontSize: 12.5, color: T.sub }}>{r.firm_name || "\u2014"}</div>
+                  <div style={{ fontSize: 12.5, color: T.sub }}>{r.email || "\u2014"}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <GhostButton onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? "Close" : "Message"}</GhostButton>
+              </div>
+              {openId === r.id && (
+                <div style={{ marginTop: 10 }}>
+                  <MessageComposer onSend={(body) => onMessage(r.id, body)} placeholder={`Message to ${recruiterName(r) || "this recruiter"}`} buttonLabel="Send" />
+                </div>
+              )}
             </div>
-            <GhostButton onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? "Close" : "Message"}</GhostButton>
-          </div>
-          {openId === r.id && (
-            <div style={{ marginTop: 10 }}>
-              <MessageComposer onSend={(body) => onMessage(r.id, body)} placeholder={`Message to ${recruiterLabel(r)}`} buttonLabel="Send" />
-            </div>
-          )}
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </Modal>
   );
 }
 
@@ -868,8 +906,8 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
       </div>
 
       <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
-        {candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blue }}>LinkedIn</a>}
-        {candidate.resume_url && <a href={candidate.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blue }}>Resume</a>}
+        {candidate.linkedin && <a href={externalUrl(candidate.linkedin)} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blue }}>LinkedIn</a>}
+        {candidate.resume_url && <a href={externalUrl(candidate.resume_url)} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blue }}>Resume</a>}
         {candidate.email && <span style={{ fontSize: 12.5, color: T.sub }}>{candidate.email}</span>}
       </div>
 
@@ -892,7 +930,7 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
 }
 
 // ---------- pipeline (kanban by stage) ----------
-function PipelineView({ role, stages, candidates, recruiterMap, roleRecruiters, messages, session, refresh, refreshMessages }) {
+function PipelineView({ role, stages, candidates, recruiterMap, messages, session, refresh, refreshMessages }) {
   const [rejectingCandidate, setRejectingCandidate] = useState(null);
 
   const stageById = {};
@@ -944,7 +982,6 @@ function PipelineView({ role, stages, candidates, recruiterMap, roleRecruiters, 
   return (
     <div>
       <BenchUpdatesPanel messages={messages} onSend={async (body) => { await sendMessage(session, role.id, null, null, body); await refreshMessages(); }} />
-      <RecruitersPanel recruiters={roleRecruiters} onMessage={async (recruiterId, body) => { await sendMessage(session, role.id, null, recruiterId, body); await refreshMessages(); }} />
 
       <div className="mp-pipeline-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`, gap: 18, overflowX: "auto", paddingBottom: 8 }}>
         {columns.map((stage) => {
@@ -993,10 +1030,11 @@ function PipelineView({ role, stages, candidates, recruiterMap, roleRecruiters, 
 }
 
 // ---------- role status control ----------
-function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit }) {
+function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit, onViewRecruiters }) {
   const status = (role.status || "live").toLowerCase();
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <GhostButton onClick={() => onViewRecruiters(role)}><Icon name="users" size={13} /> Recruiters</GhostButton>
       <GhostButton onClick={() => onEdit(role)}><Icon name="pencil" size={13} /> Edit role</GhostButton>
       {status === "live" && <GhostButton onClick={() => onPause(role)}><Icon name="pause" size={13} /> Pause</GhostButton>}
       {(status === "paused" || status === "filled") && <GhostButton onClick={() => onReopen(role)}><Icon name="play" size={13} /> Reopen</GhostButton>}
@@ -1006,7 +1044,7 @@ function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit })
 }
 
 // ---------- hero role card ----------
-function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, onEdit, children }) {
+function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, onEdit, onViewRecruiters, children }) {
   const status = (role.status || "live").toLowerCase();
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 16, overflow: "hidden", background: "#fff", marginBottom: 28 }}>
@@ -1020,7 +1058,7 @@ function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReope
             <div style={{ fontSize: 26, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em", marginBottom: 4 }}>{role.name}</div>
             <div style={{ fontSize: 14.5, color: T.sub }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}{role.hiring_goals ? ` \u00b7 Target: ${role.hiring_goals}` : ""}</div>
           </div>
-          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} onEdit={onEdit} />
+          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} onEdit={onEdit} onViewRecruiters={onViewRecruiters} />
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
@@ -1085,7 +1123,11 @@ function EmployerInbox({ session, roles }) {
       setMessages(msgs);
       setCandidates(cands);
       setApplications(apps);
-      const recruiterIds = [...new Set([...cands.map((c) => c.recruiter_id), ...apps.map((a) => a.recruiter_id)].filter(Boolean))];
+      const recruiterIds = [...new Set([
+        ...cands.map((c) => c.recruiter_id),
+        ...apps.map((a) => a.recruiter_id),
+        ...msgs.filter((m) => m.recruiter_id).map((m) => m.recruiter_id),
+      ].filter(Boolean))];
       setRecruiterMap(await fetchRecruiters(recruiterIds));
     } catch (err) {
       setError(err.message);
@@ -1130,7 +1172,7 @@ function EmployerInbox({ session, roles }) {
       const c = candidateById[t.candidate_id];
       return c ? `${c.name} \u2014 feedback` : "Candidate feedback";
     }
-    if (t.recruiter_id) return `Direct: ${recruiterLabel(recruiterMap[t.recruiter_id])}`;
+    if (t.recruiter_id) return `Direct: ${recruiterFullLabel(recruiterMap[t.recruiter_id])}`;
     return "Bench update";
   };
 
@@ -1142,7 +1184,8 @@ function EmployerInbox({ session, roles }) {
   const applicationsForRole = (roleId) => {
     const fromApps = applications.filter((a) => a.role_id === roleId).map((a) => a.recruiter_id);
     const fromCandidates = candidates.filter((c) => c.role_id === roleId).map((c) => c.recruiter_id).filter(Boolean);
-    return [...new Set([...fromApps, ...fromCandidates])].map((recruiter_id) => ({ recruiter_id }));
+    const fromMessages = messages.filter((m) => m.role_id === roleId && m.recruiter_id).map((m) => m.recruiter_id);
+    return [...new Set([...fromApps, ...fromCandidates, ...fromMessages])].map((recruiter_id) => ({ recruiter_id }));
   };
 
   if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"Loading messages\u2026"}</div>;
@@ -1164,7 +1207,7 @@ function EmployerInbox({ session, roles }) {
             <select value={newMsgRecruiter} onChange={(e) => setNewMsgRecruiter(e.target.value)} disabled={!newMsgRole} style={{ ...inputStyle, marginBottom: 0, width: 220 }}>
               <option value="">{"Select a recruiter\u2026"}</option>
               {applicationsForRole(newMsgRole).map((a) => (
-                <option key={a.recruiter_id} value={a.recruiter_id}>{recruiterLabel(recruiterMap[a.recruiter_id])}</option>
+                <option key={a.recruiter_id} value={a.recruiter_id}>{recruiterFullLabel(recruiterMap[a.recruiter_id])}</option>
               ))}
             </select>
           </div>
@@ -1220,11 +1263,15 @@ function ClientDashboard() {
   const [stages, setStages] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [recruiterMap, setRecruiterMap] = useState({});
-  const [roleRecruiters, setRoleRecruiters] = useState([]);
   const [messages, setMessages] = useState([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [confirmFilledRole, setConfirmFilledRole] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
+  const [recruitersModalRole, setRecruitersModalRole] = useState(null);
+  const [recruitersModalList, setRecruitersModalList] = useState([]);
+  const [recruitersModalLoading, setRecruitersModalLoading] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const [bellPulse, setBellPulse] = useState(false);
   const [notifItems, setNotifItems] = useState([]);
   const [notifSeenAt, setNotifSeenAt] = useState(null);
 
@@ -1282,6 +1329,14 @@ function ClientDashboard() {
     }
   }, [notifKey]);
 
+  const pushToast = (text) => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((prev) => [...prev, { id, text }]);
+    setBellPulse(true);
+    setTimeout(() => setBellPulse(false), 650);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+  };
+
   const loadNotifications = async (roleList) => {
     const ids = roleList.map((r) => r.id);
     if (ids.length === 0) { setNotifItems([]); return; }
@@ -1315,13 +1370,21 @@ function ClientDashboard() {
     if (roles.length === 0) return;
     loadNotifications(roles);
     const ids = roles.map((r) => r.id);
+    const roleById = {};
+    roles.forEach((r) => (roleById[r.id] = r));
     const channel = supabaseClient
       .channel("employer-notifications")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-        if (payload.new && ids.includes(payload.new.role_id) && payload.new.sender_type === "recruiter") loadNotifications(roles);
+        if (payload.new && ids.includes(payload.new.role_id) && payload.new.sender_type === "recruiter") {
+          loadNotifications(roles);
+          pushToast(`New message on ${roleById[payload.new.role_id] ? roleById[payload.new.role_id].name : "a role"}`);
+        }
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "candidates" }, (payload) => {
-        if (payload.new && ids.includes(payload.new.role_id)) loadNotifications(roles);
+        if (payload.new && ids.includes(payload.new.role_id)) {
+          loadNotifications(roles);
+          pushToast(`${payload.new.name} submitted for ${roleById[payload.new.role_id] ? roleById[payload.new.role_id].name : "a role"}`);
+        }
       })
       .subscribe();
     return () => { supabaseClient.removeChannel(channel); };
@@ -1345,6 +1408,25 @@ function ClientDashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const openRecruitersModal = async (role) => {
+    setRecruitersModalRole(role);
+    setRecruitersModalLoading(true);
+    try {
+      const [apps, cands, msgs] = await Promise.all([fetchRoleApplications([role.id]), fetchCandidates(role.id), fetchRoleMessages(role.id)]);
+      const ids = [...new Set([
+        ...apps.map((a) => a.recruiter_id),
+        ...cands.map((c) => c.recruiter_id).filter(Boolean),
+        ...msgs.filter((m) => m.recruiter_id).map((m) => m.recruiter_id),
+      ])];
+      const map = await fetchRecruiters(ids);
+      setRecruitersModalList(ids.map((id) => ({ id, ...map[id] })));
+    } catch (err) {
+      setRecruitersModalList([]);
+    } finally {
+      setRecruitersModalLoading(false);
+    }
+  };
+
   const refreshRoleCounts = async () => setCounts(await fetchRoleCandidateCounts(roles.map((r) => r.id)));
 
   const loadPipeline = async (roleId) => {
@@ -1357,7 +1439,6 @@ function ClientDashboard() {
       const recruiterIds = [...new Set([...c.map((x) => x.recruiter_id), ...apps.map((a) => a.recruiter_id)].filter(Boolean))];
       const map = await fetchRecruiters(recruiterIds);
       setRecruiterMap(map);
-      setRoleRecruiters(recruiterIds.map((id) => ({ id, ...map[id] })));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1431,6 +1512,7 @@ function ClientDashboard() {
         notifUnread={notifUnreadCount}
         onMarkNotifsRead={markNotifsRead}
         onSelectNotification={goToNotification}
+        bellPulse={bellPulse}
       />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 100px" }}>
 
@@ -1471,6 +1553,7 @@ function ClientDashboard() {
                     onReopen={(r) => toggleRoleStatus(r, "live")}
                     onRequestFilled={(r) => setConfirmFilledRole(r)}
                     onEdit={(r) => setEditingRole(r)}
+                    onViewRecruiters={openRecruitersModal}
                   >
                     {pipelineLoading ? (
                       <div style={{ fontSize: 13, color: T.sub }}>{"Loading pipeline\u2026"}</div>
@@ -1480,7 +1563,6 @@ function ClientDashboard() {
                         stages={stages}
                         candidates={candidates}
                         recruiterMap={recruiterMap}
-                        roleRecruiters={roleRecruiters}
                         messages={messages}
                         session={session}
                         refresh={refreshPipeline}
@@ -1528,6 +1610,18 @@ function ClientDashboard() {
           onSaved={async () => { await reloadRoles(); setEditingRole(null); }}
         />
       )}
+
+      {recruitersModalRole && (
+        <RecruitersModal
+          role={recruitersModalRole}
+          recruiters={recruitersModalList}
+          loading={recruitersModalLoading}
+          onClose={() => setRecruitersModalRole(null)}
+          onMessage={async (recruiterId, body) => { await sendMessage(session, recruitersModalRole.id, null, recruiterId, body); }}
+        />
+      )}
+
+      <ToastStack toasts={toasts} />
     </div>
   );
 }
