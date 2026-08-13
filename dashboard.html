@@ -11,44 +11,45 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    :root {
-      --ink: #14181c;
-      --paper: #fafbf9;
-      --paper-dim: #f1f3f1;
-      --steel: #dbdfe0;
-      --steel-dim: #868d91;
-      --blueprint: #1f3a5f;
-      --blueprint-bg: #e8eef3;
-      --earn: #2b6e4f;
-      --earn-bg: #e7f1eb;
-      --alert: #a23b2e;
-      --alert-bg: #f8eae8;
-      --gold: #9c7a3f;
-      --gold-bg: #f4eee0;
-      --font-serif: 'Newsreader', Georgia, serif;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    * { box-sizing: border-box; }
+    html, body, #root { margin: 0; min-height: 100%; }
+    body { background: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    ::selection { background: #111214; color: #fff; }
+    button, input, textarea { font-family: inherit; }
+
+    button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
+      outline: 2px solid #3b6fe0;
+      outline-offset: 2px;
     }
 
-    html, body, #root { margin: 0; min-height: 100%; }
-    body { background: var(--paper); }
-    ::selection { background: var(--blueprint); color: var(--paper); }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    @media (max-width: 900px) {
+      .mp-nav-secondary { display: none; }
+      .mp-nav-search { display: none; }
+    }
+    @media (max-width: 760px) {
+      .mp-other-roles { grid-template-columns: 1fr !important; }
+      .mp-pipeline-grid { grid-template-columns: 1fr !important; overflow-x: visible !important; }
+    }
 
     #boot-error {
       display: none;
       max-width: 760px;
       margin: 48px auto;
       padding: 20px;
-      font-family: var(--font-sans);
-      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      color: #111;
     }
     #boot-error pre {
       white-space: pre-wrap;
       background: #f7f7f7;
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 8px;
       overflow: auto;
     }
   </style>
@@ -73,7 +74,7 @@
   </script>
 
   <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect } = React;
 
 // ---------- Supabase config ----------
 const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
@@ -82,30 +83,223 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const LOGIN_URL = "index.html";
 const NEW_ROLE_URL = "onboarding.html";
 
-// ---------- design tokens (mirrors the :root CSS vars above) ----------
+// ---------- design tokens (shared with the recruiter dashboard) ----------
 const T = {
-  ink: "#14181c",
-  paper: "#fafbf9",
-  paperDim: "#f1f3f1",
-  steel: "#dbdfe0",
-  steelDim: "#868d91",
-  blueprint: "#1f3a5f",
-  blueprintBg: "#e8eef3",
-  earn: "#2b6e4f",
-  earnBg: "#e7f1eb",
-  alert: "#a23b2e",
-  alertBg: "#f8eae8",
-  gold: "#9c7a3f",
-  goldBg: "#f4eee0",
-  serif: "'Newsreader', Georgia, serif",
+  ink: "#111214",
+  sub: "#6b7075",
+  faint: "#9a9ea3",
+  line: "#e7e7e9",
+  lineSoft: "#f0f0f1",
+  paper: "#ffffff",
+  paperDim: "#fafafa",
+  pillBg: "#f2f2f3",
+  pillBgHover: "#eaeaeb",
+  blue: "#3b6fe0",
+  blueBg: "#eaf1ff",
+  green: "#1a8a4a",
+  greenBg: "#e8f6ec",
+  red: "#c0392b",
+  redBg: "#fbeceb",
+  gold: "#a06a1d",
+  goldBg: "#faf1e0",
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  mono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
 };
 
-const isRejected = (s) => (s.status || "").toLowerCase() === "rejected";
-const isPlaced = (s) => (s.status || "").toLowerCase() === "placed";
-const isActive = (s) => !isRejected(s) && !isPlaced(s);
+const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
+const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
+const isActive = (c) => !isRejected(c) && !isPlaced(c);
 
+function money(v) {
+  return v == null || v === "" ? "\u2014" : `$${Number(v).toLocaleString()}`;
+}
+
+function formatWhen(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// ---------- icons (hand-drawn, feather-style, inherit currentColor) ----------
+function Icon({ name, size = 18, style }) {
+  const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", style };
+  switch (name) {
+    case "search":
+      return <svg {...common}><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
+    case "bell":
+      return <svg {...common}><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
+    case "briefcase":
+      return <svg {...common}><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>;
+    case "chevronDown":
+      return <svg {...common}><polyline points="6 9 12 15 18 9" /></svg>;
+    case "chevronRight":
+      return <svg {...common}><polyline points="9 6 15 12 9 18" /></svg>;
+    case "arrowLeft":
+      return <svg {...common}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>;
+    case "x":
+      return <svg {...common}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+    case "check":
+      return <svg {...common}><polyline points="20 6 9 17 4 12" /></svg>;
+    case "checkCircle":
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><polyline points="8 12 11 15 16 9" /></svg>;
+    case "pause":
+      return <svg {...common}><rect x="7" y="5" width="3.5" height="14" rx="1" /><rect x="13.5" y="5" width="3.5" height="14" rx="1" /></svg>;
+    case "play":
+      return <svg {...common} fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20" /></svg>;
+    case "shield":
+      return <svg {...common}><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3Z" /><polyline points="9 12 11 14 15 10" /></svg>;
+    case "logout":
+      return <svg {...common}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>;
+    case "dollar":
+      return <svg {...common}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>;
+    case "plus":
+      return <svg {...common}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+    case "megaphone":
+      return <svg {...common}><path d="M3 11v2a1 1 0 0 0 1 1h1l2 6h2l-1-6h4l6 4V6l-6 4H5a1 1 0 0 0-1 1Z" /></svg>;
+    case "users":
+      return <svg {...common}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+    default:
+      return null;
+  }
+}
+
+// ---------- small building blocks (mirrors the recruiter dashboard) ----------
+function Pill({ children, tone, style, ...rest }) {
+  const tones = {
+    default: { bg: T.pillBg, fg: T.ink },
+    live: { bg: T.blueBg, fg: T.blue },
+    paused: { bg: T.goldBg, fg: T.gold },
+    filled: { bg: T.greenBg, fg: T.green },
+    rejected: { bg: T.redBg, fg: T.red },
+    placed: { bg: T.greenBg, fg: T.green },
+  };
+  const t = tones[tone] || tones.default;
+  return (
+    <span
+      {...rest}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        fontSize: 12.5,
+        fontWeight: 600,
+        padding: "5px 11px",
+        borderRadius: 999,
+        background: t.bg,
+        color: t.fg,
+        whiteSpace: "nowrap",
+        ...style,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function GhostButton({ children, active, decorative, style, ...rest }) {
+  return (
+    <button
+      {...rest}
+      title={decorative ? "Coming soon" : rest.title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 13,
+        fontWeight: 500,
+        padding: "8px 14px",
+        borderRadius: 999,
+        border: `1px solid ${active ? T.ink : T.line}`,
+        background: active ? T.ink : "#fff",
+        color: active ? "#fff" : decorative ? T.faint : T.ink,
+        cursor: decorative ? "default" : "pointer",
+        opacity: decorative ? 0.7 : 1,
+        fontFamily: T.sans,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PrimaryButton(props) {
+  return (
+    <button
+      {...props}
+      style={{
+        background: T.ink,
+        color: "#fff",
+        border: "none",
+        borderRadius: 10,
+        padding: "10px 18px",
+        fontSize: 13.5,
+        fontWeight: 600,
+        cursor: props.disabled ? "default" : "pointer",
+        opacity: props.disabled ? 0.55 : 1,
+        fontFamily: T.sans,
+        ...props.style,
+      }}
+    />
+  );
+}
+
+function SecondaryButton(props) {
+  return (
+    <button
+      {...props}
+      style={{
+        background: T.pillBg,
+        color: T.ink,
+        border: "none",
+        borderRadius: 10,
+        padding: "10px 18px",
+        fontSize: 13.5,
+        fontWeight: 600,
+        cursor: "pointer",
+        fontFamily: T.sans,
+        ...props.style,
+      }}
+    />
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 13px",
+  fontSize: 13.5,
+  borderRadius: 10,
+  border: `1px solid ${T.line}`,
+  outline: "none",
+  color: T.ink,
+  background: "#fff",
+  fontFamily: T.sans,
+  marginBottom: 12,
+};
+
+const sectionLabelStyle = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.05em",
+  color: T.sub,
+  textTransform: "uppercase",
+  marginBottom: 6,
+};
+
+function EmptyState({ icon, title, body, actions }) {
+  return (
+    <div style={{ border: `1.5px dashed ${T.line}`, borderRadius: 14, padding: "64px 24px", textAlign: "center" }}>
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: T.blueBg, color: T.blue, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+        <Icon name={icon} size={20} />
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13.5, color: T.sub, maxWidth: 360, margin: "6px auto 0" }}>{body}</div>
+      {actions && <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>{actions}</div>}
+    </div>
+  );
+}
+
+// ---------- data ----------
 async function getMyCompany(session) {
   const { data, error } = await supabaseClient
     .from("companies")
@@ -128,10 +322,7 @@ async function fetchRoles(companyId) {
 
 async function fetchRoleCandidateCounts(roleIds) {
   if (roleIds.length === 0) return {};
-  const { data, error } = await supabaseClient
-    .from("candidates")
-    .select("role_id, status")
-    .in("role_id", roleIds);
+  const { data, error } = await supabaseClient.from("candidates").select("role_id, status").in("role_id", roleIds);
   if (error) throw new Error(`Failed loading candidate counts: ${error.message}`);
   const counts = {};
   roleIds.forEach((id) => (counts[id] = { active: 0, rejected: 0, placed: 0 }));
@@ -144,31 +335,20 @@ async function fetchRoleCandidateCounts(roleIds) {
 }
 
 async function fetchStages(roleId) {
-  const { data, error } = await supabaseClient
-    .from("role_stages")
-    .select("*")
-    .eq("role_id", roleId)
-    .order("position", { ascending: true });
+  const { data, error } = await supabaseClient.from("role_stages").select("*").eq("role_id", roleId).order("position", { ascending: true });
   if (error) throw new Error(`Failed loading stages: ${error.message}`);
   return data || [];
 }
 
 async function fetchCandidates(roleId) {
-  const { data, error } = await supabaseClient
-    .from("candidates")
-    .select("*")
-    .eq("role_id", roleId)
-    .order("created_at", { ascending: true });
+  const { data, error } = await supabaseClient.from("candidates").select("*").eq("role_id", roleId).order("created_at", { ascending: true });
   if (error) throw new Error(`Failed loading candidates: ${error.message}`);
   return data || [];
 }
 
 async function fetchRecruiters(recruiterIds) {
   if (recruiterIds.length === 0) return {};
-  const { data, error } = await supabaseClient
-    .from("recruiters")
-    .select("id, firm_name")
-    .in("id", recruiterIds);
+  const { data, error } = await supabaseClient.from("recruiters").select("id, firm_name").in("id", recruiterIds);
   if (error) throw new Error(`Failed loading recruiters: ${error.message}`);
   const map = {};
   (data || []).forEach((r) => (map[r.id] = r.firm_name));
@@ -185,245 +365,132 @@ async function updateRoleStatus(id, status) {
   if (error) throw new Error(`Failed updating role: ${error.message}`);
 }
 
-// ---------- messages ----------
 async function fetchRoleMessages(roleId) {
-  const { data, error } = await supabaseClient
-    .from("messages")
-    .select("*")
-    .eq("role_id", roleId)
-    .order("created_at", { ascending: true });
+  const { data, error } = await supabaseClient.from("messages").select("*").eq("role_id", roleId).order("created_at", { ascending: true });
   if (error) throw new Error(`Failed loading messages: ${error.message}`);
   return data || [];
 }
 
 async function sendMessage(session, roleId, candidateId, body) {
   const { error } = await supabaseClient.from("messages").insert([
-    {
-      role_id: roleId,
-      candidate_id: candidateId || null,
-      sender_id: session.user.id,
-      sender_type: "company",
-      body,
-    },
+    { role_id: roleId, candidate_id: candidateId || null, sender_id: session.user.id, sender_type: "company", body },
   ]);
   if (error) throw new Error(`Failed sending message: ${error.message}`);
 }
 
-// ---------- formatting ----------
-function money(v) {
-  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
-}
-
-function formatWhen(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function Mono({ children, style }) {
-  return <span style={{ fontFamily: T.mono, ...style }}>{children}</span>;
-}
-
-// ---------- structural chrome ----------
-function TopBar({ companyName, onLogout }) {
+// ---------- top navigation ----------
+function Logomark() {
   return (
-    <div style={{ background: T.ink, color: T.paper }}>
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "16px 28px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <a href={LOGIN_URL} style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: T.paper, textDecoration: "none", letterSpacing: "-0.01em" }}>
-            MakePlacement
-          </a>
-          <span
-            style={{
-              fontFamily: T.mono,
-              fontSize: 10.5,
-              letterSpacing: "0.08em",
-              color: "#8fa6bd",
-              border: "1px solid #33445a",
-              padding: "2px 7px",
-              borderRadius: 3,
-              textTransform: "uppercase",
-            }}
-          >
-            Client
-          </span>
+    <div style={{ width: 26, height: 26, borderRadius: 7, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
+        <line x1="4" y1="7" x2="20" y2="7" />
+        <line x1="4" y1="12" x2="20" y2="12" />
+        <line x1="4" y1="17" x2="14" y2="17" />
+      </svg>
+    </div>
+  );
+}
+
+const NAV_ITEMS = [
+  { key: "roles", label: "Roles", live: true },
+  { key: "messages", label: "Messages", live: false },
+  { key: "calls", label: "Calls", live: false },
+];
+
+function TopNav({ tab, onTabChange, companyName, onLogout }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const initial = (companyName || "C").trim().charAt(0).toUpperCase();
+
+  return (
+    <div style={{ borderBottom: `1px solid ${T.line}`, background: "#fff" }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 28px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Logomark />
+            <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>MakePlacement</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+            {NAV_ITEMS.map((item) => {
+              const isActiveTab = item.live && tab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  className={item.live ? "" : "mp-nav-secondary"}
+                  onClick={item.live ? () => onTabChange(item.key) : undefined}
+                  title={item.live ? undefined : "Coming soon"}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "4px 0",
+                    fontSize: 13.5,
+                    fontWeight: isActiveTab ? 700 : 500,
+                    color: item.live ? (isActiveTab ? T.ink : T.sub) : T.faint,
+                    cursor: item.live ? "pointer" : "default",
+                    borderBottom: isActiveTab ? `2px solid ${T.ink}` : "2px solid transparent",
+                    fontFamily: T.sans,
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {companyName && <div style={{ fontSize: 13, color: "#a8afb5" }}>{companyName}</div>}
-          <button
-            onClick={onLogout}
-            style={{ background: "none", border: "none", fontSize: 13, color: T.paper, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans, padding: 0 }}
-          >
-            Log out
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div className="mp-nav-search" title="Coming soon" style={{ display: "flex", alignItems: "center", gap: 8, background: T.pillBg, borderRadius: 10, padding: "8px 12px", width: 200, color: T.faint }}>
+            <Icon name="search" size={15} />
+            <input disabled placeholder="Search" style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: T.faint, flex: 1, fontFamily: T.sans }} />
+          </div>
+
+          <button title="Notifications \u2014 coming soon" style={{ background: "none", border: "none", color: T.sub, cursor: "default", padding: 6, display: "flex" }}>
+            <Icon name="bell" size={18} />
           </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ width: 32, height: 32, borderRadius: "50%", background: T.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              {initial}
+            </button>
+            {menuOpen && (
+              <div style={{ position: "absolute", right: 0, top: 40, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 170, overflow: "hidden", zIndex: 20 }}>
+                <a href={NEW_ROLE_URL} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", fontSize: 13, color: T.ink, textDecoration: "none" }}>
+                  <Icon name="plus" size={14} /> Post a role
+                </a>
+                <button
+                  onClick={onLogout}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: T.ink, background: "none", border: "none", borderTop: `1px solid ${T.lineSoft}`, cursor: "pointer", fontFamily: T.sans }}
+                >
+                  <Icon name="logout" size={14} /> Log out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Eyebrow({ children }) {
+// ---------- messages ----------
+function MessageFeed({ messages, emptyLabel }) {
+  if (messages.length === 0) {
+    return <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>{emptyLabel}</div>;
+  }
   return (
-    <div
-      style={{
-        fontFamily: T.mono,
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: "0.09em",
-        textTransform: "uppercase",
-        color: T.blueprint,
-        marginBottom: 8,
-      }}
-    >
-      {children}
+    <div>
+      {messages.map((m) => (
+        <div key={m.id} style={{ padding: "8px 0", borderBottom: `1px solid ${T.lineSoft}` }}>
+          <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
+          <div style={{ fontSize: 11, color: T.faint, marginTop: 3 }}>{m.sender_type === "company" ? "you" : "recruiter"} {"\u00b7"} {formatWhen(m.created_at)}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function SectionHeader({ eyebrow, title, action }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 26, flexWrap: "wrap", gap: 14 }}>
-      <div>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <div style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 500, letterSpacing: "-0.015em", color: T.ink }}>{title}</div>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function PrimaryButton(props) {
-  return (
-    <button
-      {...props}
-      style={{
-        fontSize: 13,
-        fontWeight: 600,
-        color: T.paper,
-        background: T.ink,
-        border: "none",
-        padding: "10px 18px",
-        borderRadius: 3,
-        cursor: props.disabled ? "default" : "pointer",
-        opacity: props.disabled ? 0.55 : 1,
-        fontFamily: T.sans,
-        ...props.style,
-      }}
-    />
-  );
-}
-
-// ---------- small UI bits ----------
-function Tag({ children, tone = "default" }) {
-  const tones = {
-    default: { fg: T.steelDim, border: T.steel, bg: "transparent" },
-    live: { fg: T.blueprint, border: T.blueprint, bg: T.blueprintBg },
-    paused: { fg: T.gold, border: T.gold, bg: T.goldBg },
-    filled: { fg: T.earn, border: T.earn, bg: T.earnBg },
-    rejected: { fg: T.alert, border: T.alert, bg: T.alertBg },
-    placed: { fg: T.earn, border: T.earn, bg: T.earnBg },
-  };
-  const t = tones[tone] || tones.default;
-  return (
-    <span
-      style={{
-        fontFamily: T.mono,
-        fontSize: 10.5,
-        fontWeight: 600,
-        letterSpacing: "0.05em",
-        textTransform: "uppercase",
-        padding: "3px 8px",
-        borderRadius: 3,
-        border: `1px solid ${t.border}`,
-        background: t.bg,
-        color: t.fg,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function IconButton({ children, onClick, tone = "default", disabled }) {
-  const tones = {
-    default: { border: T.steel, fg: T.ink, bg: "#fff" },
-    danger: { border: "#e3bab3", fg: T.alert, bg: "#fff" },
-    primary: { border: T.ink, fg: "#fff", bg: T.ink },
-  };
-  const t = tones[tone];
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        fontSize: 12.5,
-        fontWeight: 600,
-        padding: "6px 11px",
-        borderRadius: 3,
-        border: `1px solid ${t.border}`,
-        background: t.bg,
-        color: t.fg,
-        cursor: disabled ? "default" : "pointer",
-        opacity: disabled ? 0.5 : 1,
-        fontFamily: T.sans,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-// A left accent bar carries status color across every card in the app --
-// the one repeated device that ties roles, candidates, and messages together.
-function LedgerCard({ accent = T.steel, children, style, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: "flex",
-        border: `1px solid ${T.steel}`,
-        borderLeft: `4px solid ${accent}`,
-        borderRadius: 3,
-        background: "#fff",
-        cursor: onClick ? "pointer" : "default",
-        ...style,
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-    </div>
-  );
-}
-
-function EmptyFrame({ title, body, action }) {
-  return (
-    <div
-      style={{
-        border: `1.5px dashed ${T.steel}`,
-        borderRadius: 4,
-        padding: "56px 24px",
-        textAlign: "center",
-        maxWidth: 420,
-        margin: "40px auto",
-      }}
-    >
-      <div style={{ fontFamily: T.serif, fontSize: 20, color: T.ink, marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13.5, color: T.steelDim, marginBottom: action ? 20 : 0 }}>{body}</div>
-      {action}
-    </div>
-  );
-}
-
-// ---------- message composer + feed ----------
 function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -449,42 +516,12 @@ function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          minHeight: 60,
-          padding: 10,
-          fontSize: 13,
-          borderRadius: 3,
-          border: `1px solid ${T.steel}`,
-          outline: "none",
-          resize: "vertical",
-          fontFamily: T.sans,
-          marginBottom: 8,
-        }}
+        style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
       />
-      {error && <div style={{ color: T.alert, fontSize: 12, marginBottom: 8 }}>{error}</div>}
-      <IconButton tone="primary" onClick={handleSend} disabled={sending || !text.trim()}>
-        {sending ? "Sending…" : buttonLabel}
-      </IconButton>
-    </div>
-  );
-}
-
-function MessageFeed({ messages, emptyLabel }) {
-  if (messages.length === 0) {
-    return <div style={{ fontSize: 12.5, color: T.steelDim, fontStyle: "italic", marginBottom: 10 }}>{emptyLabel}</div>;
-  }
-  return (
-    <div style={{ marginBottom: 12 }}>
-      {messages.map((m) => (
-        <div key={m.id} style={{ padding: "8px 0", borderBottom: `1px solid ${T.paperDim}` }}>
-          <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.steelDim, marginTop: 3 }}>
-            {m.sender_type === "company" ? "you" : "recruiter"} · {formatWhen(m.created_at)}
-          </div>
-        </div>
-      ))}
+      {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      <PrimaryButton onClick={handleSend} disabled={sending || !text.trim()}>
+        {sending ? "Sending\u2026" : buttonLabel}
+      </PrimaryButton>
     </div>
   );
 }
@@ -494,30 +531,28 @@ function BenchUpdatesPanel({ messages, onSend }) {
   const broadcasts = messages.filter((m) => !m.candidate_id);
 
   return (
-    <LedgerCard accent={T.blueprint} style={{ padding: 18, marginBottom: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: open ? 14 : 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>Updates to the bench</div>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          style={{ background: "none", border: "none", fontSize: 12.5, color: T.ink, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans }}
-        >
+    <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: T.ink }}>
+          <Icon name="megaphone" size={15} style={{ color: T.blue }} />
+          Updates to the bench
+        </div>
+        <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", fontSize: 12.5, color: T.ink, textDecoration: "underline", cursor: "pointer", fontFamily: T.sans }}>
           {open ? "Hide" : broadcasts.length > 0 ? `View (${broadcasts.length})` : "Send an update"}
         </button>
       </div>
       {open && (
-        <div>
-          <div style={{ fontSize: 12, color: T.steelDim, marginBottom: 10 }}>
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12, color: T.sub, marginBottom: 10 }}>
             Visible to every recruiter with a candidate currently in this role's pipeline.
           </div>
           <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
-          <MessageComposer
-            onSend={onSend}
-            placeholder="e.g. We're prioritizing candidates with security clearance this week."
-            buttonLabel="Send to bench"
-          />
+          <div style={{ marginTop: broadcasts.length ? 10 : 0 }}>
+            <MessageComposer onSend={onSend} placeholder="e.g. We're prioritizing candidates with security clearance this week." buttonLabel="Send to bench" />
+          </div>
         </div>
       )}
-    </LedgerCard>
+    </div>
   );
 }
 
@@ -525,163 +560,67 @@ function CandidateFeedbackThread({ messages, onSend }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ marginTop: 10 }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{ background: "none", border: "none", fontSize: 12, color: T.ink, textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}
-      >
+      <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", fontSize: 12, color: T.ink, textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}>
         {open ? "Hide feedback" : messages.length > 0 ? `Feedback (${messages.length})` : "Add feedback"}
       </button>
       {open && (
-        <div style={{ marginTop: 10, borderTop: `1px solid ${T.paperDim}`, paddingTop: 10 }}>
+        <div style={{ marginTop: 10, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
           <MessageFeed messages={messages} emptyLabel="No feedback sent yet." />
-          <MessageComposer
-            onSend={onSend}
-            placeholder="e.g. Not enough hands-on infra experience for this role."
-            buttonLabel="Send to recruiter"
-          />
+          <div style={{ marginTop: messages.length ? 10 : 0 }}>
+            <MessageComposer onSend={onSend} placeholder="e.g. Not enough hands-on infra experience for this role." buttonLabel="Send to recruiter" />
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ---------- Roles overview ----------
-function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
-  const liveCount = roles.filter((r) => (r.status || "live").toLowerCase() === "live").length;
-
-  return (
-    <div>
-      <SectionHeader
-        eyebrow={`${roles.length} role${roles.length === 1 ? "" : "s"} on file · ${liveCount} live`}
-        title="Your roles"
-        action={<PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>+ Post new role</PrimaryButton>}
-      />
-
-      {roles.length === 0 && (
-        <EmptyFrame
-          title="No roles posted yet"
-          body='Use "Post new role" above to get your first role in front of recruiters.'
-        />
-      )}
-
-      <div style={{ display: "grid", gap: 12 }}>
-        {roles.map((role) => {
-          const c = counts[role.id] || { active: 0, rejected: 0, placed: 0 };
-          const status = (role.status || "live").toLowerCase();
-          const accent = status === "live" ? T.blueprint : status === "filled" ? T.earn : T.gold;
-          return (
-            <LedgerCard key={role.id} accent={accent}>
-              <div
-                style={{
-                  padding: "18px 20px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 16,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ cursor: "pointer", flex: 1, minWidth: 220 }} onClick={() => onOpenRole(role.id)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
-                    <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500 }}>{role.name}</div>
-                    <Tag tone={status}>{status}</Tag>
-                  </div>
-                  <div style={{ fontSize: 13, color: T.steelDim }}>
-                    <Mono>{money(role.min_salary)} – {money(role.max_salary)}</Mono>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 6 }} onClick={() => onOpenRole(role.id)}>
-                  <Tag>{c.active} active</Tag>
-                  <Tag tone="rejected">{c.rejected} rejected</Tag>
-                  <Tag tone="placed">{c.placed} placed</Tag>
-                </div>
-
-                <div style={{ display: "flex", gap: 8 }}>
-                  <IconButton onClick={() => onOpenRole(role.id)}>View pipeline</IconButton>
-                  {status === "live" && (
-                    <IconButton onClick={() => onToggleRoleStatus(role, "paused")}>Pause</IconButton>
-                  )}
-                  {status === "paused" && (
-                    <IconButton onClick={() => onToggleRoleStatus(role, "live")}>Reopen</IconButton>
-                  )}
-                  {status !== "filled" && (
-                    <IconButton onClick={() => onToggleRoleStatus(role, "filled")}>Mark filled</IconButton>
-                  )}
-                </div>
-              </div>
-            </LedgerCard>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---------- Candidate card ----------
+// ---------- candidate card ----------
 function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onReject, onPlace, onRestore, feedbackMessages, onSendFeedback }) {
   const rejected = isRejected(candidate);
   const placed = isPlaced(candidate);
-  const accent = placed ? T.earn : rejected ? T.alert : T.steel;
 
   return (
-    <LedgerCard accent={accent} style={{ padding: 14, marginBottom: 10 }}>
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, background: "#fff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
-          {recruiterLabel && (
-            <div style={{ fontSize: 12, color: T.steelDim, marginTop: 2 }}>via {recruiterLabel}</div>
-          )}
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{candidate.name}</div>
+          {recruiterLabel && <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>via {recruiterLabel}</div>}
         </div>
-        {rejected && <Tag tone="rejected">Rejected</Tag>}
-        {placed && <Tag tone="placed">Placed</Tag>}
+        {rejected && <Pill tone="rejected">Rejected</Pill>}
+        {placed && <Pill tone="placed">Placed</Pill>}
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-        {candidate.linkedin && (
-          <a href={candidate.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blueprint }}>
-            LinkedIn
-          </a>
-        )}
-        {candidate.resume_url && (
-          <a href={candidate.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blueprint }}>
-            Resume
-          </a>
-        )}
-        {candidate.email && <span style={{ fontSize: 12.5, color: T.steelDim }}>{candidate.email}</span>}
+      <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+        {candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blue }}>LinkedIn</a>}
+        {candidate.resume_url && <a href={candidate.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: T.blue }}>Resume</a>}
+        {candidate.email && <span style={{ fontSize: 12.5, color: T.sub }}>{candidate.email}</span>}
       </div>
 
-      {candidate.notes && (
-        <div style={{ fontSize: 13, color: "#444", marginTop: 8, whiteSpace: "pre-wrap" }}>{candidate.notes}</div>
-      )}
+      {candidate.notes && <div style={{ fontSize: 13, color: "#444", marginTop: 8, whiteSpace: "pre-wrap" }}>{candidate.notes}</div>}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {isActive(candidate) && (
           <>
-            <IconButton tone="primary" onClick={onAdvance}>
-              {nextStageName ? `Advance → ${nextStageName}` : "Mark placed"}
-            </IconButton>
-            <IconButton tone="danger" onClick={onReject}>
-              Reject
-            </IconButton>
-            {nextStageName && <IconButton onClick={onPlace}>Mark placed</IconButton>}
+            <GhostButton active onClick={onAdvance}>
+              {nextStageName ? `Advance \u2192 ${nextStageName}` : "Mark placed"}
+            </GhostButton>
+            <GhostButton onClick={onReject} style={{ color: T.red, borderColor: "#e3bab3" }}>Reject</GhostButton>
+            {nextStageName && <GhostButton onClick={onPlace}>Mark placed</GhostButton>}
           </>
         )}
-        {!isActive(candidate) && <IconButton onClick={onRestore}>Restore to active</IconButton>}
+        {!isActive(candidate) && <GhostButton onClick={onRestore}>Restore to active</GhostButton>}
       </div>
 
       <CandidateFeedbackThread messages={feedbackMessages} onSend={onSendFeedback} />
-    </LedgerCard>
+    </div>
   );
 }
 
-// ---------- Pipeline view ----------
-function PipelineView({ role, stages, candidates, recruiterMap, messages, session, onBack, refresh, refreshMessages }) {
-  const stageById = useMemo(() => {
-    const m = {};
-    stages.forEach((s) => (m[s.id] = s));
-    return m;
-  }, [stages]);
+// ---------- pipeline (kanban by stage) ----------
+function PipelineView({ role, stages, candidates, recruiterMap, messages, session, refresh, refreshMessages }) {
+  const stageById = {};
+  stages.forEach((s) => (stageById[s.id] = s));
 
   const nextStage = (candidate) => {
     const stage = stageById[candidate.stage_id];
@@ -701,9 +640,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
   const active = candidates.filter(isActive);
   const rejected = candidates.filter(isRejected);
   const placed = candidates.filter(isPlaced);
-
   const columns = stages.length > 0 ? stages : [{ id: "__none__", name: "Unassigned", position: 0 }];
-
   const messagesForCandidate = (candidateId) => messages.filter((m) => m.candidate_id === candidateId);
 
   const renderCandidateCard = (c) => (
@@ -712,13 +649,11 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
       candidate={c}
       recruiterLabel={recruiterMap[c.recruiter_id]}
       nextStageName={nextStage(c) ? nextStage(c).name : null}
-      onAdvance={() =>
-        act(async () => {
-          const ns = nextStage(c);
-          if (ns) await updateCandidate(c.id, { stage_id: ns.id });
-          else await updateCandidate(c.id, { status: "placed" });
-        })
-      }
+      onAdvance={() => act(async () => {
+        const ns = nextStage(c);
+        if (ns) await updateCandidate(c.id, { stage_id: ns.id });
+        else await updateCandidate(c.id, { status: "placed" });
+      })}
       onPlace={() => act(async () => updateCandidate(c.id, { status: "placed" }))}
       onReject={() => act(async () => updateCandidate(c.id, { status: "rejected" }))}
       onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
@@ -732,78 +667,32 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
 
   return (
     <div>
-      <div style={{ marginBottom: 22 }}>
-        <button
-          onClick={onBack}
-          style={{ background: "none", border: "none", color: T.steelDim, fontSize: 13, cursor: "pointer", padding: 0, fontFamily: T.mono }}
-        >
-          ← all roles
-        </button>
-        <div style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, marginTop: 10, letterSpacing: "-0.01em" }}>{role.name}</div>
-        <div style={{ fontSize: 13.5, color: T.steelDim }}>
-          <Mono>{money(role.min_salary)} – {money(role.max_salary)}</Mono>
-        </div>
-      </div>
+      <BenchUpdatesPanel messages={messages} onSend={async (body) => { await sendMessage(session, role.id, null, body); await refreshMessages(); }} />
 
-      <BenchUpdatesPanel
-        messages={messages}
-        onSend={async (body) => {
-          await sendMessage(session, role.id, null, body);
-          await refreshMessages();
-        }}
-      />
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`,
-          gap: 18,
-          overflowX: "auto",
-          paddingBottom: 8,
-        }}
-      >
+      <div className="mp-pipeline-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`, gap: 18, overflowX: "auto", paddingBottom: 8 }}>
         {columns.map((stage) => {
-          const inStage = active.filter((c) =>
-            stage.id === "__none__" ? !c.stage_id : c.stage_id === stage.id
-          );
+          const inStage = active.filter((c) => (stage.id === "__none__" ? !c.stage_id : c.stage_id === stage.id));
           return (
             <div key={stage.id}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  paddingBottom: 8,
-                  borderBottom: `2px solid ${T.blueprint}`,
-                  marginBottom: 12,
-                }}
-              >
-                <div style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: T.ink }}>
-                  {stage.name}
-                </div>
-                <div style={{ fontFamily: T.mono, fontSize: 11.5, color: T.steelDim }}>[{inStage.length}]</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 8, borderBottom: `2px solid ${T.ink}`, marginBottom: 12 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: "0.02em", color: T.ink }}>{stage.name}</div>
+                <div style={{ fontSize: 12, color: T.sub }}>{inStage.length}</div>
               </div>
               {inStage.map(renderCandidateCard)}
-              {inStage.length === 0 && (
-                <div style={{ fontSize: 12.5, color: "#c4c4c4", fontStyle: "italic" }}>No candidates</div>
-              )}
+              {inStage.length === 0 && <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>No candidates</div>}
             </div>
           );
         })}
       </div>
 
       {(rejected.length > 0 || placed.length > 0) && (
-        <div style={{ marginTop: 44, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <div>
-            <div style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", color: T.steelDim, textTransform: "uppercase", marginBottom: 10, borderBottom: `2px solid ${T.alert}`, paddingBottom: 8 }}>
-              Rejected [{rejected.length}]
-            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: T.sub, marginBottom: 10, borderBottom: `2px solid ${T.red}`, paddingBottom: 8 }}>Rejected ({rejected.length})</div>
             {rejected.map(renderCandidateCard)}
           </div>
           <div>
-            <div style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", color: T.steelDim, textTransform: "uppercase", marginBottom: 10, borderBottom: `2px solid ${T.earn}`, paddingBottom: 8 }}>
-              Placed [{placed.length}]
-            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: T.sub, marginBottom: 10, borderBottom: `2px solid ${T.green}`, paddingBottom: 8 }}>Placed ({placed.length})</div>
             {placed.map(renderCandidateCard)}
           </div>
         </div>
@@ -812,37 +701,114 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
   );
 }
 
+// ---------- role status control ----------
+function statusTone(status) {
+  const s = (status || "live").toLowerCase();
+  if (s === "filled") return "filled";
+  if (s === "paused") return "paused";
+  return "live";
+}
+
+function RoleStatusActions({ role, onToggle }) {
+  const status = (role.status || "live").toLowerCase();
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      {status === "live" && <GhostButton onClick={() => onToggle(role, "paused")}><Icon name="pause" size={13} /> Pause</GhostButton>}
+      {status === "paused" && <GhostButton onClick={() => onToggle(role, "live")}><Icon name="play" size={13} /> Reopen</GhostButton>}
+      {status !== "filled" && <GhostButton onClick={() => onToggle(role, "filled")}><Icon name="checkCircle" size={13} /> Mark filled</GhostButton>}
+    </div>
+  );
+}
+
+// ---------- hero role card ----------
+function HeroRoleCard({ role, counts, expanded, onToggleExpand, onToggleStatus, children }) {
+  const status = (role.status || "live").toLowerCase();
+  return (
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 16, overflow: "hidden", background: "#fff", marginBottom: 28 }}>
+      <div style={{ padding: "24px 26px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <Pill tone={status}>{status}</Pill>
+              <span style={{ fontSize: 12, color: T.faint }}>Your most recently posted role</span>
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em", marginBottom: 4 }}>{role.name}</div>
+            <div style={{ fontSize: 14.5, color: T.sub }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}{role.hiring_goals ? ` \u00b7 Target: ${role.hiring_goals}` : ""}</div>
+          </div>
+          <RoleStatusActions role={role} onToggle={onToggleStatus} />
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+          <Pill tone="live">{counts.active} interviewing</Pill>
+          <Pill tone="rejected">{counts.rejected} rejected</Pill>
+          <Pill tone="placed">{counts.placed} placed</Pill>
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <PrimaryButton onClick={onToggleExpand}>
+            {expanded ? "Hide pipeline" : "View pipeline"}
+          </PrimaryButton>
+        </div>
+      </div>
+
+      {expanded && <div style={{ borderTop: `1px solid ${T.lineSoft}`, padding: "22px 26px 26px" }}>{children}</div>}
+    </div>
+  );
+}
+
+// ---------- compact role card (non-hero) ----------
+function CompactRoleCard({ role, counts, onFocus }) {
+  const status = (role.status || "live").toLowerCase();
+  return (
+    <button onClick={onFocus} style={{ textAlign: "left", border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer", fontFamily: T.sans, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <Pill tone={status}>{status}</Pill>
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 4 }}>{role.name}</div>
+      <div style={{ fontSize: 12.5, color: T.sub, marginBottom: 10 }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <Pill tone="live" style={{ fontSize: 11.5, padding: "3px 8px" }}>{counts.active} interviewing</Pill>
+        <Pill tone="placed" style={{ fontSize: 11.5, padding: "3px 8px" }}>{counts.placed} placed</Pill>
+      </div>
+      <div style={{ marginTop: 12, fontSize: 12.5, color: T.ink, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+        Focus this role <Icon name="chevronRight" size={13} />
+      </div>
+    </button>
+  );
+}
+
 // ---------- main ----------
 function ClientDashboard() {
   const [session, setSession] = useState(undefined);
   const [company, setCompany] = useState(null);
+  const [tab, setTab] = useState("roles");
   const [roles, setRoles] = useState([]);
   const [counts, setCounts] = useState({});
-  const [selectedRoleId, setSelectedRoleId] = useState(null);
+  const [focusedId, setFocusedId] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
   const [stages, setStages] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [recruiterMap, setRecruiterMap] = useState({});
   const [messages, setMessages] = useState([]);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) {
-        window.location.href = LOGIN_URL;
-        return;
-      }
+      if (!session) { window.location.href = LOGIN_URL; return; }
       setSession(session);
       try {
         const c = await getMyCompany(session);
-        if (!c) {
-          window.location.href = LOGIN_URL;
-          return;
-        }
+        if (!c) { window.location.href = LOGIN_URL; return; }
         setCompany(c);
         const r = await fetchRoles(c.id);
         setRoles(r);
         setCounts(await fetchRoleCandidateCounts(r.map((x) => x.id)));
+        const live = r.find((x) => (x.status || "live").toLowerCase() === "live");
+        setFocusedId((live || r[0] || {}).id || null);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -856,11 +822,10 @@ function ClientDashboard() {
     window.location.href = LOGIN_URL;
   };
 
-  const refreshRoleCounts = async (roleIds) => setCounts(await fetchRoleCandidateCounts(roleIds));
+  const refreshRoleCounts = async () => setCounts(await fetchRoleCandidateCounts(roles.map((r) => r.id)));
 
-  const openRole = async (roleId) => {
-    setSelectedRoleId(roleId);
-    setLoading(true);
+  const loadPipeline = async (roleId) => {
+    setPipelineLoading(true);
     try {
       const [s, c, m] = await Promise.all([fetchStages(roleId), fetchCandidates(roleId), fetchRoleMessages(roleId)]);
       setStages(s);
@@ -871,20 +836,31 @@ function ClientDashboard() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setPipelineLoading(false);
     }
   };
 
+  const toggleExpand = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && focusedId) await loadPipeline(focusedId);
+  };
+
+  const focusRole = (roleId) => {
+    setFocusedId(roleId);
+    setExpanded(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const refreshPipeline = async () => {
-    if (!selectedRoleId) return;
-    const c = await fetchCandidates(selectedRoleId);
-    setCandidates(c);
-    await refreshRoleCounts(roles.map((r) => r.id));
+    if (!focusedId) return;
+    setCandidates(await fetchCandidates(focusedId));
+    await refreshRoleCounts();
   };
 
   const refreshMessages = async () => {
-    if (!selectedRoleId) return;
-    setMessages(await fetchRoleMessages(selectedRoleId));
+    if (!focusedId) return;
+    setMessages(await fetchRoleMessages(focusedId));
   };
 
   const toggleRoleStatus = async (role, status) => {
@@ -897,49 +873,92 @@ function ClientDashboard() {
   };
 
   if (session === undefined || loading) {
-    return (
-      <div style={pageWrap}>
-        <TopBar companyName={company ? company.name : ""} onLogout={handleLogout} />
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.steelDim, fontFamily: T.mono, fontSize: 13 }}>loading…</div>
-      </div>
-    );
+    return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.sub, fontSize: 13 }}>{"loading\u2026"}</div></div>;
   }
-
   if (error) {
-    return (
-      <div style={pageWrap}>
-        <TopBar companyName={company ? company.name : ""} onLogout={handleLogout} />
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.alert }}>{error}</div>
-      </div>
-    );
+    return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.red }}>{error}</div></div>;
   }
 
-  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+  const focusedRole = roles.find((r) => r.id === focusedId);
+  const otherRoles = roles.filter((r) => r.id !== focusedId);
+  const liveCount = roles.filter((r) => (r.status || "live").toLowerCase() === "live").length;
+  const totalInterviewing = Object.values(counts).reduce((sum, c) => sum + (c ? c.active : 0), 0);
+  const totalPlaced = Object.values(counts).reduce((sum, c) => sum + (c ? c.placed : 0), 0);
+  const firstName = (company.contact_first_name || company.name || "there").split(" ")[0];
 
   return (
     <div style={pageWrap}>
-      <TopBar companyName={company ? company.name : ""} onLogout={handleLogout} />
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "44px 28px 100px" }}>
-        {!selectedRole && (
-          <RolesOverview
-            roles={roles}
-            counts={counts}
-            onOpenRole={openRole}
-            onToggleRoleStatus={toggleRoleStatus}
+      <TopNav tab={tab} onTabChange={setTab} companyName={company.name} onLogout={handleLogout} />
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 100px" }}>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>Welcome back, {firstName}!</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <Pill>{liveCount} live role{liveCount === 1 ? "" : "s"}</Pill>
+              <Pill tone="live">{totalInterviewing} interviewing</Pill>
+              <Pill tone="placed">{totalPlaced} placed</Pill>
+            </div>
+          </div>
+          <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> Post new role</span>
+          </PrimaryButton>
+        </div>
+
+        <div style={{ height: 1, background: T.line, margin: "26px 0 28px" }} />
+
+        {roles.length === 0 ? (
+          <EmptyState
+            icon="briefcase"
+            title="No roles posted yet"
+            body="Post your first role to start getting candidates from recruiters on MakePlacement."
+            actions={<PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>Post a role</PrimaryButton>}
           />
-        )}
-        {selectedRole && (
-          <PipelineView
-            role={selectedRole}
-            stages={stages}
-            candidates={candidates}
-            recruiterMap={recruiterMap}
-            messages={messages}
-            session={session}
-            onBack={() => setSelectedRoleId(null)}
-            refresh={refreshPipeline}
-            refreshMessages={refreshMessages}
-          />
+        ) : (
+          <>
+            {focusedRole && (
+              <HeroRoleCard
+                role={focusedRole}
+                counts={counts[focusedRole.id] || { active: 0, rejected: 0, placed: 0 }}
+                expanded={expanded}
+                onToggleExpand={toggleExpand}
+                onToggleStatus={toggleRoleStatus}
+              >
+                {pipelineLoading ? (
+                  <div style={{ fontSize: 13, color: T.sub }}>{"Loading pipeline\u2026"}</div>
+                ) : (
+                  <PipelineView
+                    role={focusedRole}
+                    stages={stages}
+                    candidates={candidates}
+                    recruiterMap={recruiterMap}
+                    messages={messages}
+                    session={session}
+                    refresh={refreshPipeline}
+                    refreshMessages={refreshMessages}
+                  />
+                )}
+              </HeroRoleCard>
+            )}
+
+            {otherRoles.length > 0 && (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.sub, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 14 }}>
+                  Other roles ({otherRoles.length})
+                </div>
+                <div className="mp-other-roles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+                  {otherRoles.map((role) => (
+                    <CompactRoleCard
+                      key={role.id}
+                      role={role}
+                      counts={counts[role.id] || { active: 0, rejected: 0, placed: 0 }}
+                      onFocus={() => focusRole(role.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -948,7 +967,7 @@ function ClientDashboard() {
 
 const pageWrap = {
   minHeight: "100vh",
-  background: T.paper,
+  background: "#fff",
   fontFamily: T.sans,
   color: T.ink,
 };
