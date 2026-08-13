@@ -59,10 +59,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const LOGIN_URL = "index.html";
 const NEW_ROLE_URL = "onboarding.html";
 
-// Statuses are treated as free text on purpose -- we don't hard-code an
-// enum here since the DB doesn't enforce one. "active" is just "not yet
-// rejected or placed"; anything else typed into that column falls into
-// the active bucket too, which is the safer failure mode for a pipeline view.
 const isRejected = (s) => (s.status || "").toLowerCase() === "rejected";
 const isPlaced = (s) => (s.status || "").toLowerCase() === "placed";
 const isActive = (s) => !isRejected(s) && !isPlaced(s);
@@ -128,11 +124,11 @@ async function fetchRecruiters(recruiterIds) {
   if (recruiterIds.length === 0) return {};
   const { data, error } = await supabaseClient
     .from("recruiters")
-    .select("id, email")
+    .select("id, firm_name")
     .in("id", recruiterIds);
   if (error) throw new Error(`Failed loading recruiters: ${error.message}`);
   const map = {};
-  (data || []).forEach((r) => (map[r.id] = r.email));
+  (data || []).forEach((r) => (map[r.id] = r.firm_name));
   return map;
 }
 
@@ -144,6 +140,30 @@ async function updateCandidate(id, patch) {
 async function updateRoleStatus(id, status) {
   const { error } = await supabaseClient.from("roles").update({ status }).eq("id", id);
   if (error) throw new Error(`Failed updating role: ${error.message}`);
+}
+
+// ---------- messages ----------
+async function fetchRoleMessages(roleId) {
+  const { data, error } = await supabaseClient
+    .from("messages")
+    .select("*")
+    .eq("role_id", roleId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed loading messages: ${error.message}`);
+  return data || [];
+}
+
+async function sendMessage(session, roleId, candidateId, body) {
+  const { error } = await supabaseClient.from("messages").insert([
+    {
+      role_id: roleId,
+      candidate_id: candidateId || null,
+      sender_id: session.user.id,
+      sender_type: "company",
+      body,
+    },
+  ]);
+  if (error) throw new Error(`Failed sending message: ${error.message}`);
 }
 
 // ---------- small UI bits ----------
@@ -195,6 +215,7 @@ function IconButton({ children, onClick, tone = "default", disabled }) {
         color: t.fg,
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.5 : 1,
+        fontFamily: "inherit",
       }}
     >
       {children}
@@ -204,6 +225,134 @@ function IconButton({ children, onClick, tone = "default", disabled }) {
 
 function money(v) {
   return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
+}
+
+function formatWhen(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// ---------- message composer + feed ----------
+function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSend = async () => {
+    if (!text.trim()) return;
+    setSending(true);
+    setError("");
+    try {
+      await onSend(text.trim());
+      setText("");
+    } catch (err) {
+      setError(err.message || "Failed to send.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          minHeight: 60,
+          padding: 10,
+          fontSize: 13,
+          borderRadius: 8,
+          border: "1px solid #ddd",
+          outline: "none",
+          resize: "vertical",
+          fontFamily: "inherit",
+          marginBottom: 8,
+        }}
+      />
+      {error && <div style={{ color: "#b42318", fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      <IconButton tone="primary" onClick={handleSend} disabled={sending || !text.trim()}>
+        {sending ? "Sending…" : buttonLabel}
+      </IconButton>
+    </div>
+  );
+}
+
+function MessageFeed({ messages, emptyLabel }) {
+  if (messages.length === 0) {
+    return <div style={{ fontSize: 12.5, color: "#c4c4c4", fontStyle: "italic", marginBottom: 10 }}>{emptyLabel}</div>;
+  }
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {messages.map((m) => (
+        <div key={m.id} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0ee" }}>
+          <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
+          <div style={{ fontSize: 11, color: "#c4c4c4", marginTop: 3 }}>
+            {m.sender_type === "company" ? "You" : "Recruiter"} · {formatWhen(m.created_at)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BenchUpdatesPanel({ messages, onSend }) {
+  const [open, setOpen] = useState(false);
+  const broadcasts = messages.filter((m) => !m.candidate_id);
+
+  return (
+    <div style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", padding: 18, marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: open ? 14 : 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Updates to the bench</div>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          style={{ background: "none", border: "none", fontSize: 12.5, color: "#111", textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
+        >
+          {open ? "Hide" : broadcasts.length > 0 ? `View (${broadcasts.length})` : "Send an update"}
+        </button>
+      </div>
+      {open && (
+        <div>
+          <div style={{ fontSize: 12, color: "#8a8a8a", marginBottom: 10 }}>
+            Visible to every recruiter with a candidate currently in this role's pipeline.
+          </div>
+          <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
+          <MessageComposer
+            onSend={onSend}
+            placeholder="e.g. We're prioritizing candidates with security clearance this week."
+            buttonLabel="Send to bench"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CandidateFeedbackThread({ messages, onSend }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{ background: "none", border: "none", fontSize: 12, color: "#111", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+      >
+        {open ? "Hide feedback" : messages.length > 0 ? `Feedback (${messages.length})` : "Add feedback"}
+      </button>
+      {open && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #f0f0ee", paddingTop: 10 }}>
+          <MessageFeed messages={messages} emptyLabel="No feedback sent yet." />
+          <MessageComposer
+            onSend={onSend}
+            placeholder="e.g. Not enough hands-on infra experience for this role."
+            buttonLabel="Send to recruiter"
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------- Roles overview ----------
@@ -290,7 +439,7 @@ function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
 }
 
 // ---------- Candidate card ----------
-function CandidateCard({ candidate, recruiterEmail, nextStageName, onAdvance, onReject, onPlace, onRestore }) {
+function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onReject, onPlace, onRestore, feedbackMessages, onSendFeedback }) {
   const rejected = isRejected(candidate);
   const placed = isPlaced(candidate);
 
@@ -307,8 +456,8 @@ function CandidateCard({ candidate, recruiterEmail, nextStageName, onAdvance, on
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
-          {recruiterEmail && (
-            <div style={{ fontSize: 12, color: "#9a9a9a", marginTop: 2 }}>via {recruiterEmail}</div>
+          {recruiterLabel && (
+            <div style={{ fontSize: 12, color: "#9a9a9a", marginTop: 2 }}>via {recruiterLabel}</div>
           )}
         </div>
         {rejected && <Badge tone="rejected">Rejected</Badge>}
@@ -347,14 +496,14 @@ function CandidateCard({ candidate, recruiterEmail, nextStageName, onAdvance, on
         )}
         {!isActive(candidate) && <IconButton onClick={onRestore}>Restore to active</IconButton>}
       </div>
+
+      <CandidateFeedbackThread messages={feedbackMessages} onSend={onSendFeedback} />
     </div>
   );
 }
 
 // ---------- Pipeline view ----------
-function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh }) {
-  const [busyId, setBusyId] = useState(null);
-
+function PipelineView({ role, stages, candidates, recruiterMap, messages, session, onBack, refresh, refreshMessages }) {
   const stageById = useMemo(() => {
     const m = {};
     stages.forEach((s) => (m[s.id] = s));
@@ -382,6 +531,32 @@ function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh 
 
   const columns = stages.length > 0 ? stages : [{ id: "__none__", name: "Unassigned", position: 0 }];
 
+  const messagesForCandidate = (candidateId) => messages.filter((m) => m.candidate_id === candidateId);
+
+  const renderCandidateCard = (c) => (
+    <CandidateCard
+      key={c.id}
+      candidate={c}
+      recruiterLabel={recruiterMap[c.recruiter_id]}
+      nextStageName={nextStage(c) ? nextStage(c).name : null}
+      onAdvance={() =>
+        act(async () => {
+          const ns = nextStage(c);
+          if (ns) await updateCandidate(c.id, { stage_id: ns.id });
+          else await updateCandidate(c.id, { status: "placed" });
+        })
+      }
+      onPlace={() => act(async () => updateCandidate(c.id, { status: "placed" }))}
+      onReject={() => act(async () => updateCandidate(c.id, { status: "rejected" }))}
+      onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
+      feedbackMessages={messagesForCandidate(c.id)}
+      onSendFeedback={async (body) => {
+        await sendMessage(session, role.id, c.id, body);
+        await refreshMessages();
+      }}
+    />
+  );
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -396,6 +571,14 @@ function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh 
           {money(role.min_salary)} – {money(role.max_salary)}
         </div>
       </div>
+
+      <BenchUpdatesPanel
+        messages={messages}
+        onSend={async (body) => {
+          await sendMessage(session, role.id, null, body);
+          await refreshMessages();
+        }}
+      />
 
       <div
         style={{
@@ -415,24 +598,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh 
               <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
                 {stage.name} ({inStage.length})
               </div>
-              {inStage.map((c) => (
-                <CandidateCard
-                  key={c.id}
-                  candidate={c}
-                  recruiterEmail={recruiterMap[c.recruiter_id]}
-                  nextStageName={nextStage(c) ? nextStage(c).name : null}
-                  onAdvance={() =>
-                    act(async () => {
-                      const ns = nextStage(c);
-                      if (ns) await updateCandidate(c.id, { stage_id: ns.id });
-                      else await updateCandidate(c.id, { status: "placed" });
-                    })
-                  }
-                  onPlace={() => act(async () => updateCandidate(c.id, { status: "placed" }))}
-                  onReject={() => act(async () => updateCandidate(c.id, { status: "rejected" }))}
-                  onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
-                />
-              ))}
+              {inStage.map(renderCandidateCard)}
               {inStage.length === 0 && (
                 <div style={{ fontSize: 12.5, color: "#c4c4c4", fontStyle: "italic" }}>No candidates</div>
               )}
@@ -447,27 +613,13 @@ function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh 
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
               Rejected ({rejected.length})
             </div>
-            {rejected.map((c) => (
-              <CandidateCard
-                key={c.id}
-                candidate={c}
-                recruiterEmail={recruiterMap[c.recruiter_id]}
-                onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
-              />
-            ))}
+            {rejected.map(renderCandidateCard)}
           </div>
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9a9a9a", textTransform: "uppercase", marginBottom: 10 }}>
               Placed ({placed.length})
             </div>
-            {placed.map((c) => (
-              <CandidateCard
-                key={c.id}
-                candidate={c}
-                recruiterEmail={recruiterMap[c.recruiter_id]}
-                onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
-              />
-            ))}
+            {placed.map(renderCandidateCard)}
           </div>
         </div>
       )}
@@ -477,7 +629,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, onBack, refresh 
 
 // ---------- main ----------
 function ClientDashboard() {
-  const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
+  const [session, setSession] = useState(undefined);
   const [company, setCompany] = useState(null);
   const [roles, setRoles] = useState([]);
   const [counts, setCounts] = useState({});
@@ -485,6 +637,7 @@ function ClientDashboard() {
   const [stages, setStages] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [recruiterMap, setRecruiterMap] = useState({});
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -519,9 +672,10 @@ function ClientDashboard() {
     setSelectedRoleId(roleId);
     setLoading(true);
     try {
-      const [s, c] = await Promise.all([fetchStages(roleId), fetchCandidates(roleId)]);
+      const [s, c, m] = await Promise.all([fetchStages(roleId), fetchCandidates(roleId), fetchRoleMessages(roleId)]);
       setStages(s);
       setCandidates(c);
+      setMessages(m);
       const recruiterIds = [...new Set(c.map((x) => x.recruiter_id).filter(Boolean))];
       setRecruiterMap(await fetchRecruiters(recruiterIds));
     } catch (err) {
@@ -536,6 +690,11 @@ function ClientDashboard() {
     const c = await fetchCandidates(selectedRoleId);
     setCandidates(c);
     await refreshRoleCounts(roles.map((r) => r.id));
+  };
+
+  const refreshMessages = async () => {
+    if (!selectedRoleId) return;
+    setMessages(await fetchRoleMessages(selectedRoleId));
   };
 
   const toggleRoleStatus = async (role, status) => {
@@ -582,8 +741,11 @@ function ClientDashboard() {
             stages={stages}
             candidates={candidates}
             recruiterMap={recruiterMap}
+            messages={messages}
+            session={session}
             onBack={() => setSelectedRoleId(null)}
             refresh={refreshPipeline}
+            refreshMessages={refreshMessages}
           />
         )}
       </div>
