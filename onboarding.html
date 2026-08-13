@@ -173,6 +173,52 @@ const initialData = {
   questions: [""],
 };
 
+// ---------- top bar (present in every state) ----------
+function TopBar() {
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = LOGIN_URL;
+  };
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "16px 24px",
+        borderBottom: "1px solid #eee",
+      }}
+    >
+      <a
+        href={LOGIN_URL}
+        style={{
+          fontFamily: "'Newsreader', Georgia, serif",
+          fontSize: 18,
+          fontWeight: 500,
+          color: "#111",
+          textDecoration: "none",
+        }}
+      >
+        MakePlacement
+      </a>
+      <button
+        onClick={handleLogout}
+        style={{
+          background: "none",
+          border: "none",
+          fontSize: 13.5,
+          color: "#111",
+          textDecoration: "underline",
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        Log out
+      </button>
+    </div>
+  );
+}
+
 // ---------- shared field chrome ----------
 function Field({ label, required, hint, children }) {
   return (
@@ -687,6 +733,7 @@ function EmployerOnboarding() {
   if (session === undefined) {
     return (
       <div style={pageWrap}>
+        <TopBar />
         <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#777" }}>
           Checking your account…
         </div>
@@ -697,6 +744,7 @@ function EmployerOnboarding() {
   if (submitted) {
     return (
       <div style={pageWrap}>
+        <TopBar />
         <div style={{ maxWidth: 520, margin: "120px auto", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Role submitted</div>
           <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
@@ -726,6 +774,7 @@ function EmployerOnboarding() {
 
   return (
     <div style={pageWrap}>
+      <TopBar />
       <div style={{ height: 3, background: "#eee" }}>
         <div
           style={{
