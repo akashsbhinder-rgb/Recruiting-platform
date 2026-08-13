@@ -79,10 +79,20 @@
     margin: 0 0 8px;
   }
 
+  h2 {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+    margin: 36px 0 6px;
+  }
+  h2:first-of-type { margin-top: 0; }
+
   .subtitle {
     font-size: 14.5px;
     color: #777;
-    margin-bottom: 36px;
+    margin-bottom: 20px;
   }
 
   .field-label {
@@ -90,6 +100,10 @@
     font-weight: 600;
     color: #17171a;
     margin-bottom: 10px;
+  }
+  .field-label .opt {
+    font-weight: 400;
+    color: #9a9a9a;
   }
 
   input[type="text"] {
@@ -106,6 +120,51 @@
     margin-bottom: 26px;
   }
   input[type="text"]:focus { border-color: #4b6bfb; }
+
+  .tag-input-box {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 26px;
+    cursor: text;
+  }
+  .tag-input-box:focus-within { border-color: #4b6bfb; }
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f0f0f2;
+    color: #17171a;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 6px 8px 6px 12px;
+    border-radius: 999px;
+  }
+  .tag-pill button {
+    background: none;
+    border: none;
+    color: #9a9a9a;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .tag-input-box input {
+    flex: 1;
+    min-width: 120px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    padding: 6px 4px;
+  }
 
   .option {
     display: block;
@@ -227,17 +286,6 @@
     const LOGIN_URL = 'index.html';
     const RECRUITER_DASHBOARD_URL = 'recruiter_dashboard.html';
 
-    const INDUSTRIES = [
-      'Technology / Software',
-      'Finance',
-      'Healthcare',
-      'Sales',
-      'Legal',
-      'Consumer / Retail',
-      'Manufacturing / Industrial',
-      'Other',
-    ];
-
     const YEARS_OPTIONS = ['Less than 1 year', '1–3 years', '3–5 years', '5–10 years', '10+ years'];
 
     const state = {
@@ -245,19 +293,20 @@
       recruiterId: null,
       stepIndex: 0,
       data: {
-        fullName: '',
         firmName: '',
+        yearsExperience: null,
         industries: [],
+        phone: '',
         executivePlacements: null,   // true | false
-        yearsExperience: null,       // string
         contingencyExperience: null, // true | false
         contingencyAck: false,
       },
+      industryDraft: '',
       submitting: false,
       submitError: '',
     };
 
-    const steps = ['profile', 'industries', 'executive', 'years', 'contingency', 'review'];
+    const steps = ['firm', 'experience', 'review'];
 
     function render() {
       const root = document.getElementById('root');
@@ -281,11 +330,11 @@
 
     function canProceed(stepKey) {
       const d = state.data;
-      if (stepKey === 'profile') return d.fullName.trim().length > 0 && d.firmName.trim().length > 0;
-      if (stepKey === 'industries') return d.industries.length > 0;
-      if (stepKey === 'executive') return d.executivePlacements !== null;
-      if (stepKey === 'years') return d.yearsExperience !== null;
-      if (stepKey === 'contingency') {
+      if (stepKey === 'firm') {
+        return d.firmName.trim().length > 0 && d.yearsExperience !== null && d.industries.length > 0;
+      }
+      if (stepKey === 'experience') {
+        if (d.executivePlacements === null) return false;
         if (d.contingencyExperience === null) return false;
         if (d.contingencyExperience === false) return d.contingencyAck === true;
         return true;
@@ -293,17 +342,11 @@
       return true;
     }
 
-    function buildProfileStep() {
+    // ---- Page 1: firm name, years experience, industries (tag input), phone ----
+    function buildFirmStep() {
       const wrap = el('div');
-      wrap.appendChild(el('h1', {}, 'Tell us about you'));
-      wrap.appendChild(el('div', { className: 'subtitle' }, 'This is how clients will identify you and your firm.'));
-
-      wrap.appendChild(el('div', { className: 'field-label' }, 'Your full name'));
-      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Jamie Rivera' });
-      nameInput.value = state.data.fullName;
-      nameInput.addEventListener('input', (e) => { state.data.fullName = e.target.value; });
-      nameInput.addEventListener('blur', render);
-      wrap.appendChild(nameInput);
+      wrap.appendChild(el('h1', {}, 'Tell us about your firm'));
+      wrap.appendChild(el('div', { className: 'subtitle' }, "This is how clients will get to know you before your first submission."));
 
       wrap.appendChild(el('div', { className: 'field-label' }, 'Search firm name'));
       const firmInput = el('input', { type: 'text', placeholder: 'e.g. Rivera Search Partners' });
@@ -312,73 +355,122 @@
       firmInput.addEventListener('blur', render);
       wrap.appendChild(firmInput);
 
-      return wrap;
-    }
-
-    function buildOptionStep({ title, subtitle, options, selected, onSelect, multi }) {
-      const wrap = el('div');
-      wrap.appendChild(el('h1', {}, title));
-      if (subtitle) wrap.appendChild(el('div', { className: 'subtitle' }, subtitle));
-      options.forEach((opt) => {
-        const isSelected = multi ? selected.includes(opt) : selected === opt;
-        const btn = el(
-          'button',
-          {
-            className: 'option' + (isSelected ? ' selected' : ''),
-            type: 'button',
-            onClick: () => onSelect(opt),
-          },
-          opt
+      wrap.appendChild(el('h2', {}, 'How long have you been recruiting?'));
+      YEARS_OPTIONS.forEach((opt) => {
+        wrap.appendChild(
+          el(
+            'button',
+            {
+              className: 'option' + (state.data.yearsExperience === opt ? ' selected' : ''),
+              type: 'button',
+              onClick: () => {
+                state.data.yearsExperience = opt;
+                render();
+              },
+            },
+            opt
+          )
         );
-        wrap.appendChild(btn);
       });
+
+      wrap.appendChild(el('h2', {}, 'What industries do you recruit in the most?'));
+      wrap.appendChild(el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, 'Type an industry and press Enter to add it.'));
+      wrap.appendChild(buildIndustryTagInput());
+
+      wrap.appendChild(
+        el('div', { className: 'field-label' }, [
+          'Phone number ',
+          el('span', { className: 'opt' }, '(optional)'),
+        ])
+      );
+      const phoneInput = el('input', { type: 'text', placeholder: 'e.g. (555) 123-4567' });
+      phoneInput.value = state.data.phone;
+      phoneInput.addEventListener('input', (e) => { state.data.phone = e.target.value; });
+      wrap.appendChild(phoneInput);
+
       return wrap;
     }
 
-    function buildIndustriesStep() {
-      return buildOptionStep({
-        title: 'What industries have you placed in?',
-        subtitle: 'Select all that apply — this is how we match you to relevant roles.',
-        options: INDUSTRIES,
-        selected: state.data.industries,
-        multi: true,
-        onSelect: (opt) => {
-          const set = new Set(state.data.industries);
-          set.has(opt) ? set.delete(opt) : set.add(opt);
-          state.data.industries = [...set];
-          render();
-        },
+    function buildIndustryTagInput() {
+      const box = el('div', { className: 'tag-input-box' });
+
+      state.data.industries.forEach((industry, i) => {
+        const pill = el('span', { className: 'tag-pill' }, [
+          document.createTextNode(industry),
+          el(
+            'button',
+            {
+              type: 'button',
+              onClick: (e) => {
+                e.stopPropagation();
+                state.data.industries = state.data.industries.filter((_, idx) => idx !== i);
+                render();
+              },
+            },
+            '✕'
+          ),
+        ]);
+        box.appendChild(pill);
       });
+
+      const input = el('input', { type: 'text', placeholder: state.data.industries.length ? '' : 'e.g. Manufacturing' });
+      input.value = state.industryDraft;
+      input.addEventListener('input', (e) => { state.industryDraft = e.target.value; });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = state.industryDraft.trim();
+          if (val && !state.data.industries.includes(val)) {
+            state.data.industries = [...state.data.industries, val];
+          }
+          state.industryDraft = '';
+          render();
+        } else if (e.key === 'Backspace' && !state.industryDraft && state.data.industries.length) {
+          state.data.industries = state.data.industries.slice(0, -1);
+          render();
+        }
+      });
+      box.appendChild(input);
+      box.addEventListener('click', () => input.focus());
+
+      return box;
     }
 
-    function buildExecutiveStep() {
-      return buildOptionStep({
-        title: 'Have you made executive placements before?',
-        subtitle: 'Executive searches (VP+) run differently than individual-contributor hiring.',
-        options: ['Yes', 'No'],
-        selected: state.data.executivePlacements === null ? null : state.data.executivePlacements ? 'Yes' : 'No',
-        onSelect: (opt) => {
-          state.data.executivePlacements = opt === 'Yes';
-          render();
-        },
-      });
-    }
-
-    function buildYearsStep() {
-      return buildOptionStep({
-        title: 'How many years of recruiting experience do you have?',
-        options: YEARS_OPTIONS,
-        selected: state.data.yearsExperience,
-        onSelect: (opt) => {
-          state.data.yearsExperience = opt;
-          render();
-        },
-      });
-    }
-
-    function buildContingencyStep() {
+    // ---- Page 2: executive placements + contingency (same page) ----
+    function buildExperienceStep() {
       const wrap = el('div');
-      wrap.appendChild(el('h1', {}, 'Have you done contingency hiring before?'));
+      wrap.appendChild(el('h1', {}, 'Your placement experience'));
+
+      wrap.appendChild(el('h2', {}, 'Have you made an executive placement before?'));
+      wrap.appendChild(
+        el(
+          'div',
+          { className: 'subtitle' },
+          'This helps us match you to the right level of roles on the platform.'
+        )
+      );
+      ['Yes', 'No'].forEach((opt) => {
+        const isSelected =
+          state.data.executivePlacements === null
+            ? false
+            : (state.data.executivePlacements ? 'Yes' : 'No') === opt;
+        wrap.appendChild(
+          el(
+            'button',
+            {
+              className: 'option' + (isSelected ? ' selected' : ''),
+              type: 'button',
+              onClick: () => {
+                state.data.executivePlacements = opt === 'Yes';
+                render();
+              },
+            },
+            opt
+          )
+        );
+      });
+
+      wrap.appendChild(el('h2', {}, 'Have you done contingency hiring before?'));
       wrap.appendChild(
         el(
           'div',
@@ -443,11 +535,11 @@
       wrap.appendChild(el('div', { className: 'subtitle' }, 'This is what clients see when deciding whether to approve you for a role.'));
 
       const rows = [
-        ['Name', d.fullName],
         ['Search firm', d.firmName],
-        ['Industries', d.industries.join(', ')],
-        ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
         ['Years of experience', d.yearsExperience],
+        ['Industries', d.industries.join(', ')],
+        ['Phone', d.phone || '—'],
+        ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
         ['Contingency hiring', d.contingencyExperience ? 'Has done it before' : 'New to contingency, acknowledged terms'],
       ];
 
@@ -469,11 +561,8 @@
 
     function buildStepContent() {
       const key = steps[state.stepIndex];
-      if (key === 'profile') return buildProfileStep();
-      if (key === 'industries') return buildIndustriesStep();
-      if (key === 'executive') return buildExecutiveStep();
-      if (key === 'years') return buildYearsStep();
-      if (key === 'contingency') return buildContingencyStep();
+      if (key === 'firm') return buildFirmStep();
+      if (key === 'experience') return buildExperienceStep();
       return buildReviewStep();
     }
 
@@ -486,9 +575,10 @@
           .from('recruiters')
           .update({
             firm_name: state.data.firmName,
-            industries: state.data.industries,
-            executive_placements: state.data.executivePlacements,
             years_experience: state.data.yearsExperience,
+            industries: state.data.industries,
+            phone: state.data.phone || null,
+            executive_placements: state.data.executivePlacements,
             contingency_experience: state.data.contingencyExperience,
             contingency_ack: state.data.contingencyAck,
           })
