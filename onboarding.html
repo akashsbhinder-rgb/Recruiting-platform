@@ -58,9 +58,8 @@ const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const LOGIN_URL = "index.html";
 
-// Every insert below runs through supabaseClient, which automatically
-// attaches the signed-in user's access token -- this is what makes the
-// RLS policies (auth.uid() = ...) recognize who's writing the data.
+const REQUIRED_FIRST_STAGE = "Recruiter screen";
+
 async function sbInsertRows(table, rows, opts = {}) {
   if (Array.isArray(rows) && rows.length === 0) return [];
   const query = supabaseClient.from(table).insert(rows);
@@ -69,8 +68,6 @@ async function sbInsertRows(table, rows, opts = {}) {
   return opts.returnRep ? data : null;
 }
 
-// Looks up the company row already created on the landing page for this
-// signed-in user, instead of creating a new one on every role posted.
 async function getMyCompany(session) {
   const { data, error } = await supabaseClient
     .from("companies")
@@ -81,8 +78,6 @@ async function getMyCompany(session) {
   if (error) throw new Error(`Failed loading company: ${error.message}`);
   if (data) return data;
 
-  // Fallback: shouldn't normally happen since the landing page creates
-  // this row, but keeps onboarding usable if someone lands here directly.
   const [created] = await sbInsertRows(
     "companies",
     [{ auth_user_id: session.user.id, name: "Unnamed company" }],
@@ -94,8 +89,6 @@ async function getMyCompany(session) {
 async function submitRoleToSupabase(data, session) {
   const company = await getMyCompany(session);
 
-  // Company name is collected here on page one, not at signup -- keep
-  // the companies row in sync with whatever they entered.
   const { error: nameErr } = await supabaseClient
     .from("companies")
     .update({ name: data.companyName })
@@ -149,7 +142,6 @@ async function submitRoleToSupabase(data, session) {
   return { company, role };
 }
 
-// ---------- helpers ----------
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 function emptyCandidate() {
@@ -162,7 +154,7 @@ const initialData = {
   roleDescription: "",
   minSalary: "",
   maxSalary: "",
-  stages: ["Recruiter screen"],
+  stages: [REQUIRED_FIRST_STAGE],
   hiringGoals: "",
   idealQualities: ["", "", ""],
   idealCandidates: [emptyCandidate()],
@@ -173,7 +165,6 @@ const initialData = {
   questions: [""],
 };
 
-// ---------- top bar (present in every state) ----------
 function TopBar() {
   const handleLogout = async () => {
     await supabaseClient.auth.signOut();
@@ -219,7 +210,6 @@ function TopBar() {
   );
 }
 
-// ---------- shared field chrome ----------
 function Field({ label, required, hint, children }) {
   return (
     <div style={{ marginBottom: 34 }}>
@@ -430,7 +420,7 @@ function CandidateList({ items, onChange }) {
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <TextInput
               value={c.note}
-              placeholder="Why is this person a fit? e.g. Analyst at a top VC fund"
+              placeholder="Why is this person a fit? e.g. VP Ops at a comparable manufacturer"
               onChange={(e) => set(i, { note: e.target.value })}
             />
             {items.length > 1 && (
@@ -453,29 +443,79 @@ function CandidateList({ items, onChange }) {
   );
 }
 
+function LockedFirstStage() {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", position: "relative" }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <span style={{ fontSize: 13, color: "#aaa", width: 18 }}>1</span>
+      <div
+        style={{
+          ...inputStyle,
+          background: "#f7f7f5",
+          color: "#555",
+          cursor: "default",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {REQUIRED_FIRST_STAGE}
+      </div>
+      {hover && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 26,
+            marginTop: 6,
+            background: "#111",
+            color: "#fff",
+            fontSize: 12.5,
+            padding: "8px 12px",
+            borderRadius: 8,
+            maxWidth: 320,
+            lineHeight: 1.4,
+            zIndex: 10,
+          }}
+        >
+          Recruiters already run the first round to help filter candidates before they reach you.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StageList({ items, onChange }) {
+  const rest = items.slice(1);
+  const setRest = (nextRest) => onChange([REQUIRED_FIRST_STAGE, ...nextRest]);
+
   const set = (i, v) => {
-    const next = [...items];
+    const next = [...rest];
     next[i] = v;
-    onChange(next);
+    setRest(next);
   };
-  const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
-  const add = () => onChange([...items, ""]);
+  const remove = (i) => setRest(rest.filter((_, idx) => idx !== i));
+  const add = () => setRest([...rest, ""]);
   const move = (i, dir) => {
     const j = i + dir;
-    if (j < 0 || j >= items.length) return;
-    const next = [...items];
+    if (j < 0 || j >= rest.length) return;
+    const next = [...rest];
     [next[i], next[j]] = [next[j], next[i]];
-    onChange(next);
+    setRest(next);
   };
+
   return (
     <div>
-      {items.map((val, i) => (
+      <LockedFirstStage />
+      {rest.map((val, i) => (
         <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "#aaa", width: 18 }}>{i + 1}</span>
+          <span style={{ fontSize: 13, color: "#aaa", width: 18 }}>{i + 2}</span>
           <TextInput
             value={val}
-            placeholder="e.g. Onsite interview"
+            placeholder="e.g. Final panel with plant leadership"
             onChange={(e) => set(i, e.target.value)}
           />
           <button type="button" onClick={() => move(i, -1)} style={removeBtnStyle}>
@@ -484,11 +524,9 @@ function StageList({ items, onChange }) {
           <button type="button" onClick={() => move(i, 1)} style={removeBtnStyle}>
             ↓
           </button>
-          {items.length > 1 && (
-            <button type="button" onClick={() => remove(i)} style={removeBtnStyle}>
-              ✕
-            </button>
-          )}
+          <button type="button" onClick={() => remove(i)} style={removeBtnStyle}>
+            ✕
+          </button>
         </div>
       ))}
       <button type="button" onClick={add} style={addBtnStyle}>
@@ -502,7 +540,7 @@ const steps = [
   { key: "basics", title: "Let's start with the basics", subtitle: "Basic information about this role we need to get started" },
   { key: "candidates", title: "Ideal candidates", subtitle: "Tell recruiters exactly who to look for" },
   { key: "recruiter", title: "Helping the recruiter", subtitle: "Give recruiters the context they need to represent this role well" },
-  { key: "questions", title: "Candidate questions", subtitle: "Optional — key things you want recruiters to ask before submitting a candidate" },
+  { key: "questions", title: "Candidate questions", subtitle: "Key things you want recruiters to ask before submitting a candidate" },
   { key: "review", title: "Recruiter dashboard preview", subtitle: "This is what recruiters will see for this role" },
 ];
 
@@ -525,7 +563,7 @@ function validateStep(key, data) {
         isFilled(data.roleDescription) &&
         isFilled(data.minSalary) &&
         isFilled(data.maxSalary) &&
-        anyFilled(data.stages)
+        countFilled(data.stages.slice(1)) >= 1
       );
     case "candidates":
       return countFilled(data.idealQualities) >= 3;
@@ -679,15 +717,12 @@ function Review({ data, goTo }) {
   );
 }
 
-// ---------- main ----------
 function EmployerOnboarding() {
   const [data, setData] = useState(initialData);
   const [stepIndex, setStepIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
-  // undefined = still checking, null = no session, object = signed in
   const [session, setSession] = useState(undefined);
 
   useEffect(() => {
@@ -798,14 +833,14 @@ function EmployerOnboarding() {
             <Field label="Company name" required>
               <TextInput
                 value={data.companyName}
-                placeholder="e.g. Acme Inc."
+                placeholder="e.g. Acme Manufacturing"
                 onChange={(e) => set({ companyName: e.target.value })}
               />
             </Field>
             <Field label="Role name" required>
               <TextInput
                 value={data.roleName}
-                placeholder="e.g. Software Engineer"
+                placeholder="e.g. VP of Operations"
                 onChange={(e) => set({ roleName: e.target.value })}
               />
             </Field>
@@ -824,21 +859,21 @@ function EmployerOnboarding() {
             </Field>
             <div style={{ display: "flex", gap: 16 }}>
               <div style={{ flex: 1 }}>
-                <Field label="Minimum salary" required hint="Must be a number, eg. 90000">
+                <Field label="Minimum salary" required hint="Must be a number, eg. 180000">
                   <TextInput
                     type="number"
                     value={data.minSalary}
-                    placeholder="Ex. 90000"
+                    placeholder="Ex. 180000"
                     onChange={(e) => set({ minSalary: e.target.value })}
                   />
                 </Field>
               </div>
               <div style={{ flex: 1 }}>
-                <Field label="Maximum salary" required hint="Must be a number, eg. 130000">
+                <Field label="Maximum salary" required hint="Must be a number, eg. 230000">
                   <TextInput
                     type="number"
                     value={data.maxSalary}
-                    placeholder="Ex. 130000"
+                    placeholder="Ex. 230000"
                     onChange={(e) => set({ maxSalary: e.target.value })}
                   />
                 </Field>
@@ -847,7 +882,7 @@ function EmployerOnboarding() {
             <Field
               label="Interview stages"
               required
-              hint="List your stages in order, e.g. Recruiter screen, Hiring manager call, Onsite, Offer"
+              hint="Recruiter screen is always your first stage. List the rest in order, e.g. Hiring manager call, Onsite, Offer"
             >
               <StageList items={data.stages} onChange={(v) => set({ stages: v })} />
             </Field>
@@ -871,7 +906,7 @@ function EmployerOnboarding() {
               <StringList
                 items={data.idealQualities}
                 onChange={(v) => set({ idealQualities: v })}
-                placeholder="e.g. 3-4 years experience at a top startup"
+                placeholder="e.g. 8+ years running plant operations"
                 addLabel="Add quality"
               />
             </Field>
@@ -897,7 +932,7 @@ function EmployerOnboarding() {
             <Field
               label="Recruiting advice"
               required
-              hint="How to pitch this role, archetypes to look for, how often you'll be in touch"
+              hint="Anything else you might think is important for the recruiter to know — how to pitch this role, archetypes to look for, how often you'll be in touch"
             >
               <TextArea
                 value={data.recruitingAdvice}
@@ -927,11 +962,11 @@ function EmployerOnboarding() {
         )}
 
         {step.key === "questions" && (
-          <Field label="Candidate questions" hint="Optional — keep it under 5 questions to streamline recruiter outreach">
+          <Field label="Candidate questions" hint="Keep it under 5 questions to streamline recruiter outreach">
             <StringList
               items={data.questions}
               onChange={(v) => set({ questions: v })}
-              placeholder="e.g. Do you have security clearance?"
+              placeholder="e.g. Do you have experience with union environments?"
               addLabel="Add question"
             />
           </Field>
