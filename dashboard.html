@@ -63,6 +63,9 @@
   </div>
 
   <script>
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) window.location.reload();
+    });
     window.addEventListener("error", function (event) {
       const box = document.getElementById("boot-error");
       const detail = document.getElementById("boot-error-detail");
@@ -501,11 +504,21 @@ async function fetchCandidatesForRoles(roleIds) {
 
 async function fetchRecruiters(recruiterIds) {
   if (recruiterIds.length === 0) return {};
-  const { data, error } = await supabaseClient.from("recruiters").select("id, firm_name").in("id", recruiterIds);
+  const { data, error } = await supabaseClient.from("recruiters").select("id, firm_name, contact_first_name, last_name, email").in("id", recruiterIds);
   if (error) throw new Error(`Failed loading recruiters: ${error.message}`);
   const map = {};
-  (data || []).forEach((r) => (map[r.id] = r.firm_name));
+  (data || []).forEach((r) => (map[r.id] = r));
   return map;
+}
+
+function recruiterName(profile) {
+  if (!profile) return "";
+  return [profile.contact_first_name, profile.last_name].filter(Boolean).join(" ");
+}
+
+function recruiterLabel(profile) {
+  if (!profile) return "Recruiter";
+  return profile.firm_name || recruiterName(profile) || "Recruiter";
 }
 
 async function fetchRoleApplications(roleIds) {
@@ -516,7 +529,7 @@ async function fetchRoleApplications(roleIds) {
 }
 
 async function updateCandidate(id, patch) {
-  const { error } = await supabaseClient.from("candidates").update(patch).eq("id", id);
+  const { error } = await supabaseClient.from("candidates").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) throw new Error(`Failed updating candidate: ${error.message}`);
 }
 
@@ -623,8 +636,9 @@ const NAV_ITEMS = [
   { key: "messages", label: "Messages", live: true },
 ];
 
-function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint }) {
+function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint, notifications, notifUnread, onMarkNotifsRead, onSelectNotification }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const initial = (companyName || "C").trim().charAt(0).toUpperCase();
 
   return (
@@ -667,9 +681,36 @@ function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint }) {
             <input disabled placeholder="Search" style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: T.faint, flex: 1, fontFamily: T.sans }} />
           </div>
 
-          <button title="Notifications \u2014 coming soon" style={{ background: "none", border: "none", color: T.sub, cursor: "default", padding: 6, display: "flex" }}>
-            <Icon name="bell" size={18} />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => { const next = !notifOpen; setNotifOpen(next); if (next) onMarkNotifsRead(); }}
+              style={{ position: "relative", background: "none", border: "none", color: T.sub, cursor: "pointer", padding: 6, display: "flex" }}
+            >
+              <Icon name="bell" size={18} />
+              {notifUnread > 0 && (
+                <span style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, borderRadius: "50%", background: T.red }} />
+              )}
+            </button>
+            {notifOpen && (
+              <div style={{ position: "absolute", right: 0, top: 40, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", width: 320, maxHeight: 400, overflowY: "auto", zIndex: 20 }}>
+                <div style={{ padding: "10px 14px", fontSize: 12.5, fontWeight: 700, color: T.sub, borderBottom: `1px solid ${T.lineSoft}` }}>Notifications</div>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: "16px 14px", fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>Nothing yet.</div>
+                ) : (
+                  notifications.map((n) => (
+                    <button
+                      key={n.key}
+                      onClick={() => { setNotifOpen(false); onSelectNotification(n); }}
+                      style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: "none", border: "none", borderBottom: `1px solid ${T.lineSoft}`, cursor: "pointer", fontFamily: T.sans }}
+                    >
+                      <div style={{ fontSize: 12.5, color: T.ink }}>{n.text}</div>
+                      <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{formatWhen(n.time)}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           <div style={{ position: "relative" }}>
             <button onClick={() => setMenuOpen((o) => !o)} style={{ width: 32, height: 32, borderRadius: "50%", background: T.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -772,13 +813,17 @@ function RecruitersPanel({ recruiters, onMessage }) {
       <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Message one directly, outside of a specific candidate's thread.</div>
       {recruiters.map((r) => (
         <div key={r.id} style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10, marginTop: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{r.firm_name || "Recruiter"}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{recruiterLabel(r)}</div>
+              {recruiterName(r) && r.firm_name && <div style={{ fontSize: 12, color: T.sub, marginTop: 1 }}>{recruiterName(r)}</div>}
+              {r.email && <div style={{ fontSize: 12, color: T.sub, marginTop: 1 }}>{r.email}</div>}
+            </div>
             <GhostButton onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? "Close" : "Message"}</GhostButton>
           </div>
           {openId === r.id && (
             <div style={{ marginTop: 10 }}>
-              <MessageComposer onSend={(body) => onMessage(r.id, body)} placeholder={`Message to ${r.firm_name || "this recruiter"}`} buttonLabel="Send" />
+              <MessageComposer onSend={(body) => onMessage(r.id, body)} placeholder={`Message to ${recruiterLabel(r)}`} buttonLabel="Send" />
             </div>
           )}
         </div>
@@ -878,7 +923,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, roleRecruiters, 
     <CandidateCard
       key={c.id}
       candidate={c}
-      recruiterLabel={recruiterMap[c.recruiter_id]}
+      recruiterLabel={recruiterLabel(recruiterMap[c.recruiter_id])}
       nextStageName={nextStage(c) ? nextStage(c).name : null}
       onAdvance={() => act(async () => {
         const ns = nextStage(c);
@@ -1085,7 +1130,7 @@ function EmployerInbox({ session, roles }) {
       const c = candidateById[t.candidate_id];
       return c ? `${c.name} \u2014 feedback` : "Candidate feedback";
     }
-    if (t.recruiter_id) return `Direct: ${recruiterMap[t.recruiter_id] || "Recruiter"}`;
+    if (t.recruiter_id) return `Direct: ${recruiterLabel(recruiterMap[t.recruiter_id])}`;
     return "Bench update";
   };
 
@@ -1119,7 +1164,7 @@ function EmployerInbox({ session, roles }) {
             <select value={newMsgRecruiter} onChange={(e) => setNewMsgRecruiter(e.target.value)} disabled={!newMsgRole} style={{ ...inputStyle, marginBottom: 0, width: 220 }}>
               <option value="">{"Select a recruiter\u2026"}</option>
               {applicationsForRole(newMsgRole).map((a) => (
-                <option key={a.recruiter_id} value={a.recruiter_id}>{recruiterMap[a.recruiter_id] || "Recruiter"}</option>
+                <option key={a.recruiter_id} value={a.recruiter_id}>{recruiterLabel(recruiterMap[a.recruiter_id])}</option>
               ))}
             </select>
           </div>
@@ -1180,6 +1225,8 @@ function ClientDashboard() {
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [confirmFilledRole, setConfirmFilledRole] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifSeenAt, setNotifSeenAt] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1217,6 +1264,87 @@ function ClientDashboard() {
     setCounts(await fetchRoleCandidateCounts(r.map((x) => x.id)));
   };
 
+  // Notifications: new recruiter messages + new candidate submissions
+  // across all of this company's roles. "Seen" is tracked per-browser via
+  // localStorage -- there's no server-side read receipt, so this resets
+  // if the employer switches devices or clears storage.
+  const notifKey = company ? `mp_notif_seen_company_${company.id}` : null;
+
+  useEffect(() => {
+    if (!notifKey) return;
+    const stored = localStorage.getItem(notifKey);
+    if (stored) {
+      setNotifSeenAt(stored);
+    } else {
+      const now = new Date().toISOString();
+      localStorage.setItem(notifKey, now);
+      setNotifSeenAt(now);
+    }
+  }, [notifKey]);
+
+  const loadNotifications = async (roleList) => {
+    const ids = roleList.map((r) => r.id);
+    if (ids.length === 0) { setNotifItems([]); return; }
+    try {
+      const [msgs, cands] = await Promise.all([fetchAllMessages(ids), fetchCandidatesForRoles(ids)]);
+      const roleById = {};
+      roleList.forEach((r) => (roleById[r.id] = r));
+      const items = [
+        ...msgs.filter((m) => m.sender_type === "recruiter").map((m) => ({
+          key: `msg-${m.id}`,
+          time: m.created_at,
+          text: `New message on ${roleById[m.role_id] ? roleById[m.role_id].name : "a role"}`,
+          roleId: m.role_id,
+          kind: "message",
+        })),
+        ...cands.map((c) => ({
+          key: `cand-${c.id}`,
+          time: c.created_at,
+          text: `${c.name} submitted for ${roleById[c.role_id] ? roleById[c.role_id].name : "a role"}`,
+          roleId: c.role_id,
+          kind: "candidate",
+        })),
+      ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 25);
+      setNotifItems(items);
+    } catch (err) {
+      // best-effort -- a notification hiccup shouldn't block the dashboard
+    }
+  };
+
+  useEffect(() => {
+    if (roles.length === 0) return;
+    loadNotifications(roles);
+    const ids = roles.map((r) => r.id);
+    const channel = supabaseClient
+      .channel("employer-notifications")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        if (payload.new && ids.includes(payload.new.role_id) && payload.new.sender_type === "recruiter") loadNotifications(roles);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "candidates" }, (payload) => {
+        if (payload.new && ids.includes(payload.new.role_id)) loadNotifications(roles);
+      })
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [roles.length]);
+
+  const markNotifsRead = () => {
+    if (!notifKey) return;
+    const now = new Date().toISOString();
+    localStorage.setItem(notifKey, now);
+    setNotifSeenAt(now);
+  };
+
+  const notifUnreadCount = notifSeenAt ? notifItems.filter((n) => new Date(n.time) > new Date(notifSeenAt)).length : notifItems.length;
+
+  const goToNotification = async (item) => {
+    if (item.kind === "message") { setTab("messages"); return; }
+    setTab("roles");
+    setFocusedId(item.roleId);
+    setExpanded(true);
+    await loadPipeline(item.roleId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const refreshRoleCounts = async () => setCounts(await fetchRoleCandidateCounts(roles.map((r) => r.id)));
 
   const loadPipeline = async (roleId) => {
@@ -1229,7 +1357,7 @@ function ClientDashboard() {
       const recruiterIds = [...new Set([...c.map((x) => x.recruiter_id), ...apps.map((a) => a.recruiter_id)].filter(Boolean))];
       const map = await fetchRecruiters(recruiterIds);
       setRecruiterMap(map);
-      setRoleRecruiters(recruiterIds.map((id) => ({ id, firm_name: map[id] })));
+      setRoleRecruiters(recruiterIds.map((id) => ({ id, ...map[id] })));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1293,7 +1421,17 @@ function ClientDashboard() {
 
   return (
     <div style={pageWrap}>
-      <TopNav tab={tab} onTabChange={setTab} companyName={company.name} onLogout={handleLogout} unreadHint={0} />
+      <TopNav
+        tab={tab}
+        onTabChange={setTab}
+        companyName={company.name}
+        onLogout={handleLogout}
+        unreadHint={0}
+        notifications={notifItems}
+        notifUnread={notifUnreadCount}
+        onMarkNotifsRead={markNotifsRead}
+        onSelectNotification={goToNotification}
+      />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 100px" }}>
 
         {tab === "roles" && (
