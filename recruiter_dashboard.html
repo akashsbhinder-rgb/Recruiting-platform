@@ -1,809 +1,708 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard | MakePlacement</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recruiter onboarding | MakePlacement</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
 
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.10/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #ffffff;
+    color: #17171a;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
 
-  <style>
-    html, body, #root { margin: 0; min-height: 100%; }
-    body { background: #fafaf9; }
-    #boot-error {
-      display: none;
-      max-width: 760px;
-      margin: 48px auto;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #111;
-    }
-    #boot-error pre {
-      white-space: pre-wrap;
-      background: #f7f7f7;
-      padding: 12px;
-      border-radius: 8px;
-      overflow: auto;
-    }
-  </style>
+  .wrap {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #eee;
+  }
+  .topbar a {
+    font-family: 'Newsreader', serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: #17171a;
+    text-decoration: none;
+  }
+  .topbar button {
+    background: none;
+    border: none;
+    font-size: 13.5px;
+    color: #17171a;
+    text-decoration: underline;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .progress {
+    height: 3px;
+    background: #eee;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #17171a;
+    transition: width .2s;
+  }
+
+  .content {
+    flex: 1;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 56px 24px 40px;
+  }
+
+  .step-count {
+    font-size: 13px;
+    color: #9a9a9a;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 32px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+  }
+
+  h2 {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+    margin: 36px 0 6px;
+  }
+  h2:first-of-type { margin-top: 0; }
+
+  .subtitle {
+    font-size: 14.5px;
+    color: #777;
+    margin-bottom: 20px;
+  }
+
+  .field-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #17171a;
+    margin-bottom: 10px;
+  }
+  .field-label .opt {
+    font-weight: 400;
+    color: #9a9a9a;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    outline: none;
+    color: #17171a;
+    background: #fff;
+    font-family: inherit;
+    margin-bottom: 26px;
+  }
+  input[type="text"]:focus { border-color: #4b6bfb; }
+
+  .tag-input-box {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 26px;
+    cursor: text;
+  }
+  .tag-input-box:focus-within { border-color: #4b6bfb; }
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f0f0f2;
+    color: #17171a;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 6px 8px 6px 12px;
+    border-radius: 999px;
+  }
+  .tag-pill button {
+    background: none;
+    border: none;
+    color: #9a9a9a;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .tag-input-box input {
+    flex: 1;
+    min-width: 120px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    padding: 6px 4px;
+  }
+
+  .option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #fff;
+    border: 1px solid #e4e4e8;
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-family: inherit;
+    font-size: 15px;
+    color: #17171a;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .option:hover { border-color: #b8b8c0; }
+  .option.selected {
+    border-color: #17171a;
+    background: #17171a;
+    color: #fff;
+  }
+
+  .helper {
+    font-size: 13px;
+    color: #9a9a9a;
+    margin: -6px 0 20px;
+  }
+
+  .explainer {
+    background: #f7f7f5;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 22px 24px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 24px;
+  }
+  .explainer b { font-weight: 600; }
+
+  .ack {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .ack input { margin-top: 3px; }
+
+  .review-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14.5px;
+  }
+  .review-row:last-child { border-bottom: none; }
+  .review-label { color: #9a9a9a; }
+  .review-value { color: #17171a; font-weight: 500; text-align: right; max-width: 60%; }
+
+  footer {
+    border-top: 1px solid #eee;
+    padding: 18px 24px;
+  }
+  .footer-inner {
+    max-width: 640px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .back-link {
+    font-size: 14px;
+    color: #17171a;
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  .back-link.disabled { color: #ccc; cursor: default; text-decoration: none; }
+
+  .next-btn {
+    background: #17171a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .next-btn:disabled {
+    background: #e5e5e5;
+    color: #aaa;
+    cursor: default;
+  }
+
+  .center-msg {
+    max-width: 480px;
+    margin: 160px auto;
+    text-align: center;
+    color: #777;
+    font-size: 14.5px;
+  }
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <div id="boot-error">
-    <h2>We couldn't load the dashboard.</h2>
-    <p>Please refresh the page. If the problem continues, contact support.</p>
-    <pre id="boot-error-detail"></pre>
+  <div id="root">
+    <div class="center-msg">Loading…</div>
   </div>
 
   <script>
-    window.addEventListener("error", function (event) {
-      const box = document.getElementById("boot-error");
-      const detail = document.getElementById("boot-error-detail");
-      if (box && detail && !document.getElementById("root").hasChildNodes()) {
-        box.style.display = "block";
-        detail.textContent = event.error ? (event.error.stack || event.error.message) : event.message;
-      }
-    });
-  </script>
+    const SUPABASE_URL = 'https://cnayvrtkxgqpejhrlakm.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const LOGIN_URL = 'index.html';
+    const RECRUITER_DASHBOARD_URL = 'recruiter_dashboard.html';
 
-  <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo } = React;
+    const YEARS_OPTIONS = ['Less than 1 year', '1–3 years', '3–5 years', '5–10 years', '10+ years'];
 
-// ---------- Supabase config ----------
-const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const LOGIN_URL = "index.html";
-const RECRUITER_ONBOARDING_URL = "recruiter_onboarding.html";
+    const state = {
+      session: null,
+      recruiterId: null,
+      stepIndex: 0,
+      data: {
+        firmName: '',
+        yearsExperience: null,
+        industries: [],
+        phone: '',
+        executivePlacements: null,   // true | false
+        contingencyExperience: null, // true | false
+        contingencyAck: false,
+      },
+      industryDraft: '',
+      submitting: false,
+      submitError: '',
+    };
 
-const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
-const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
-const isActive = (c) => !isRejected(c) && !isPlaced(c);
+    const steps = ['firm', 'experience', 'review'];
 
-function money(v) {
-  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
-}
-
-// ---------- data ----------
-async function getMyRecruiter(session) {
-  const { data, error } = await supabaseClient
-    .from("recruiters")
-    .select("*")
-    .eq("auth_user_id", session.user.id)
-    .maybeSingle();
-  if (error) throw new Error(`Failed loading your profile: ${error.message}`);
-  return data;
-}
-
-async function fetchLiveRoles() {
-  const { data, error } = await supabaseClient
-    .from("roles")
-    .select("*")
-    .eq("status", "live")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`Failed loading roles: ${error.message}`);
-  return data || [];
-}
-
-async function fetchCompaniesByIds(companyIds) {
-  if (companyIds.length === 0) return {};
-  const { data, error } = await supabaseClient.from("companies").select("id, name").in("id", companyIds);
-  if (error) throw new Error(`Failed loading companies: ${error.message}`);
-  const map = {};
-  (data || []).forEach((c) => (map[c.id] = c.name));
-  return map;
-}
-
-async function fetchRoleDetail(roleId) {
-  const [stagesRes, qualitiesRes, traitsRes, referencesRes] = await Promise.all([
-    supabaseClient.from("role_stages").select("*").eq("role_id", roleId).order("position"),
-    supabaseClient.from("role_qualities").select("*").eq("role_id", roleId),
-    supabaseClient.from("role_traits_to_avoid").select("*").eq("role_id", roleId),
-    supabaseClient.from("role_candidate_references").select("*").eq("role_id", roleId),
-  ]);
-  if (stagesRes.error) throw new Error(`Failed loading stages: ${stagesRes.error.message}`);
-  if (qualitiesRes.error) throw new Error(`Failed loading qualities: ${qualitiesRes.error.message}`);
-  if (traitsRes.error) throw new Error(`Failed loading traits: ${traitsRes.error.message}`);
-  if (referencesRes.error) throw new Error(`Failed loading references: ${referencesRes.error.message}`);
-  return {
-    stages: stagesRes.data || [],
-    qualities: qualitiesRes.data || [],
-    traits: traitsRes.data || [],
-    references: referencesRes.data || [],
-  };
-}
-
-async function submitCandidate(roleId, recruiterId, firstStageId, form) {
-  const { error } = await supabaseClient.from("candidates").insert([
-    {
-      role_id: roleId,
-      recruiter_id: recruiterId,
-      name: form.name,
-      email: form.email || null,
-      linkedin: form.linkedin || null,
-      resume_url: form.resumeUrl || null,
-      notes: form.notes || null,
-      stage_id: firstStageId || null,
-      status: "active",
-    },
-  ]);
-  if (error) throw new Error(`Failed submitting candidate: ${error.message}`);
-}
-
-async function fetchMyCandidates(recruiterId) {
-  const { data, error } = await supabaseClient
-    .from("candidates")
-    .select("*")
-    .eq("recruiter_id", recruiterId)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`Failed loading your candidates: ${error.message}`);
-  return data || [];
-}
-
-// RLS on messages restricts what comes back automatically: broadcasts
-// (candidate_id null) for any role this recruiter has a candidate in,
-// plus feedback (candidate_id set) only on this recruiter's own candidates.
-async function fetchMessagesForRoles(roleIds) {
-  if (roleIds.length === 0) return [];
-  const { data, error } = await supabaseClient
-    .from("messages")
-    .select("*")
-    .in("role_id", roleIds)
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(`Failed loading messages: ${error.message}`);
-  return data || [];
-}
-
-function formatWhen(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-// ---------- message feed (read-only -- recruiters don't send yet) ----------
-function MessageFeed({ messages, emptyLabel }) {
-  if (messages.length === 0) {
-    return <div style={{ fontSize: 12, color: "#c4c4c4", fontStyle: "italic" }}>{emptyLabel}</div>;
-  }
-  return (
-    <div>
-      {messages.map((m) => (
-        <div key={m.id} style={{ padding: "7px 0", borderBottom: "1px solid #f0f0ee" }}>
-          <div style={{ fontSize: 12.5, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontSize: 10.5, color: "#c4c4c4", marginTop: 2 }}>{formatWhen(m.created_at)}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RoleUpdatesBanner({ messages }) {
-  const [open, setOpen] = useState(messages.length > 0 && messages.length <= 2);
-  if (messages.length === 0) return null;
-  return (
-    <div style={{ border: "1px solid #eee", borderRadius: 10, background: "#fafaf9", padding: "10px 14px", marginBottom: 10 }}>
-      <div
-        onClick={() => setOpen((o) => !o)}
-        style={{ fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", justifyContent: "space-between" }}
-      >
-        <span>Updates from company ({messages.length})</span>
-        <span style={{ color: "#8a8a8a" }}>{open ? "Hide" : "Show"}</span>
-      </div>
-      {open && (
-        <div style={{ marginTop: 8 }}>
-          <MessageFeed messages={messages} emptyLabel="" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------- small UI bits ----------
-function Badge({ children, tone = "default" }) {
-  const tones = {
-    default: { bg: "#f0f0ee", fg: "#555" },
-    live: { bg: "#e6f4ea", fg: "#1e7a37" },
-    rejected: { bg: "#fbe9e9", fg: "#b42318" },
-    placed: { bg: "#e6f4ea", fg: "#1e7a37" },
-  };
-  const t = tones[tone] || tones.default;
-  return (
-    <span
-      style={{
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "3px 9px",
-        borderRadius: 999,
-        background: t.bg,
-        color: t.fg,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function PrimaryButton(props) {
-  return (
-    <button
-      {...props}
-      style={{
-        background: "#111",
-        color: "#fff",
-        border: "none",
-        borderRadius: 8,
-        padding: "10px 18px",
-        fontSize: 13.5,
-        fontWeight: 600,
-        cursor: props.disabled ? "default" : "pointer",
-        opacity: props.disabled ? 0.6 : 1,
-        fontFamily: "inherit",
-        ...props.style,
-      }}
-    />
-  );
-}
-
-const inputStyle = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "10px 13px",
-  fontSize: 13.5,
-  borderRadius: 8,
-  border: "1px solid #ddd",
-  outline: "none",
-  color: "#111",
-  background: "#fff",
-  fontFamily: "inherit",
-  marginBottom: 12,
-};
-
-// ---------- top bar ----------
-function TopBar({ recruiterLabel, tab, onTabChange, onLogout }) {
-  return (
-    <div style={{ borderBottom: "1px solid #eee", background: "#fff" }}>
-      <div
-        style={{
-          maxWidth: 1040,
-          margin: "0 auto",
-          padding: "16px 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-          <a
-            href={LOGIN_URL}
-            style={{ fontFamily: "'Newsreader', Georgia, serif", fontSize: 19, fontWeight: 500, color: "#111", textDecoration: "none" }}
-          >
-            MakePlacement
-          </a>
-          <div style={{ display: "flex", gap: 4 }}>
-            {[
-              ["browse", "Browse roles"],
-              ["mine", "My candidates"],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => onTabChange(key)}
-                style={{
-                  fontSize: 13.5,
-                  fontWeight: 600,
-                  padding: "7px 13px",
-                  borderRadius: 7,
-                  border: "none",
-                  background: tab === key ? "#111" : "transparent",
-                  color: tab === key ? "#fff" : "#555",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          {recruiterLabel && <div style={{ fontSize: 13, color: "#8a8a8a" }}>{recruiterLabel}</div>}
-          <a href={RECRUITER_ONBOARDING_URL} style={{ fontSize: 13, color: "#111", textDecoration: "underline" }}>
-            Edit profile
-          </a>
-          <button
-            onClick={onLogout}
-            style={{ background: "none", border: "none", fontSize: 13, color: "#111", textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
-          >
-            Log out
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------- submit candidate form ----------
-function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
-  const [form, setForm] = useState({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
-
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name.trim()) {
-      setError("Candidate name is required.");
-      return;
+    function render() {
+      const root = document.getElementById('root');
+      root.innerHTML = '';
+      root.appendChild(buildPage());
     }
-    setSubmitting(true);
-    setError("");
-    try {
-      await submitCandidate(role.id, recruiterId, firstStageId, form);
-      setDone(true);
-      onSubmitted && onSubmitted();
-    } catch (err) {
-      setError(err.message || "Something went wrong submitting this candidate.");
-    } finally {
-      setSubmitting(false);
+
+    function el(tag, props = {}, children = []) {
+      const node = document.createElement(tag);
+      Object.entries(props).forEach(([k, v]) => {
+        if (k === 'className') node.className = v;
+        else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (v !== undefined && v !== null) node.setAttribute(k, v);
+      });
+      (Array.isArray(children) ? children : [children]).forEach((c) => {
+        if (c === null || c === undefined) return;
+        node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      });
+      return node;
     }
-  };
 
-  if (done) {
-    return (
-      <div style={{ padding: "16px 0" }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Candidate submitted</div>
-        <div style={{ fontSize: 13, color: "#8a8a8a", marginBottom: 12 }}>
-          {form.name} has been added to {role.name}'s pipeline.
-        </div>
-        <button
-          onClick={() => {
-            setForm({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
-            setDone(false);
-          }}
-          style={{ fontSize: 13, color: "#111", background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0 }}
-        >
-          Submit another candidate
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Submit a candidate</div>
-      <input
-        style={inputStyle}
-        placeholder="Candidate full name *"
-        value={form.name}
-        onChange={(e) => set({ name: e.target.value })}
-      />
-      <input
-        style={inputStyle}
-        placeholder="Email (optional)"
-        value={form.email}
-        onChange={(e) => set({ email: e.target.value })}
-      />
-      <input
-        style={inputStyle}
-        placeholder="linkedin.com/in/... (optional)"
-        value={form.linkedin}
-        onChange={(e) => set({ linkedin: e.target.value })}
-      />
-      <input
-        style={inputStyle}
-        placeholder="Resume link (optional)"
-        value={form.resumeUrl}
-        onChange={(e) => set({ resumeUrl: e.target.value })}
-      />
-      <textarea
-        style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
-        placeholder="Why this candidate is a fit (optional)"
-        value={form.notes}
-        onChange={(e) => set({ notes: e.target.value })}
-      />
-      {error && <div style={{ color: "#b42318", fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
-      <PrimaryButton type="submit" disabled={submitting}>
-        {submitting ? "Submitting…" : "Submit candidate"}
-      </PrimaryButton>
-    </form>
-  );
-}
-
-// ---------- role card + detail ----------
-function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId }) {
-  return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", marginBottom: 14, overflow: "hidden" }}>
-      <div
-        onClick={onToggle}
-        style={{ padding: 20, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ fontSize: 17, fontWeight: 600 }}>{role.name}</div>
-            <Badge tone="live">live</Badge>
-          </div>
-          <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>
-            {companyName || "Company"} · {money(role.min_salary)} – {money(role.max_salary)}
-            {role.hiring_goals ? ` · Target: ${role.hiring_goals}` : ""}
-          </div>
-        </div>
-        <div style={{ fontSize: 13, color: "#111", textDecoration: "underline" }}>
-          {expanded ? "Hide details" : "View details"}
-        </div>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: "0 20px 24px", borderTop: "1px solid #f0f0ee" }}>
-          {!detail ? (
-            <div style={{ fontSize: 13, color: "#8a8a8a", paddingTop: 16 }}>Loading role details…</div>
-          ) : (
-            <div style={{ paddingTop: 16, display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28 }}>
-              <div>
-                {role.description && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>About this role</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
-                  </div>
-                )}
-
-                {detail.qualities.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Ideal candidate qualities</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>
-                      {detail.qualities.map((q) => (
-                        <li key={q.id}>{q.quality}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {detail.traits.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Traits to avoid</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>
-                      {detail.traits.map((t) => (
-                        <li key={t.id}>{t.trait}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {detail.references.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Profiles referenced</div>
-                    {detail.references.map((r) => (
-                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 6 }}>
-                        <div style={{ color: "#333" }}>{r.note}</div>
-                        {r.linkedin && <div style={{ color: "#8a8a8a", fontSize: 12.5 }}>{r.linkedin}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {role.recruiting_advice && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Recruiting advice</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div>
-                  </div>
-                )}
-
-                {role.hm_intro && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Hiring manager intro</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.hm_intro}</div>
-                  </div>
-                )}
-
-                {detail.stages.length > 0 && (
-                  <div>
-                    <div style={sectionLabelStyle}>Interview stages</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {detail.stages.map((s, i) => (
-                        <span key={s.id} style={{ fontSize: 12.5, padding: "5px 10px", borderRadius: 20, border: "1px solid #ddd" }}>
-                          {i + 1}. {s.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ background: "#fafaf9", border: "1px solid #eee", borderRadius: 10, padding: 16, alignSelf: "start" }}>
-                <SubmitCandidateForm
-                  role={role}
-                  firstStageId={detail.stages[0] ? detail.stages[0].id : null}
-                  recruiterId={recruiterId}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const sectionLabelStyle = {
-  fontSize: 11.5,
-  fontWeight: 700,
-  letterSpacing: 0.3,
-  color: "#9a9a9a",
-  textTransform: "uppercase",
-  marginBottom: 6,
-};
-
-// ---------- browse roles ----------
-function BrowseRoles({ recruiterId }) {
-  const [roles, setRoles] = useState([]);
-  const [companyMap, setCompanyMap] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
-  const [detailCache, setDetailCache] = useState({});
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetchLiveRoles();
-        setRoles(r);
-        setCompanyMap(await fetchCompaniesByIds([...new Set(r.map((x) => x.company_id))]));
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+    function canProceed(stepKey) {
+      const d = state.data;
+      if (stepKey === 'firm') {
+        return d.firmName.trim().length > 0 && d.yearsExperience !== null && d.industries.length > 0;
       }
-    })();
-  }, []);
-
-  const toggle = async (roleId) => {
-    if (expandedId === roleId) {
-      setExpandedId(null);
-      return;
+      if (stepKey === 'experience') {
+        if (d.executivePlacements === null) return false;
+        if (d.contingencyExperience === null) return false;
+        if (d.contingencyExperience === false) return d.contingencyAck === true;
+        return true;
+      }
+      return true;
     }
-    setExpandedId(roleId);
-    if (!detailCache[roleId]) {
-      try {
-        const d = await fetchRoleDetail(roleId);
-        setDetailCache((prev) => ({ ...prev, [roleId]: d }));
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-  };
 
-  if (loading) return <div style={{ color: "#8a8a8a", fontSize: 14 }}>Loading roles…</div>;
-  if (error) return <div style={{ color: "#b42318", fontSize: 14 }}>{error}</div>;
-  if (roles.length === 0) {
-    return <div style={{ color: "#8a8a8a", fontSize: 14 }}>No live roles right now. Check back soon.</div>;
-  }
+    // ---- Page 1: firm name, years experience, industries (tag input), phone ----
+    function buildFirmStep() {
+      const wrap = el('div');
+      wrap.appendChild(el('h1', {}, 'Tell us about your firm'));
+      wrap.appendChild(el('div', { className: 'subtitle' }, "This is how clients will get to know you before your first submission."));
 
-  return (
-    <div>
-      <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>Live roles</div>
-      {roles.map((role) => (
-        <RoleCard
-          key={role.id}
-          role={role}
-          companyName={companyMap[role.company_id]}
-          expanded={expandedId === role.id}
-          onToggle={() => toggle(role.id)}
-          detail={detailCache[role.id]}
-          recruiterId={recruiterId}
-        />
-      ))}
-    </div>
-  );
-}
+      wrap.appendChild(el('div', { className: 'field-label' }, 'Search firm name'));
+      const firmInput = el('input', { type: 'text', placeholder: 'e.g. Rivera Search Partners' });
+      firmInput.value = state.data.firmName;
+      firmInput.addEventListener('input', (e) => { state.data.firmName = e.target.value; });
+      firmInput.addEventListener('blur', render);
+      wrap.appendChild(firmInput);
 
-// ---------- my candidates ----------
-function MyCandidateCard({ candidate, stageName, feedbackMessages }) {
-  return (
-    <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 16, background: "#fff", marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{candidate.name}</div>
-        {isRejected(candidate) && <Badge tone="rejected">Rejected</Badge>}
-        {isPlaced(candidate) && <Badge tone="placed">Placed</Badge>}
-        {isActive(candidate) && <Badge>{stageName || "In review"}</Badge>}
-      </div>
-      <div style={{ fontSize: 11.5, color: "#c4c4c4", marginTop: 8 }}>
-        Submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-      </div>
-      {feedbackMessages.length > 0 && (
-        <div style={{ marginTop: 10, borderTop: "1px solid #f0f0ee", paddingTop: 10 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8a8a8a", marginBottom: 6 }}>
-            Feedback from company ({feedbackMessages.length})
-          </div>
-          <MessageFeed messages={feedbackMessages} emptyLabel="" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RoleGroup({ role, companyName, candidates, stageMap, messages }) {
-  const roleMessages = messages.filter((m) => m.role_id === role.id);
-  const broadcasts = roleMessages.filter((m) => !m.candidate_id);
-  const messagesForCandidate = (candidateId) => roleMessages.filter((m) => m.candidate_id === candidateId);
-
-  return (
-    <div style={{ marginBottom: 28 }}>
-      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>{role.name}</div>
-      <div style={{ fontSize: 12.5, color: "#8a8a8a", marginBottom: 10 }}>{companyName}</div>
-      <RoleUpdatesBanner messages={broadcasts} />
-      {candidates.map((c) => (
-        <MyCandidateCard
-          key={c.id}
-          candidate={c}
-          stageName={stageMap[c.stage_id]}
-          feedbackMessages={messagesForCandidate(c.id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function MyCandidates({ recruiterId }) {
-  const [candidates, setCandidates] = useState([]);
-  const [roleMap, setRoleMap] = useState({});
-  const [companyMap, setCompanyMap] = useState({});
-  const [stageMap, setStageMap] = useState({});
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const cands = await fetchMyCandidates(recruiterId);
-        setCandidates(cands);
-
-        const roleIds = [...new Set(cands.map((c) => c.role_id))];
-        const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
-
-        const [rolesRes, stagesRes, msgs] = await Promise.all([
-          roleIds.length
-            ? supabaseClient.from("roles").select("id, name, company_id").in("id", roleIds)
-            : Promise.resolve({ data: [] }),
-          stageIds.length
-            ? supabaseClient.from("role_stages").select("id, name").in("id", stageIds)
-            : Promise.resolve({ data: [] }),
-          fetchMessagesForRoles(roleIds),
-        ]);
-
-        const rMap = {};
-        (rolesRes.data || []).forEach((r) => (rMap[r.id] = r));
-        setRoleMap(rMap);
-
-        const sMap = {};
-        (stagesRes.data || []).forEach((s) => (sMap[s.id] = s.name));
-        setStageMap(sMap);
-
-        setMessages(msgs);
-
-        const companyIds = [...new Set(Object.values(rMap).map((r) => r.company_id))];
-        setCompanyMap(await fetchCompaniesByIds(companyIds));
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [recruiterId]);
-
-  if (loading) return <div style={{ color: "#8a8a8a", fontSize: 14 }}>Loading your candidates…</div>;
-  if (error) return <div style={{ color: "#b42318", fontSize: 14 }}>{error}</div>;
-  if (candidates.length === 0) {
-    return <div style={{ color: "#8a8a8a", fontSize: 14 }}>You haven't submitted any candidates yet. Browse live roles to get started.</div>;
-  }
-
-  const candidatesByRole = {};
-  candidates.forEach((c) => {
-    (candidatesByRole[c.role_id] = candidatesByRole[c.role_id] || []).push(c);
-  });
-
-  return (
-    <div>
-      <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>My candidates</div>
-      {Object.keys(candidatesByRole).map((roleId) => {
-        const role = roleMap[roleId];
-        if (!role) return null;
-        return (
-          <RoleGroup
-            key={roleId}
-            role={role}
-            companyName={companyMap[role.company_id]}
-            candidates={candidatesByRole[roleId]}
-            stageMap={stageMap}
-            messages={messages}
-          />
+      wrap.appendChild(el('h2', {}, 'How long have you been recruiting?'));
+      YEARS_OPTIONS.forEach((opt) => {
+        wrap.appendChild(
+          el(
+            'button',
+            {
+              className: 'option' + (state.data.yearsExperience === opt ? ' selected' : ''),
+              type: 'button',
+              onClick: () => {
+                state.data.yearsExperience = opt;
+                render();
+              },
+            },
+            opt
+          )
         );
-      })}
-    </div>
-  );
-}
+      });
 
-// ---------- main ----------
-function RecruiterDashboard() {
-  const [session, setSession] = useState(undefined);
-  const [recruiter, setRecruiter] = useState(null);
-  const [tab, setTab] = useState("browse");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+      wrap.appendChild(el('h2', {}, 'What industries do you recruit in the most?'));
+      wrap.appendChild(el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, 'Type an industry and press Enter to add it.'));
+      wrap.appendChild(buildIndustryTagInput());
 
-  useEffect(() => {
-    supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+      wrap.appendChild(
+        el('div', { className: 'field-label' }, [
+          'Phone number ',
+          el('span', { className: 'opt' }, '(optional)'),
+        ])
+      );
+      const phoneInput = el('input', { type: 'text', placeholder: 'e.g. (555) 123-4567' });
+      phoneInput.value = state.data.phone;
+      phoneInput.addEventListener('input', (e) => { state.data.phone = e.target.value; });
+      wrap.appendChild(phoneInput);
+
+      return wrap;
+    }
+
+    function buildIndustryTagInput() {
+      const box = el('div', { className: 'tag-input-box' });
+
+      state.data.industries.forEach((industry, i) => {
+        const pill = el('span', { className: 'tag-pill' }, [
+          document.createTextNode(industry),
+          el(
+            'button',
+            {
+              type: 'button',
+              onClick: (e) => {
+                e.stopPropagation();
+                state.data.industries = state.data.industries.filter((_, idx) => idx !== i);
+                render();
+              },
+            },
+            '✕'
+          ),
+        ]);
+        box.appendChild(pill);
+      });
+
+      const input = el('input', { type: 'text', placeholder: state.data.industries.length ? '' : 'e.g. Manufacturing' });
+      input.value = state.industryDraft;
+      input.addEventListener('input', (e) => { state.industryDraft = e.target.value; });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = state.industryDraft.trim();
+          if (val && !state.data.industries.includes(val)) {
+            state.data.industries = [...state.data.industries, val];
+          }
+          state.industryDraft = '';
+          render();
+        } else if (e.key === 'Backspace' && !state.industryDraft && state.data.industries.length) {
+          state.data.industries = state.data.industries.slice(0, -1);
+          render();
+        }
+      });
+      box.appendChild(input);
+      box.addEventListener('click', () => input.focus());
+
+      return box;
+    }
+
+    // ---- Page 2: executive placements + contingency (same page) ----
+    function buildExperienceStep() {
+      const wrap = el('div');
+      wrap.appendChild(el('h1', {}, 'Your placement experience'));
+
+      wrap.appendChild(el('h2', {}, 'Have you made an executive placement before?'));
+      wrap.appendChild(
+        el(
+          'div',
+          { className: 'subtitle' },
+          'This helps us match you to the right level of roles on the platform.'
+        )
+      );
+      ['Yes', 'No'].forEach((opt) => {
+        const isSelected =
+          state.data.executivePlacements === null
+            ? false
+            : (state.data.executivePlacements ? 'Yes' : 'No') === opt;
+        wrap.appendChild(
+          el(
+            'button',
+            {
+              className: 'option' + (isSelected ? ' selected' : ''),
+              type: 'button',
+              onClick: () => {
+                state.data.executivePlacements = opt === 'Yes';
+                render();
+              },
+            },
+            opt
+          )
+        );
+      });
+
+      wrap.appendChild(el('h2', {}, 'Have you done contingency hiring before?'));
+      wrap.appendChild(
+        el(
+          'div',
+          { className: 'subtitle' },
+          'Contingency means you\u2019re only paid if your candidate gets placed \u2014 no retainer, no guarantee.'
+        )
+      );
+
+      ['Yes', 'No'].forEach((opt) => {
+        const isSelected =
+          state.data.contingencyExperience === null
+            ? false
+            : (state.data.contingencyExperience ? 'Yes' : 'No') === opt;
+        wrap.appendChild(
+          el(
+            'button',
+            {
+              className: 'option' + (isSelected ? ' selected' : ''),
+              type: 'button',
+              onClick: () => {
+                state.data.contingencyExperience = opt === 'Yes';
+                if (opt === 'Yes') state.data.contingencyAck = true;
+                else state.data.contingencyAck = false;
+                render();
+              },
+            },
+            opt
+          )
+        );
+      });
+
+      if (state.data.contingencyExperience === false) {
+        const explainer = el('div', { className: 'explainer' }, [
+          el('div', {}, [
+            el('b', {}, 'How contingency hiring works here: '),
+            document.createTextNode(
+              'You only get paid when a candidate you submit is hired for the role. There\u2019s no upfront fee and no guaranteed payout \u2014 you\u2019re competing with other recruiters working the same role, and only a successful placement earns a fee.'
+            ),
+          ]),
+        ]);
+        wrap.appendChild(explainer);
+
+        const ackLabel = el('label', { className: 'ack' });
+        const checkbox = el('input', { type: 'checkbox' });
+        checkbox.checked = state.data.contingencyAck;
+        checkbox.addEventListener('change', (e) => {
+          state.data.contingencyAck = e.target.checked;
+          render();
+        });
+        ackLabel.appendChild(checkbox);
+        ackLabel.appendChild(document.createTextNode('I understand and want to proceed on this basis.'));
+        wrap.appendChild(ackLabel);
+      }
+
+      return wrap;
+    }
+
+    function buildReviewStep() {
+      const d = state.data;
+      const wrap = el('div');
+      wrap.appendChild(el('h1', {}, 'Review your profile'));
+      wrap.appendChild(el('div', { className: 'subtitle' }, 'This is what clients see when deciding whether to approve you for a role.'));
+
+      const rows = [
+        ['Search firm', d.firmName],
+        ['Years of experience', d.yearsExperience],
+        ['Industries', d.industries.join(', ')],
+        ['Phone', d.phone || '—'],
+        ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
+        ['Contingency hiring', d.contingencyExperience ? 'Has done it before' : 'New to contingency, acknowledged terms'],
+      ];
+
+      rows.forEach(([label, value]) => {
+        wrap.appendChild(
+          el('div', { className: 'review-row' }, [
+            el('div', { className: 'review-label' }, label),
+            el('div', { className: 'review-value' }, value),
+          ])
+        );
+      });
+
+      if (state.submitError) {
+        wrap.appendChild(el('div', { style: 'color:#b42318;font-size:13px;margin-top:16px;' }, state.submitError));
+      }
+
+      return wrap;
+    }
+
+    function buildStepContent() {
+      const key = steps[state.stepIndex];
+      if (key === 'firm') return buildFirmStep();
+      if (key === 'experience') return buildExperienceStep();
+      return buildReviewStep();
+    }
+
+    async function submitProfile() {
+      state.submitting = true;
+      state.submitError = '';
+      render();
+      try {
+        const { error } = await supabaseClient
+          .from('recruiters')
+          .update({
+            firm_name: state.data.firmName,
+            years_experience: state.data.yearsExperience,
+            industries: state.data.industries,
+            phone: state.data.phone || null,
+            executive_placements: state.data.executivePlacements,
+            contingency_experience: state.data.contingencyExperience,
+            contingency_ack: state.data.contingencyAck,
+          })
+          .eq('id', state.recruiterId);
+        if (error) throw new Error(error.message);
+        window.location.href = RECRUITER_DASHBOARD_URL;
+      } catch (err) {
+        state.submitting = false;
+        state.submitError = err.message || 'Something went wrong saving your profile.';
+        render();
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      window.location.href = LOGIN_URL;
+    }
+
+    function buildTopBar() {
+      const bar = el('div', { className: 'topbar' });
+      bar.appendChild(el('a', { href: LOGIN_URL }, 'MakePlacement'));
+      bar.appendChild(el('button', { type: 'button', onClick: handleLogout }, 'Log out'));
+      return bar;
+    }
+
+    function buildPage() {
+      const key = steps[state.stepIndex];
+      const isLast = state.stepIndex === steps.length - 1;
+      const pct = ((state.stepIndex + 1) / steps.length) * 100;
+
+      const wrap = el('div', { className: 'wrap' });
+
+      wrap.appendChild(buildTopBar());
+
+      const progress = el('div', { className: 'progress' });
+      progress.appendChild(el('div', { className: 'progress-fill', style: `width:${pct}%` }));
+      wrap.appendChild(progress);
+
+      const content = el('div', { className: 'content' });
+      content.appendChild(el('div', { className: 'step-count' }, `${state.stepIndex + 1}/${steps.length}`));
+      content.appendChild(buildStepContent());
+      wrap.appendChild(content);
+
+      const footer = el('footer');
+      const footerInner = el('div', { className: 'footer-inner' });
+
+      const backBtn = el(
+        'button',
+        {
+          className: 'back-link' + (state.stepIndex === 0 ? ' disabled' : ''),
+          type: 'button',
+          onClick: () => {
+            if (state.stepIndex > 0) {
+              state.stepIndex -= 1;
+              render();
+            }
+          },
+        },
+        'Back'
+      );
+      footerInner.appendChild(backBtn);
+
+      if (!isLast) {
+        const nextBtn = el(
+          'button',
+          {
+            className: 'next-btn',
+            type: 'button',
+            disabled: !canProceed(key) ? 'true' : undefined,
+            onClick: () => {
+              if (!canProceed(key)) return;
+              state.stepIndex += 1;
+              render();
+            },
+          },
+          'Next'
+        );
+        if (!canProceed(key)) nextBtn.disabled = true;
+        footerInner.appendChild(nextBtn);
+      } else {
+        const submitBtn = el(
+          'button',
+          {
+            className: 'next-btn',
+            type: 'button',
+            onClick: submitProfile,
+          },
+          state.submitting ? 'Saving…' : 'Finish'
+        );
+        submitBtn.disabled = state.submitting;
+        footerInner.appendChild(submitBtn);
+      }
+
+      footer.appendChild(footerInner);
+      wrap.appendChild(footer);
+
+      return wrap;
+    }
+
+    async function init() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) {
         window.location.href = LOGIN_URL;
         return;
       }
-      setSession(session);
-      try {
-        const r = await getMyRecruiter(session);
-        if (!r) {
-          window.location.href = LOGIN_URL;
-          return;
-        }
-        setRecruiter(r);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      state.session = session;
+
+      const { data: recruiter, error } = await supabaseClient
+        .from('recruiters')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (error || !recruiter) {
+        document.getElementById('root').innerHTML =
+          '<div class="center-msg">We couldn\'t find your recruiter profile. Please sign up again.</div>';
+        return;
       }
-    });
-  }, []);
 
-  const handleLogout = async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = LOGIN_URL;
-  };
+      state.recruiterId = recruiter.id;
+      render();
+    }
 
-  if (session === undefined || loading) {
-    return (
-      <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#8a8a8a" }}>Loading…</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "#b42318" }}>{error}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={pageWrap}>
-      <TopBar
-        recruiterLabel={recruiter.firm_name || ""}
-        tab={tab}
-        onTabChange={setTab}
-        onLogout={handleLogout}
-      />
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "36px 24px 100px" }}>
-        {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} />}
-        {tab === "mine" && <MyCandidates recruiterId={recruiter.id} />}
-      </div>
-    </div>
-  );
-}
-
-const pageWrap = {
-  minHeight: "100vh",
-  background: "#fafaf9",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  color: "#111",
-};
-
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<RecruiterDashboard />);
+    init();
   </script>
 </body>
 </html>
