@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6,7 +6,7 @@
 <title>Recruiter onboarding | MakePlacement</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,400&family=Inter:wght@400;500;600&display=swap');
 
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -532,7 +532,6 @@
       const d = state.data;
       const wrap = el('div');
       wrap.appendChild(el('h1', {}, 'Review your profile'));
-      wrap.appendChild(el('div', { className: 'subtitle' }, 'This is what clients see when deciding whether to approve you for a role.'));
 
       const rows = [
         ['Search firm', d.firmName],
@@ -584,7 +583,9 @@
           })
           .eq('id', state.recruiterId);
         if (error) throw new Error(error.message);
-        window.location.href = RECRUITER_DASHBOARD_URL;
+        // replace(), not href -- once onboarding is done it shouldn't sit in
+        // history, or the browser Back button lands you right back on it.
+        window.location.replace(RECRUITER_DASHBOARD_URL);
       } catch (err) {
         state.submitting = false;
         state.submitError = err.message || 'Something went wrong saving your profile.';
