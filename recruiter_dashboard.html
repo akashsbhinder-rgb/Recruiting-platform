@@ -359,7 +359,6 @@ const NAV_ITEMS = [
   { key: "browse", label: "Browse", live: true },
   { key: "myroles", label: "My roles", live: true },
   { key: "messages", label: "Messages", live: true },
-  { key: "calls", label: "Calls", live: false },
 ];
 
 function Logomark() {
@@ -543,7 +542,7 @@ function ApplyPanel({ role, onApply }) {
 }
 
 // ---------- role card ----------
-function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId, interviewingCount, saved, onToggleSave, applied, onApply }) {
+function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, saved, onToggleSave, applied, onApply }) {
   const gradient = gradientFor(companyName || role.name);
   const initial = (companyName || "?").trim().charAt(0).toUpperCase();
   const commissionPct = (COMMISSION_PCT * 100).toFixed(1).replace(/\.0$/, "");
@@ -588,85 +587,26 @@ function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId, 
       </div>
 
       {expanded && (
-        <div style={{ padding: "0 20px 24px", borderTop: `1px solid ${T.lineSoft}` }}>
-          {!detail ? (
-            <div style={{ fontSize: 13, color: T.sub, paddingTop: 16 }}>{"Loading role details\u2026"}</div>
-          ) : (
-            <div style={{ paddingTop: 18, display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28 }}>
-              <div>
-                <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999 }}>
-                  <Icon name="dollar" size={12} />
-                  est. earnings {(() => {
-                    const e = estimateEarnings(role.min_salary, role.max_salary);
-                    return e ? `${money(Math.round(e.low))} \u2013 ${money(Math.round(e.high))}` : "\u2014";
-                  })()}
-                </div>
+        <div style={{ padding: "18px 20px 22px", borderTop: `1px solid ${T.lineSoft}` }}>
+          <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999 }}>
+            <Icon name="dollar" size={12} />
+            est. earnings {(() => {
+              const e = estimateEarnings(role.min_salary, role.max_salary);
+              return e ? `${money(Math.round(e.low))} \u2013 ${money(Math.round(e.high))}` : "\u2014";
+            })()}
+          </div>
 
-                {role.description && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>About this role</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
-                  </div>
-                )}
-
-                {detail.qualities.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Ideal candidate qualities</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}</ul>
-                  </div>
-                )}
-
-                {detail.traits.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Traits to avoid</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.traits.map((t) => <li key={t.id}>{t.trait}</li>)}</ul>
-                  </div>
-                )}
-
-                {detail.references.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Profiles referenced</div>
-                    {detail.references.map((r) => (
-                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 6 }}>
-                        <div style={{ color: "#333" }}>{r.note}</div>
-                        {r.linkedin && <div style={{ color: T.sub, fontSize: 12.5 }}>{r.linkedin}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {role.recruiting_advice && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Recruiting advice</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div>
-                  </div>
-                )}
-
-                {role.hm_intro && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={sectionLabelStyle}>Hiring manager intro</div>
-                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.hm_intro}</div>
-                  </div>
-                )}
-
-                {detail.stages.length > 0 && (
-                  <div>
-                    <div style={sectionLabelStyle}>Interview stages</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {detail.stages.map((s, i) => <span key={s.id} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 999, border: `1px solid ${T.line}`, color: T.ink }}>{i + 1}. {s.name}</span>)}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, alignSelf: "start" }}>
-                {applied ? (
-                  <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} />
-                ) : (
-                  <ApplyPanel role={role} onApply={onApply} />
-                )}
-              </div>
+          {role.description && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={sectionLabelStyle}>About this role</div>
+              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
             </div>
+          )}
+
+          {applied ? (
+            <div style={{ fontSize: 12.5, color: T.sub }}>{"You're already applied \u2014 find this role under \"My roles\" to submit candidates."}</div>
+          ) : (
+            <ApplyPanel role={role} onApply={onApply} />
           )}
         </div>
       )}
@@ -756,7 +696,6 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
-  const [detailCache, setDetailCache] = useState({});
   const [savedSet, setSavedSet] = useState(() => new Set());
 
   const [query, setQuery] = useState("");
@@ -779,18 +718,7 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
     })();
   }, []);
 
-  const toggle = async (roleId) => {
-    if (expandedId === roleId) { setExpandedId(null); return; }
-    setExpandedId(roleId);
-    if (!detailCache[roleId]) {
-      try {
-        const d = await fetchRoleDetail(roleId);
-        setDetailCache((prev) => ({ ...prev, [roleId]: d }));
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-  };
+  const toggle = (roleId) => setExpandedId((prev) => (prev === roleId ? null : roleId));
 
   const toggleFilter = (key) => setActiveFilters((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; });
   const toggleSave = (roleId) => setSavedSet((prev) => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next; });
@@ -841,8 +769,6 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
               companyName={companyMap[role.company_id]}
               expanded={expandedId === role.id}
               onToggle={() => toggle(role.id)}
-              detail={detailCache[role.id]}
-              recruiterId={recruiterId}
               interviewingCount={counts[role.id] || 0}
               saved={savedSet.has(role.id)}
               onToggleSave={() => toggleSave(role.id)}
