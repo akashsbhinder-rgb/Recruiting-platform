@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Browse roles | MakePlacement</title>
+  <title>Dashboard | MakePlacement</title>
 
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -11,45 +11,39 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
-
-    :root {
-      --ink: #111214;
-      --ink-soft: #3a3b40;
-      --muted: #85868c;
-      --muted-2: #b3b4b9;
-      --border: #e7e7ea;
-      --border-strong: #d7d7dc;
-      --paper: #ffffff;
-      --wash: #f7f7f8;
-      --blue: #3b5bfb;
-      --blue-soft: #eaeeff;
-      --green: #1f8a4c;
-      --green-soft: #e8f6ee;
-      --red: #c23a2e;
-      --red-soft: #fbebe9;
-      --amber: #a5720f;
-      --amber-soft: #fbf1de;
-      --font-serif: 'Newsreader', Georgia, serif;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --shadow-card: 0 1px 2px rgba(17,18,20,0.04);
-      --shadow-pop: 0 12px 32px rgba(17,18,20,0.12);
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     * { box-sizing: border-box; }
     html, body, #root { margin: 0; min-height: 100%; }
-    body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
-    a { color: inherit; }
-    button { font-family: inherit; }
-    ::selection { background: var(--blue-soft); color: var(--ink); }
+    body { background: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    ::selection { background: #111214; color: #fff; }
+    button, input, textarea, select { font-family: inherit; }
+
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible {
+      outline: 2px solid #3b6fe0;
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    @media (max-width: 900px) {
+      .mp-nav-secondary { display: none; }
+      .mp-nav-search { display: none; }
+    }
+    @media (max-width: 640px) {
+      .mp-filter-pills { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .mp-filter-chips { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
 
     #boot-error {
       display: none;
       max-width: 760px;
       margin: 48px auto;
       padding: 20px;
-      font-family: var(--font-sans);
-      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      color: #111;
     }
     #boot-error pre {
       white-space: pre-wrap;
@@ -80,7 +74,7 @@
   </script>
 
   <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useRef } = React;
 
 // ---------- Supabase config ----------
 const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
@@ -89,51 +83,196 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const LOGIN_URL = "index.html";
 const RECRUITER_ONBOARDING_URL = "recruiter_onboarding.html";
 
+// ---------- design tokens (shared with the employer dashboard) ----------
+const T = {
+  ink: "#111214",
+  sub: "#6b7075",
+  faint: "#9a9ea3",
+  line: "#e7e7e9",
+  lineSoft: "#f0f0f1",
+  paper: "#ffffff",
+  paperDim: "#fafafa",
+  pillBg: "#f2f2f3",
+  pillBgHover: "#eaeaeb",
+  blue: "#3b6fe0",
+  blueBg: "#eaf1ff",
+  green: "#1a8a4a",
+  greenBg: "#e8f6ec",
+  red: "#c0392b",
+  redBg: "#fbeceb",
+  sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+};
+
+const PLATFORM_FEE_PCT = 0.25;
+const RECRUITER_SHARE_PCT = 0.70;
+const COMMISSION_PCT = PLATFORM_FEE_PCT * RECRUITER_SHARE_PCT; // 0.175
+
 const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
 const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
 const isActive = (c) => !isRejected(c) && !isPlaced(c);
 
 function money(v) {
-  return v == null || v === "" ? "—" : `$${Number(v).toLocaleString()}`;
+  return v == null || v === "" ? "\u2014" : `$${Number(v).toLocaleString()}`;
 }
 
-// Platform economics: company pays a fee on the placed salary, and the
-// recruiter earns a share of that fee. Not stored anywhere yet -- these
-// are fixed constants until per-role/per-company fee terms exist.
-const PLATFORM_FEE_PCT = 0.25;
-const RECRUITER_SHARE_PCT = 0.70;
+function formatWhen(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function isRecent(iso, days = 7) {
+  if (!iso) return false;
+  return Date.now() - new Date(iso).getTime() < days * 24 * 60 * 60 * 1000;
+}
 
 function estimateEarnings(minSalary, maxSalary) {
   if (minSalary == null || maxSalary == null) return null;
-  const low = Number(minSalary) * PLATFORM_FEE_PCT * RECRUITER_SHARE_PCT;
-  const high = Number(maxSalary) * PLATFORM_FEE_PCT * RECRUITER_SHARE_PCT;
+  const low = Number(minSalary) * COMMISSION_PCT;
+  const high = Number(maxSalary) * COMMISSION_PCT;
   if (!isFinite(low) || !isFinite(high)) return null;
   return { low, high };
 }
 
-function feePct() {
-  // Effective take-home as a % of salary, mirroring the "17.5% first year
-  // salary + bonus" line shown on role cards.
-  return `${Math.round(PLATFORM_FEE_PCT * 1000) / 10}%`;
+const COVER_GRADIENTS = [
+  ["#cfeaf6", "#e8dcf7"],
+  ["#ffe4d2", "#ffd3dd"],
+  ["#d8f3e0", "#d3e9ff"],
+  ["#fdecb2", "#f8cdd3"],
+  ["#dde3ff", "#f2dbff"],
+  ["#d4f1ea", "#eef8d2"],
+];
+
+function gradientFor(name) {
+  const s = String(name || "?");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  return COVER_GRADIENTS[hash % COVER_GRADIENTS.length];
+}
+
+// ---------- icons ----------
+function Icon({ name, size = 18, style, filled }) {
+  const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", style };
+  switch (name) {
+    case "search":
+      return <svg {...common}><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
+    case "bell":
+      return <svg {...common}><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
+    case "heart":
+      return <svg {...common} fill={filled ? "currentColor" : "none"}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" /></svg>;
+    case "clock":
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 16 14" /></svg>;
+    case "calendar":
+      return <svg {...common}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>;
+    case "briefcase":
+      return <svg {...common}><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>;
+    case "chevronDown":
+      return <svg {...common}><polyline points="6 9 12 15 18 9" /></svg>;
+    case "x":
+      return <svg {...common}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+    case "check":
+      return <svg {...common}><polyline points="20 6 9 17 4 12" /></svg>;
+    case "bolt":
+      return <svg {...common} fill="currentColor" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>;
+    case "grid":
+      return <svg {...common}><rect x="3" y="3" width="7" height="18" rx="1.5" /><rect x="14" y="3" width="7" height="10" rx="1.5" /></svg>;
+    case "list":
+      return <svg {...common}><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>;
+    case "shield":
+      return <svg {...common}><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3Z" /><polyline points="9 12 11 14 15 10" /></svg>;
+    case "logout":
+      return <svg {...common}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>;
+    case "dollar":
+      return <svg {...common}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>;
+    case "plus":
+      return <svg {...common}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+    case "mail":
+      return <svg {...common}><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22 6 12 13 2 6" /></svg>;
+    default:
+      return null;
+  }
+}
+
+// ---------- small building blocks ----------
+function Pill({ children, active, muted, tone, style, ...rest }) {
+  const tones = {
+    default: { bg: active ? T.ink : T.pillBg, fg: active ? "#fff" : T.ink },
+    live: { bg: T.blueBg, fg: T.blue },
+    rejected: { bg: T.redBg, fg: T.red },
+    placed: { bg: T.greenBg, fg: T.green },
+  };
+  const t = tones[tone] || tones.default;
+  return (
+    <span {...rest} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, padding: "5px 11px", borderRadius: 999, background: t.bg, color: muted ? T.faint : t.fg, whiteSpace: "nowrap", ...style }}>
+      {children}
+    </span>
+  );
+}
+
+function GhostButton({ children, active, decorative, style, ...rest }) {
+  return (
+    <button
+      {...rest}
+      title={decorative ? "Coming soon" : rest.title}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, padding: "8px 14px", borderRadius: 999,
+        border: `1px solid ${active ? T.ink : T.line}`, background: active ? T.ink : "#fff", color: active ? "#fff" : decorative ? T.faint : T.ink,
+        cursor: decorative ? "default" : "pointer", opacity: decorative ? 0.7 : 1, fontFamily: T.sans, ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PrimaryButton(props) {
+  return (
+    <button {...props} style={{ background: T.ink, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, cursor: props.disabled ? "default" : "pointer", opacity: props.disabled ? 0.55 : 1, fontFamily: T.sans, ...props.style }} />
+  );
+}
+
+function SecondaryButton(props) {
+  return (
+    <button {...props} style={{ background: T.pillBg, color: T.ink, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: T.sans, ...props.style }} />
+  );
+}
+
+const inputStyle = {
+  width: "100%", boxSizing: "border-box", padding: "10px 13px", fontSize: 13.5, borderRadius: 10,
+  border: `1px solid ${T.line}`, outline: "none", color: T.ink, background: "#fff", fontFamily: T.sans, marginBottom: 12,
+};
+
+const sectionLabelStyle = { fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", color: T.sub, textTransform: "uppercase", marginBottom: 6 };
+
+function EmptyState({ icon, title, body, actions }) {
+  return (
+    <div style={{ border: `1.5px dashed ${T.line}`, borderRadius: 14, padding: "64px 24px", textAlign: "center" }}>
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: T.blueBg, color: T.blue, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+        <Icon name={icon} size={20} />
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13.5, color: T.sub, maxWidth: 380, margin: "6px auto 0" }}>{body}</div>
+      {actions && <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>{actions}</div>}
+    </div>
+  );
 }
 
 // ---------- data ----------
 async function getMyRecruiter(session) {
-  const { data, error } = await supabaseClient
-    .from("recruiters")
-    .select("*")
-    .eq("auth_user_id", session.user.id)
-    .maybeSingle();
+  const { data, error } = await supabaseClient.from("recruiters").select("*").eq("auth_user_id", session.user.id).maybeSingle();
   if (error) throw new Error(`Failed loading your profile: ${error.message}`);
   return data;
 }
 
 async function fetchLiveRoles() {
-  const { data, error } = await supabaseClient
-    .from("roles")
-    .select("*")
-    .eq("status", "live")
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabaseClient.from("roles").select("*").eq("status", "live").order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed loading roles: ${error.message}`);
+  return data || [];
+}
+
+async function fetchRolesByIds(roleIds) {
+  if (roleIds.length === 0) return [];
+  const { data, error } = await supabaseClient.from("roles").select("*").in("id", roleIds);
   if (error) throw new Error(`Failed loading roles: ${error.message}`);
   return data || [];
 }
@@ -147,6 +286,16 @@ async function fetchCompaniesByIds(companyIds) {
   return map;
 }
 
+async function fetchInterviewingCounts(roleIds) {
+  if (roleIds.length === 0) return {};
+  const { data, error } = await supabaseClient.from("candidates").select("role_id, status").in("role_id", roleIds);
+  if (error) throw new Error(`Failed loading candidate counts: ${error.message}`);
+  const counts = {};
+  roleIds.forEach((id) => (counts[id] = 0));
+  (data || []).forEach((c) => { if (isActive(c)) counts[c.role_id] = (counts[c.role_id] || 0) + 1; });
+  return counts;
+}
+
 async function fetchRoleDetail(roleId) {
   const [stagesRes, qualitiesRes, traitsRes, referencesRes] = await Promise.all([
     supabaseClient.from("role_stages").select("*").eq("role_id", roleId).order("position"),
@@ -158,476 +307,390 @@ async function fetchRoleDetail(roleId) {
   if (qualitiesRes.error) throw new Error(`Failed loading qualities: ${qualitiesRes.error.message}`);
   if (traitsRes.error) throw new Error(`Failed loading traits: ${traitsRes.error.message}`);
   if (referencesRes.error) throw new Error(`Failed loading references: ${referencesRes.error.message}`);
-  return {
-    stages: stagesRes.data || [],
-    qualities: qualitiesRes.data || [],
-    traits: traitsRes.data || [],
-    references: referencesRes.data || [],
-  };
+  return { stages: stagesRes.data || [], qualities: qualitiesRes.data || [], traits: traitsRes.data || [], references: referencesRes.data || [] };
+}
+
+async function fetchMyApplications(recruiterId) {
+  const { data, error } = await supabaseClient.from("role_applications").select("*").eq("recruiter_id", recruiterId);
+  if (error) throw new Error(`Failed loading your applications: ${error.message}`);
+  return data || [];
+}
+
+async function applyToRole(recruiterId, roleId) {
+  const { error } = await supabaseClient.from("role_applications").insert([{ recruiter_id: recruiterId, role_id: roleId, status: "approved" }]);
+  if (error) throw new Error(`Failed to apply: ${error.message}`);
 }
 
 async function submitCandidate(roleId, recruiterId, firstStageId, form) {
   const { error } = await supabaseClient.from("candidates").insert([
-    {
-      role_id: roleId,
-      recruiter_id: recruiterId,
-      name: form.name,
-      email: form.email || null,
-      linkedin: form.linkedin || null,
-      resume_url: form.resumeUrl || null,
-      notes: form.notes || null,
-      stage_id: firstStageId || null,
-      status: "active",
-    },
+    { role_id: roleId, recruiter_id: recruiterId, name: form.name, email: form.email, linkedin: form.linkedin || null, resume_url: form.resumeUrl, notes: form.notes, stage_id: firstStageId || null, status: "active" },
   ]);
   if (error) throw new Error(`Failed submitting candidate: ${error.message}`);
 }
 
 async function fetchMyCandidates(recruiterId) {
-  const { data, error } = await supabaseClient
-    .from("candidates")
-    .select("*")
-    .eq("recruiter_id", recruiterId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabaseClient.from("candidates").select("*").eq("recruiter_id", recruiterId).order("created_at", { ascending: false });
   if (error) throw new Error(`Failed loading your candidates: ${error.message}`);
   return data || [];
 }
 
 async function fetchMessagesForRoles(roleIds) {
   if (roleIds.length === 0) return [];
-  const { data, error } = await supabaseClient
-    .from("messages")
-    .select("*")
-    .in("role_id", roleIds)
-    .order("created_at", { ascending: true });
+  const { data, error } = await supabaseClient.from("messages").select("*").in("role_id", roleIds).order("created_at", { ascending: true });
   if (error) throw new Error(`Failed loading messages: ${error.message}`);
   return data || [];
 }
 
-function formatWhen(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+async function sendRecruiterMessage(session, recruiterId, roleId, candidateId, recruiterTargetId, body) {
+  const { error } = await supabaseClient.from("messages").insert([
+    { role_id: roleId, candidate_id: candidateId || null, recruiter_id: recruiterTargetId || recruiterId, sender_id: session.user.id, sender_type: "recruiter", body },
+  ]);
+  if (error) throw new Error(`Failed sending message: ${error.message}`);
 }
 
-// ---------- little visual helpers ----------
-
-// Deterministic gradient per company, so cards feel photographic/branded
-// without needing real uploaded images.
-const GRADIENTS = [
-  ["#bcd4ff", "#eef2ff"],
-  ["#ffd6c2", "#fff3e6"],
-  ["#c9f0d8", "#eefbf2"],
-  ["#f4d3ee", "#fbeaf8"],
-  ["#d6d0ff", "#f0edff"],
-  ["#ffe1a8", "#fff6e3"],
-  ["#c6ecf0", "#eafbfd"],
+// ---------- top navigation ----------
+const NAV_ITEMS = [
+  { key: "browse", label: "Browse", live: true },
+  { key: "myroles", label: "My roles", live: true },
+  { key: "messages", label: "Messages", live: true },
+  { key: "calls", label: "Calls", live: false },
 ];
-function gradientFor(seed) {
-  let h = 0;
-  for (let i = 0; i < (seed || "").length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const [a, b] = GRADIENTS[h % GRADIENTS.length];
-  const angle = 120 + (h % 90);
-  return `linear-gradient(${angle}deg, ${a}, ${b})`;
-}
-function initialsFor(name) {
-  if (!name) return "•";
-  return name.trim().charAt(0).toUpperCase();
-}
 
-function IconBriefcase({ size = 22, color = "var(--blue)" }) {
+function Logomark() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="7" width="18" height="12" rx="2.2" stroke={color} strokeWidth="1.7" />
-      <path d="M8 7V5.6C8 4.7 8.7 4 9.6 4h4.8c.9 0 1.6.7 1.6 1.6V7" stroke={color} strokeWidth="1.7" />
-      <path d="M3 12h18" stroke={color} strokeWidth="1.7" />
-    </svg>
-  );
-}
-function IconCalendar({ size = 22, color = "var(--blue)" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <rect x="3.5" y="5" width="17" height="15.5" rx="2.2" stroke={color} strokeWidth="1.7" />
-      <path d="M3.5 9.5h17" stroke={color} strokeWidth="1.7" />
-      <path d="M8 3.5v3M16 3.5v3" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IconSearch({ size = 16, color = "var(--muted)" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="11" cy="11" r="7" stroke={color} strokeWidth="2" />
-      <path d="M21 21l-4.3-4.3" stroke={color} strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IconHeart({ size = 17, filled }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "#e0524a" : "none"}>
-      <path
-        d="M12 20.2s-7.6-4.6-9.9-9.2C.6 7.4 2.6 4 6.3 4c2 0 3.6 1.1 4.7 2.6C12.1 5.1 13.7 4 15.7 4c3.7 0 5.7 3.4 4.2 7-2.3 4.6-9.9 9.2-9.9 9.2z"
-        stroke={filled ? "#e0524a" : "var(--muted)"}
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div style={{ width: 26, height: 26, borderRadius: 7, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
+        <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" />
+      </svg>
+    </div>
   );
 }
 
-// ---------- structural chrome ----------
-function TopNav({ recruiterLabel, tab, onTabChange, onLogout }) {
-  const tabs = [
-    ["browse", "Browse"],
-    ["mine", "My candidates"],
-  ];
+function TopNav({ tab, onTabChange, recruiter, onLogout }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const initial = (recruiter.firm_name || "R").trim().charAt(0).toUpperCase();
+
   return (
-    <div style={{ borderBottom: "1px solid var(--border)", background: "var(--paper)" }}>
-      <div
-        style={{
-          maxWidth: 1240,
-          margin: "0 auto",
-          padding: "0 28px",
-          height: 64,
-          display: "flex",
-          alignItems: "center",
-          gap: 34,
-        }}
-      >
-        <a href={LOGIN_URL} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flexShrink: 0 }}>
-          <span
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 7,
-              background: "var(--ink)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 13,
-              fontWeight: 700,
-              fontFamily: "var(--font-serif)",
-            }}
-          >
-            M
-          </span>
-          <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.01em" }}>
-            MakePlacement
-          </span>
-        </a>
-
-        <div style={{ display: "flex", gap: 26, flex: 1 }}>
-          {tabs.map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => onTabChange(key)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "22px 0",
-                fontSize: 14.5,
-                fontWeight: 600,
-                color: tab === key ? "var(--ink)" : "var(--muted)",
-                borderBottom: tab === key ? "2px solid var(--ink)" : "2px solid transparent",
-                marginBottom: -1,
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
-          <a
-            href={RECRUITER_ONBOARDING_URL}
-            style={{ fontSize: 13.5, color: "var(--muted)", textDecoration: "none" }}
-          >
-            Edit profile
-          </a>
-          <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "var(--blue-soft)",
-              color: "var(--blue)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-            title={recruiterLabel}
-          >
-            {initialsFor(recruiterLabel)}
+    <div style={{ borderBottom: `1px solid ${T.line}`, background: "#fff" }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 28px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Logomark />
+            <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>MakePlacement</span>
           </div>
-          <button
-            onClick={onLogout}
-            style={{ background: "none", border: "none", fontSize: 13.5, color: "var(--muted)", cursor: "pointer", padding: 0 }}
-          >
-            Log out
+          <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+            {NAV_ITEMS.map((item) => {
+              const isActiveTab = item.live && tab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  className={item.live ? "" : "mp-nav-secondary"}
+                  onClick={item.live ? () => onTabChange(item.key) : undefined}
+                  title={item.live ? undefined : "Coming soon"}
+                  style={{
+                    background: "none", border: "none", padding: "4px 0", fontSize: 13.5, fontWeight: isActiveTab ? 700 : 500,
+                    color: item.live ? (isActiveTab ? T.ink : T.sub) : T.faint, cursor: item.live ? "pointer" : "default",
+                    borderBottom: isActiveTab ? `2px solid ${T.ink}` : "2px solid transparent", fontFamily: T.sans,
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div className="mp-nav-search" title="Coming soon" style={{ display: "flex", alignItems: "center", gap: 8, background: T.pillBg, borderRadius: 10, padding: "8px 12px", width: 220, color: T.faint }}>
+            <Icon name="search" size={15} />
+            <input disabled placeholder="Search" style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: T.faint, flex: 1, fontFamily: T.sans }} />
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: T.faint, border: `1px solid ${T.line}`, borderRadius: 5, padding: "1px 5px" }}>{"\u2318K"}</span>
+          </div>
+
+          <button title="Notifications \u2014 coming soon" style={{ background: "none", border: "none", color: T.sub, cursor: "default", padding: 6, display: "flex" }}>
+            <Icon name="bell" size={18} />
           </button>
+
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setMenuOpen((o) => !o)} style={{ width: 32, height: 32, borderRadius: "50%", background: T.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {initial}
+            </button>
+            {menuOpen && (
+              <div style={{ position: "absolute", right: 0, top: 40, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 170, overflow: "hidden", zIndex: 20 }}>
+                <a href={RECRUITER_ONBOARDING_URL} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", fontSize: 13, color: T.ink, textDecoration: "none" }}>Edit profile</a>
+                <button onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: T.ink, background: "none", border: "none", borderTop: `1px solid ${T.lineSoft}`, cursor: "pointer", fontFamily: T.sans }}>
+                  <Icon name="logout" size={14} /> Log out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function PageHeader({ title, subtitle, action }) {
+// ---------- filter pills row (browse) ----------
+const FILTER_PILLS = [
+  { key: "new", label: "New", icon: "clock", live: true },
+  { key: "noInterviews", label: "No interviews", icon: "calendar", live: true },
+  { key: "highestPaying", label: "Highest paying", icon: "dollar", live: true },
+  { key: "responsive", label: "Responsive", icon: "bolt", live: false },
+  { key: "roleBonus", label: "Role bonus", icon: "briefcase", live: false },
+];
+
+function FilterPillsRow({ active, onToggle }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 14, marginBottom: 22 }}>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--ink)", marginBottom: 4 }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 14, color: "var(--muted)" }}>{subtitle}</div>}
-      </div>
-      {action}
+    <div className="mp-filter-pills" style={{ display: "flex", gap: 26, paddingBottom: 18, marginBottom: 18, borderBottom: `1px solid ${T.line}` }}>
+      {FILTER_PILLS.map((f) => {
+        const isOn = active.has(f.key);
+        return (
+          <button
+            key={f.key}
+            onClick={f.live ? () => onToggle(f.key) : undefined}
+            title={f.live ? undefined : "Coming soon"}
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", padding: "2px 0 10px",
+              cursor: f.live ? "pointer" : "default", color: isOn ? T.ink : f.live ? T.sub : T.faint,
+              borderBottom: isOn ? `2px solid ${T.ink}` : "2px solid transparent", opacity: f.live ? 1 : 0.6, fontFamily: T.sans,
+            }}
+          >
+            <Icon name={f.icon} size={17} />
+            <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{f.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function SearchBar({ value, onChange, placeholder }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        border: "1px solid var(--border)",
-        borderRadius: 10,
-        padding: "12px 16px",
-        marginBottom: 14,
-        background: "var(--paper)",
-      }}
-    >
-      <IconSearch />
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{ border: "none", outline: "none", fontSize: 14, flex: 1, fontFamily: "inherit", color: "var(--ink)" }}
-      />
-    </div>
-  );
-}
+// ---------- search + filter chip bar ----------
+function SearchFilterBar({ query, setQuery, count, minSalary, setMinSalary, onClear, hasActiveFilters }) {
+  const [salaryOpen, setSalaryOpen] = useState(false);
+  const salaryRef = useRef(null);
 
-function Pill({ children, tone = "default", small }) {
-  const tones = {
-    default: { fg: "var(--muted)", border: "var(--border)", bg: "transparent" },
-    live: { fg: "var(--green)", border: "var(--green)", bg: "var(--green-soft)" },
-    rejected: { fg: "var(--red)", border: "var(--red)", bg: "var(--red-soft)" },
-    placed: { fg: "var(--green)", border: "var(--green)", bg: "var(--green-soft)" },
-    paused: { fg: "var(--amber)", border: "var(--amber)", bg: "var(--amber-soft)" },
-  };
-  const t = tones[tone] || tones.default;
   return (
-    <span
-      style={{
-        fontSize: small ? 11 : 12,
-        fontWeight: 600,
-        padding: small ? "3px 8px" : "4px 10px",
-        borderRadius: 999,
-        border: `1px solid ${t.border}`,
-        background: t.bg,
-        color: t.fg,
-        whiteSpace: "nowrap",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function PrimaryButton(props) {
-  return (
-    <button
-      {...props}
-      style={{
-        background: "var(--ink)",
-        color: "#fff",
-        border: "none",
-        borderRadius: 8,
-        padding: "10px 18px",
-        fontSize: 13.5,
-        fontWeight: 600,
-        cursor: props.disabled ? "default" : "pointer",
-        opacity: props.disabled ? 0.55 : 1,
-        fontFamily: "inherit",
-        ...props.style,
-      }}
-    />
-  );
-}
-function SecondaryButton(props) {
-  return (
-    <button
-      {...props}
-      style={{
-        background: "var(--wash)",
-        color: "var(--ink)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        padding: "10px 18px",
-        fontSize: 13.5,
-        fontWeight: 600,
-        cursor: "pointer",
-        fontFamily: "inherit",
-        ...props.style,
-      }}
-    />
-  );
-}
-
-const inputStyle = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "11px 13px",
-  fontSize: 13.5,
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  outline: "none",
-  color: "var(--ink)",
-  background: "#fff",
-  fontFamily: "inherit",
-  marginBottom: 10,
-};
-
-// A dashed-border, centered-icon empty state -- mirrors the reference
-// screenshots exactly (soft blue icon chip, bold heading, muted line, CTAs).
-function EmptyState({ icon, title, body, actions }) {
-  return (
-    <div
-      style={{
-        border: "1px dashed var(--border-strong)",
-        borderRadius: 14,
-        padding: "70px 24px",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 11,
-          background: "var(--blue-soft)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          margin: "0 auto 18px",
-        }}
-      >
-        {icon}
-      </div>
-      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: actions ? 20 : 0 }}>{body}</div>
-      {actions && <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>{actions}</div>}
-    </div>
-  );
-}
-
-// ---------- role card (browse grid) ----------
-function RoleCard({ role, companyName, onOpen, favorited, onToggleFavorite }) {
-  return (
-    <div
-      onClick={onOpen}
-      style={{
-        cursor: "pointer",
-        borderRadius: 14,
-        overflow: "hidden",
-        border: "1px solid var(--border)",
-        background: "#fff",
-        boxShadow: "var(--shadow-card)",
-        transition: "transform .12s ease, box-shadow .12s ease",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(17,18,20,0.09)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
-    >
-      <div style={{ position: "relative", height: 130, background: gradientFor(companyName || role.name) }}>
-        <div style={{ position: "absolute", top: 10, left: 10 }}>
-          <Pill tone="live" small>● Live</Pill>
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, border: `1px solid ${T.line}`, borderRadius: 10, padding: "11px 14px" }}>
+          <Icon name="search" size={16} style={{ color: T.faint }} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search roles, companies, and more\u2026" style={{ border: "none", outline: "none", fontSize: 13.5, flex: 1, fontFamily: T.sans, color: T.ink }} />
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-          style={{
-            position: "absolute", top: 8, right: 8,
-            width: 30, height: 30, borderRadius: "50%",
-            border: "none", background: "rgba(255,255,255,0.85)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <IconHeart filled={favorited} />
+        <div style={{ fontSize: 13.5, color: T.sub, whiteSpace: "nowrap" }}>{count} role{count === 1 ? "" : "s"}</div>
+      </div>
+
+      <div className="mp-filter-chips" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <GhostButton decorative>Location <Icon name="chevronDown" size={13} /></GhostButton>
+        <GhostButton decorative>Workplace <Icon name="chevronDown" size={13} /></GhostButton>
+
+        <div style={{ position: "relative" }} ref={salaryRef}>
+          <GhostButton active={minSalary !== ""} onClick={() => setSalaryOpen((o) => !o)}>Salary <Icon name="chevronDown" size={13} /></GhostButton>
+          {salaryOpen && (
+            <div style={{ position: "absolute", top: 42, left: 0, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 10, padding: 14, width: 220, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: T.sub, marginBottom: 8 }}>Minimum salary</div>
+              <input type="number" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} placeholder="e.g. 150000" style={{ ...inputStyle, marginBottom: 10 }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <SecondaryButton style={{ flex: 1, padding: "8px 10px", fontSize: 12.5 }} onClick={() => { setMinSalary(""); setSalaryOpen(false); }}>Clear</SecondaryButton>
+                <PrimaryButton style={{ flex: 1, padding: "8px 10px", fontSize: 12.5 }} onClick={() => setSalaryOpen(false)}>Apply</PrimaryButton>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <GhostButton decorative>Role type <Icon name="chevronDown" size={13} /></GhostButton>
+        <GhostButton decorative><Icon name="plus" size={13} /> More filters</GhostButton>
+
+        <button onClick={onClear} disabled={!hasActiveFilters} style={{ marginLeft: 4, display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", fontSize: 13, fontWeight: 600, color: hasActiveFilters ? T.red : T.faint, cursor: hasActiveFilters ? "pointer" : "default", fontFamily: T.sans }}>
+          <Icon name="x" size={13} /> Clear filters
         </button>
-        <div
-          style={{
-            position: "absolute", bottom: 10, left: 10,
-            width: 34, height: 34, borderRadius: 9,
-            background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 700, color: "var(--ink)",
-          }}
-        >
-          {initialsFor(companyName)}
-        </div>
-      </div>
-
-      <div style={{ padding: "13px 14px 15px" }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>
-          {companyName || "Company"}
-        </div>
-        <div style={{ fontSize: 13.5, color: "var(--ink-soft)", marginBottom: 8, lineHeight: 1.3 }}>
-          {role.name}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-          {role.hiring_goals ? `Target: ${role.hiring_goals}` : "Open pipeline"}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--ink)" }}>
-          <span style={{ fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 2 }}>{feePct()}</span>
-          {" "}first year salary + bonus
-        </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-          {money(role.min_salary)} – {money(role.max_salary)}
-        </div>
       </div>
     </div>
   );
 }
 
-// ---------- role detail (slide-over) ----------
-function MessageFeed({ messages, emptyLabel }) {
-  if (messages.length === 0) {
-    return <div style={{ fontSize: 12.5, color: "var(--muted-2)", fontStyle: "italic" }}>{emptyLabel}</div>;
-  }
+// ---------- apply-to-role panel ----------
+function ApplyPanel({ role, onApply }) {
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState("");
+
+  const go = async () => {
+    setApplying(true);
+    setError("");
+    try {
+      await onApply();
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+      setApplying(false);
+    }
+  };
+
   return (
-    <div>
-      {messages.map((m) => (
-        <div key={m.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--wash)" }}>
-          <div style={{ fontSize: 12.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 2 }}>{formatWhen(m.created_at)}</div>
-        </div>
-      ))}
+    <div style={{ textAlign: "center", padding: "20px 10px" }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 6 }}>Apply to submit candidates</div>
+      <div style={{ fontSize: 13, color: T.sub, marginBottom: 16, lineHeight: 1.5 }}>
+        {"You're approved instantly \u2014 no waiting on the company. Once you apply, this role shows up under \"My roles\" and you can start submitting candidates right away."}
+      </div>
+      <PrimaryButton onClick={go} disabled={applying} style={{ width: "100%" }}>{applying ? "Applying\u2026" : "Apply to this role"}</PrimaryButton>
+      {error && <div style={{ color: T.red, fontSize: 12.5, marginTop: 10 }}>{error}</div>}
     </div>
   );
 }
 
+// ---------- role card ----------
+function RoleCard({ role, companyName, expanded, onToggle, detail, recruiterId, interviewingCount, saved, onToggleSave, applied, onApply }) {
+  const gradient = gradientFor(companyName || role.name);
+  const initial = (companyName || "?").trim().charAt(0).toUpperCase();
+  const commissionPct = (COMMISSION_PCT * 100).toFixed(1).replace(/\.0$/, "");
+  const isNew = isRecent(role.created_at);
+
+  return (
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+      <div style={{ cursor: "pointer" }} onClick={onToggle}>
+        <div style={{ position: "relative", height: 148, background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})` }}>
+          {isNew && (
+            <div style={{ position: "absolute", top: 10, left: 10 }}>
+              <Pill style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}><Icon name="clock" size={12} /> New</Pill>
+            </div>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSave(); }}
+            style={{ position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: "50%", background: "#fff", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: saved ? T.red : T.sub, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
+          >
+            <Icon name="heart" size={14} filled={saved} />
+          </button>
+          <div style={{ position: "absolute", bottom: 10, left: 10, width: 38, height: 38, borderRadius: 9, background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: T.ink }}>
+            {initial}
+          </div>
+          {applied && (
+            <div style={{ position: "absolute", bottom: 10, right: 10 }}>
+              <Pill style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}><Icon name="check" size={11} /> Applied</Pill>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: "13px 16px 15px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{companyName || "Company"}</span>
+            <span style={{ color: T.sub, display: "flex" }}><Icon name="shield" size={12} /></span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 8, lineHeight: 1.3 }}>{role.name}</div>
+          <div style={{ fontSize: 12.5, color: T.sub, marginBottom: 9 }}>{interviewingCount} interviewing</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px" }}>
+            {commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span>
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: "0 20px 24px", borderTop: `1px solid ${T.lineSoft}` }}>
+          {!detail ? (
+            <div style={{ fontSize: 13, color: T.sub, paddingTop: 16 }}>{"Loading role details\u2026"}</div>
+          ) : (
+            <div style={{ paddingTop: 18, display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28 }}>
+              <div>
+                <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999 }}>
+                  <Icon name="dollar" size={12} />
+                  est. earnings {(() => {
+                    const e = estimateEarnings(role.min_salary, role.max_salary);
+                    return e ? `${money(Math.round(e.low))} \u2013 ${money(Math.round(e.high))}` : "\u2014";
+                  })()}
+                </div>
+
+                {role.description && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>About this role</div>
+                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
+                  </div>
+                )}
+
+                {detail.qualities.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Ideal candidate qualities</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}</ul>
+                  </div>
+                )}
+
+                {detail.traits.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Traits to avoid</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.traits.map((t) => <li key={t.id}>{t.trait}</li>)}</ul>
+                  </div>
+                )}
+
+                {detail.references.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Profiles referenced</div>
+                    {detail.references.map((r) => (
+                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 6 }}>
+                        <div style={{ color: "#333" }}>{r.note}</div>
+                        {r.linkedin && <div style={{ color: T.sub, fontSize: 12.5 }}>{r.linkedin}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {role.recruiting_advice && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Recruiting advice</div>
+                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div>
+                  </div>
+                )}
+
+                {role.hm_intro && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={sectionLabelStyle}>Hiring manager intro</div>
+                    <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.hm_intro}</div>
+                  </div>
+                )}
+
+                {detail.stages.length > 0 && (
+                  <div>
+                    <div style={sectionLabelStyle}>Interview stages</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {detail.stages.map((s, i) => <span key={s.id} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 999, border: `1px solid ${T.line}`, color: T.ink }}>{i + 1}. {s.name}</span>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, alignSelf: "start" }}>
+                {applied ? (
+                  <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} />
+                ) : (
+                  <ApplyPanel role={role} onApply={onApply} />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- submit candidate form ----------
 function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
   const [form, setForm] = useState({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
+  const validate = () => {
+    const next = {};
+    if (!form.name.trim()) next.name = "Required";
+    if (!form.email.trim()) next.email = "Required";
+    if (!form.resumeUrl.trim()) next.resumeUrl = "Required";
+    if (!form.notes.trim()) next.notes = "Required";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) {
-      setError("Candidate name is required.");
-      return;
-    }
+    if (!validate()) return;
     setSubmitting(true);
     setError("");
     try {
@@ -641,210 +704,67 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
     }
   };
 
+  const fieldStyle = (key) => ({ ...inputStyle, ...(errors[key] ? { borderColor: T.red, marginBottom: 4 } : {}) });
+
   if (done) {
     return (
-      <div>
+      <div style={{ padding: "4px 0" }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Candidate submitted</div>
-        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
-          {form.name} has been added to {role.name}'s pipeline.
-        </div>
-        <SecondaryButton
-          onClick={() => {
-            setForm({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
-            setDone(false);
-          }}
-        >
+        <div style={{ fontSize: 13, color: T.sub, marginBottom: 12 }}>{form.name} has been added to {role.name}'s pipeline.</div>
+        <button onClick={() => { setForm({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" }); setErrors({}); setDone(false); }} style={{ fontSize: 13, color: T.ink, background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}>
           Submit another candidate
-        </SecondaryButton>
+        </button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Submit a candidate</div>
-      <input style={inputStyle} placeholder="Candidate full name *" value={form.name} onChange={(e) => set({ name: e.target.value })} />
-      <input style={inputStyle} placeholder="Email (optional)" value={form.email} onChange={(e) => set({ email: e.target.value })} />
+    <form onSubmit={handleSubmit} noValidate>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Submit a candidate</div>
+
+      <input style={fieldStyle("name")} placeholder="Candidate full name *" value={form.name} onChange={(e) => set({ name: e.target.value })} />
+      {errors.name && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>Candidate name is required.</div>}
+
+      <input style={fieldStyle("email")} placeholder="Email *" value={form.email} onChange={(e) => set({ email: e.target.value })} />
+      {errors.email && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>Email is required.</div>}
+
       <input style={inputStyle} placeholder="linkedin.com/in/... (optional)" value={form.linkedin} onChange={(e) => set({ linkedin: e.target.value })} />
-      <input style={inputStyle} placeholder="Resume link (optional)" value={form.resumeUrl} onChange={(e) => set({ resumeUrl: e.target.value })} />
-      <textarea
-        style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
-        placeholder="Why this candidate is a fit (optional)"
-        value={form.notes}
-        onChange={(e) => set({ notes: e.target.value })}
-      />
-      {error && <div style={{ color: "var(--red)", fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
-      <PrimaryButton type="submit" disabled={submitting} style={{ width: "100%" }}>
-        {submitting ? "Submitting…" : "Submit candidate"}
-      </PrimaryButton>
+
+      <input style={fieldStyle("resumeUrl")} placeholder="Resume link *" value={form.resumeUrl} onChange={(e) => set({ resumeUrl: e.target.value })} />
+      {errors.resumeUrl && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>A resume link is required.</div>}
+
+      <textarea style={{ ...fieldStyle("notes"), minHeight: 70, resize: "vertical" }} placeholder="Why this candidate is a fit *" value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
+      {errors.notes && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>Tell the company why this candidate is a fit.</div>}
+
+      {error && <div style={{ color: T.red, fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
+      <PrimaryButton type="submit" disabled={submitting} style={{ width: "100%" }}>{submitting ? "Submitting\u2026" : "Submit candidate"}</PrimaryButton>
     </form>
   );
 }
 
-const sectionLabelStyle = {
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.04em",
-  color: "var(--muted)",
-  textTransform: "uppercase",
-  marginBottom: 7,
-};
-
-function RoleDetailPanel({ role, companyName, detail, recruiterId, onClose }) {
-  const earnings = estimateEarnings(role.min_salary, role.max_salary);
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", justifyContent: "flex-end" }}>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(17,18,20,0.35)" }} />
-      <div
-        style={{
-          position: "relative",
-          width: "min(760px, 100%)",
-          height: "100%",
-          background: "#fff",
-          boxShadow: "var(--shadow-pop)",
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ height: 150, background: gradientFor(companyName || role.name), position: "relative" }}>
-          <button
-            onClick={onClose}
-            style={{
-              position: "absolute", top: 16, right: 16,
-              width: 34, height: 34, borderRadius: "50%",
-              border: "none", background: "rgba(255,255,255,0.9)",
-              cursor: "pointer", fontSize: 16, fontWeight: 600,
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div style={{ padding: "0 36px 48px" }}>
-          <div
-            style={{
-              width: 52, height: 52, borderRadius: 12, background: "#fff",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.15)", display: "flex",
-              alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700,
-              marginTop: -26, marginBottom: 14, border: "1px solid var(--border)",
-            }}
-          >
-            {initialsFor(companyName)}
-          </div>
-
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>{companyName || "Company"}</div>
-          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 10 }}>{role.name}</div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-            <Pill tone="live">● Live</Pill>
-            <Pill>{money(role.min_salary)} – {money(role.max_salary)}</Pill>
-            {role.hiring_goals && <Pill>Target: {role.hiring_goals}</Pill>}
-          </div>
-
-          {earnings && (
-            <div
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 13, fontWeight: 700, color: "var(--green)",
-                background: "var(--green-soft)", padding: "8px 14px",
-                borderRadius: 8, marginBottom: 26,
-              }}
-            >
-              Est. earnings {money(Math.round(earnings.low))} – {money(Math.round(earnings.high))}
-            </div>
-          )}
-
-          {!detail ? (
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>Loading role details…</div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 34 }}>
-              <div>
-                {role.description && (
-                  <div style={{ marginBottom: 22 }}>
-                    <div style={sectionLabelStyle}>About this role</div>
-                    <div style={{ fontSize: 13.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{role.description}</div>
-                  </div>
-                )}
-                {detail.qualities.length > 0 && (
-                  <div style={{ marginBottom: 22 }}>
-                    <div style={sectionLabelStyle}>Ideal candidate qualities</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6 }}>
-                      {detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {detail.traits.length > 0 && (
-                  <div style={{ marginBottom: 22 }}>
-                    <div style={sectionLabelStyle}>Traits to avoid</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6 }}>
-                      {detail.traits.map((t) => <li key={t.id}>{t.trait}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {detail.references.length > 0 && (
-                  <div style={{ marginBottom: 22 }}>
-                    <div style={sectionLabelStyle}>Profiles referenced</div>
-                    {detail.references.map((r) => (
-                      <div key={r.id} style={{ fontSize: 13.5, marginBottom: 8 }}>
-                        <div style={{ color: "var(--ink-soft)" }}>{r.note}</div>
-                        {r.linkedin && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>{r.linkedin}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {role.recruiting_advice && (
-                  <div style={{ marginBottom: 22 }}>
-                    <div style={sectionLabelStyle}>Recruiting advice</div>
-                    <div style={{ fontSize: 13.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{role.recruiting_advice}</div>
-                  </div>
-                )}
-                {role.hm_intro && (
-                  <div style={{ marginBottom: 22 }}>
-                    <div style={sectionLabelStyle}>Hiring manager intro</div>
-                    <div style={{ fontSize: 13.5, color: "var(--ink-soft)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{role.hm_intro}</div>
-                  </div>
-                )}
-                {detail.stages.length > 0 && (
-                  <div>
-                    <div style={sectionLabelStyle}>Interview stages</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {detail.stages.map((s, i) => (
-                        <span key={s.id} style={{ fontSize: 12.5, padding: "6px 11px", borderRadius: 999, border: "1px solid var(--border)" }}>
-                          {i + 1}. {s.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ background: "var(--wash)", border: "1px solid var(--border)", borderRadius: 12, padding: 18, alignSelf: "start" }}>
-                <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ---------- browse roles ----------
-function BrowseRoles({ recruiterId }) {
+function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
   const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
+  const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const [detailCache, setDetailCache] = useState({});
-  const [favorites, setFavorites] = useState({});
+  const [savedSet, setSavedSet] = useState(() => new Set());
+
+  const [query, setQuery] = useState("");
+  const [minSalary, setMinSalary] = useState("");
+  const [activeFilters, setActiveFilters] = useState(() => new Set());
 
   useEffect(() => {
     (async () => {
       try {
         const r = await fetchLiveRoles();
         setRoles(r);
+        const ids = r.map((x) => x.id);
         setCompanyMap(await fetchCompaniesByIds([...new Set(r.map((x) => x.company_id))]));
+        setCounts(await fetchInterviewingCounts(ids));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -853,8 +773,9 @@ function BrowseRoles({ recruiterId }) {
     })();
   }, []);
 
-  const openRole = async (roleId) => {
-    setOpenId(roleId);
+  const toggle = async (roleId) => {
+    if (expandedId === roleId) { setExpandedId(null); return; }
+    setExpandedId(roleId);
     if (!detailCache[roleId]) {
       try {
         const d = await fetchRoleDetail(roleId);
@@ -865,107 +786,137 @@ function BrowseRoles({ recruiterId }) {
     }
   };
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return roles;
-    return roles.filter((r) => {
-      const company = (companyMap[r.company_id] || "").toLowerCase();
-      return r.name.toLowerCase().includes(q) || company.includes(q);
-    });
-  }, [roles, companyMap, query]);
+  const toggleFilter = (key) => setActiveFilters((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; });
+  const toggleSave = (roleId) => setSavedSet((prev) => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next; });
+  const clearAll = () => { setQuery(""); setMinSalary(""); setActiveFilters(new Set()); };
+  const hasActiveFilters = query !== "" || minSalary !== "" || activeFilters.size > 0;
 
-  if (loading) return <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading roles…</div>;
-  if (error) return <div style={{ color: "var(--red)", fontSize: 14 }}>{error}</div>;
+  let visible = roles.filter((r) => {
+    const company = companyMap[r.company_id] || "";
+    if (query) {
+      const q = query.toLowerCase();
+      const hay = `${r.name} ${company} ${r.description || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (minSalary && Number(r.max_salary || 0) < Number(minSalary)) return false;
+    if (activeFilters.has("new") && !isRecent(r.created_at)) return false;
+    if (activeFilters.has("noInterviews") && (counts[r.id] || 0) !== 0) return false;
+    return true;
+  });
+  if (activeFilters.has("highestPaying")) visible = [...visible].sort((a, b) => (b.max_salary || 0) - (a.max_salary || 0));
 
-  const openRoleObj = roles.find((r) => r.id === openId);
+  if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"loading roles\u2026"}</div>;
+  if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
 
   return (
     <div>
-      <PageHeader
-        title="Browse roles"
-        subtitle="Live searches you can submit candidates to right now."
-        action={<div style={{ fontSize: 13.5, color: "var(--muted)" }}>{filtered.length} role{filtered.length === 1 ? "" : "s"}</div>}
-      />
+      <FilterPillsRow active={activeFilters} onToggle={toggleFilter} />
+      <SearchFilterBar query={query} setQuery={setQuery} count={visible.length} minSalary={minSalary} setMinSalary={setMinSalary} onClear={clearAll} hasActiveFilters={hasActiveFilters} />
 
-      <SearchBar value={query} onChange={setQuery} placeholder="Search roles, companies, and more…" />
+      <div style={{ marginTop: 22, marginBottom: 16 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: T.ink }}>Live roles</div>
+        <div style={{ fontSize: 13.5, color: T.sub, marginTop: 2 }}>Open roles from companies hiring on MakePlacement.</div>
+      </div>
 
-      {roles.length === 0 && (
+      {visible.length === 0 ? (
         <EmptyState
-          icon={<IconBriefcase />}
-          title="No live roles right now"
-          body="Check back soon — new roles show up here as clients post them."
+          icon="briefcase"
+          title={roles.length === 0 ? "No live roles right now" : "No roles match your filters"}
+          body={roles.length === 0 ? "Check back soon \u2014 new roles show up here as clients post them." : "Try a different search term or clear your filters."}
+          actions={hasActiveFilters ? <SecondaryButton onClick={clearAll}>Clear filters</SecondaryButton> : null}
         />
-      )}
-
-      {roles.length > 0 && filtered.length === 0 && (
-        <EmptyState
-          icon={<IconSearch color="var(--blue)" size={20} />}
-          title="No roles match your search"
-          body="Try a different company name or role title."
-          actions={<SecondaryButton onClick={() => setQuery("")}>Clear search</SecondaryButton>}
-        />
-      )}
-
-      {filtered.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>
-          {filtered.map((role) => (
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(255px, 1fr))", gap: 16 }}>
+          {visible.map((role) => (
             <RoleCard
               key={role.id}
               role={role}
               companyName={companyMap[role.company_id]}
-              onOpen={() => openRole(role.id)}
-              favorited={!!favorites[role.id]}
-              onToggleFavorite={() => setFavorites((f) => ({ ...f, [role.id]: !f[role.id] }))}
+              expanded={expandedId === role.id}
+              onToggle={() => toggle(role.id)}
+              detail={detailCache[role.id]}
+              recruiterId={recruiterId}
+              interviewingCount={counts[role.id] || 0}
+              saved={savedSet.has(role.id)}
+              onToggleSave={() => toggleSave(role.id)}
+              applied={appliedRoleIds.has(role.id)}
+              onApply={async () => { await applyToRole(recruiterId, role.id); onApplied(role.id); }}
             />
           ))}
         </div>
-      )}
-
-      {openRoleObj && (
-        <RoleDetailPanel
-          role={openRoleObj}
-          companyName={companyMap[openRoleObj.company_id]}
-          detail={detailCache[openRoleObj.id]}
-          recruiterId={recruiterId}
-          onClose={() => setOpenId(null)}
-        />
       )}
     </div>
   );
 }
 
-// ---------- my candidates ----------
+// ---------- shared messages ----------
+function MessageFeed({ messages, emptyLabel }) {
+  if (messages.length === 0) return <div style={{ fontSize: 12, color: T.faint, fontStyle: "italic" }}>{emptyLabel}</div>;
+  return (
+    <div>
+      {messages.map((m) => (
+        <div key={m.id} style={{ padding: "7px 0", borderBottom: `1px solid ${T.lineSoft}` }}>
+          <div style={{ fontSize: 12.5, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
+          <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{m.sender_type === "recruiter" ? "you" : "company"} {"\u00b7"} {formatWhen(m.created_at)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const handleSend = async () => {
+    if (!text.trim()) return;
+    setSending(true);
+    setError("");
+    try { await onSend(text.trim()); setText(""); } catch (err) { setError(err.message || "Failed to send."); } finally { setSending(false); }
+  };
+  return (
+    <div>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
+      {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      <PrimaryButton onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "Sending\u2026" : buttonLabel}</PrimaryButton>
+    </div>
+  );
+}
+
 function RoleUpdatesBanner({ messages }) {
   const [open, setOpen] = useState(messages.length > 0 && messages.length <= 2);
   if (messages.length === 0) return null;
   return (
-    <div style={{ border: "1px solid var(--border)", borderLeft: "3px solid var(--blue)", borderRadius: 8, padding: "10px 14px", marginBottom: 10, background: "var(--blue-soft)" }}>
-      <div onClick={() => setOpen((o) => !o)} style={{ fontSize: 12.5, fontWeight: 700, cursor: "pointer", display: "flex", justifyContent: "space-between", color: "var(--ink)" }}>
+    <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+      <div onClick={() => setOpen((o) => !o)} style={{ fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
         <span>Updates from company ({messages.length})</span>
-        <span style={{ color: "var(--muted)" }}>{open ? "Hide" : "Show"}</span>
+        <span style={{ color: T.sub }}>{open ? "Hide" : "Show"}</span>
       </div>
       {open && <div style={{ marginTop: 8 }}><MessageFeed messages={messages} emptyLabel="" /></div>}
     </div>
   );
 }
 
-function MyCandidateCard({ candidate, stageName, feedbackMessages }) {
+function CandidatePillTone(c) {
+  if (isPlaced(c)) return "placed";
+  if (isRejected(c)) return "rejected";
+  return "live";
+}
+
+function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages }) {
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, marginBottom: 10, background: "#fff" }}>
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 15, marginBottom: 10, background: "#fff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700 }}>{candidate.name}</div>
-        {isRejected(candidate) && <Pill tone="rejected">Rejected</Pill>}
-        {isPlaced(candidate) && <Pill tone="placed">Placed</Pill>}
-        {isActive(candidate) && <Pill>{stageName || "In review"}</Pill>}
+        <div>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{candidate.name}</div>
+          {roleName && <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{roleName}</div>}
+        </div>
+        <Pill tone={CandidatePillTone(candidate)}>{isPlaced(candidate) ? "Placed" : isRejected(candidate) ? "Rejected" : stageName || "In review"}</Pill>
       </div>
-      <div style={{ fontSize: 11.5, color: "var(--muted-2)", marginTop: 8 }}>
-        submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-      </div>
+      <div style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
       {feedbackMessages.length > 0 && (
-        <div style={{ marginTop: 10, borderTop: "1px solid var(--wash)", paddingTop: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Feedback from company ({feedbackMessages.length})
-          </div>
+        <div style={{ marginTop: 10, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>Notes from company ({feedbackMessages.length})</div>
           <MessageFeed messages={feedbackMessages} emptyLabel="" />
         </div>
       )}
@@ -975,97 +926,246 @@ function MyCandidateCard({ candidate, stageName, feedbackMessages }) {
 
 function RoleGroup({ role, companyName, candidates, stageMap, messages }) {
   const roleMessages = messages.filter((m) => m.role_id === role.id);
-  const broadcasts = roleMessages.filter((m) => !m.candidate_id);
+  const broadcasts = roleMessages.filter((m) => !m.candidate_id && !m.recruiter_id);
   const messagesForCandidate = (candidateId) => roleMessages.filter((m) => m.candidate_id === candidateId);
 
   return (
     <div style={{ marginBottom: 30 }}>
-      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{role.name}</div>
-      <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10 }}>{companyName}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 2 }}>{role.name}</div>
+      <div style={{ fontSize: 12.5, color: T.sub, marginBottom: 10 }}>{companyName}</div>
       <RoleUpdatesBanner messages={broadcasts} />
-      {candidates.map((c) => (
-        <MyCandidateCard key={c.id} candidate={c} stageName={stageMap[c.stage_id]} feedbackMessages={messagesForCandidate(c.id)} />
-      ))}
+      {candidates.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>No candidates submitted yet for this role.</div>
+      ) : (
+        candidates.map((c) => <MyCandidateCard key={c.id} candidate={c} stageName={stageMap[c.stage_id]} feedbackMessages={messagesForCandidate(c.id)} />)
+      )}
     </div>
   );
 }
 
-function MyCandidates({ recruiterId, onBrowse }) {
-  const [candidates, setCandidates] = useState([]);
-  const [roleMap, setRoleMap] = useState({});
+function KanbanBoard({ candidates, roleMap, companyMap }) {
+  const columns = [
+    { key: "active", label: "Interviewing", test: isActive },
+    { key: "rejected", label: "Rejected", test: isRejected },
+    { key: "placed", label: "Placed", test: isPlaced },
+  ];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      {columns.map((col) => {
+        const items = candidates.filter(col.test);
+        return (
+          <div key={col.key}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 8, borderBottom: `2px solid ${T.ink}`, marginBottom: 12 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, textTransform: "uppercase", letterSpacing: "0.03em" }}>{col.label}</div>
+              <div style={{ fontSize: 12, color: T.sub }}>{items.length}</div>
+            </div>
+            {items.length === 0 && <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>None yet</div>}
+            {items.map((c) => {
+              const role = roleMap[c.role_id];
+              return <MyCandidateCard key={c.id} candidate={c} roleName={role ? `${role.name} \u00b7 ${companyMap[role.company_id] || ""}` : ""} feedbackMessages={[]} />;
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------- my roles ----------
+function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse }) {
+  const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
+  const [candidates, setCandidates] = useState([]);
   const [stageMap, setStageMap] = useState({});
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [view, setView] = useState("list");
+
+  const roleIds = [...appliedRoleIds];
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const [r, cands] = await Promise.all([fetchRolesByIds(roleIds), fetchMyCandidates(recruiterId)]);
+      setRoles(r);
+      setCompanyMap(await fetchCompaniesByIds([...new Set(r.map((x) => x.company_id))]));
+      setCandidates(cands);
+
+      const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
+      const stagesRes = stageIds.length ? await supabaseClient.from("role_stages").select("id, name").in("id", stageIds) : { data: [] };
+      const sMap = {};
+      (stagesRes.data || []).forEach((s) => (sMap[s.id] = s.name));
+      setStageMap(sMap);
+
+      setMessages(await fetchMessagesForRoles(roleIds));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAll(); }, [appliedRoleIds.size]);
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const cands = await fetchMyCandidates(recruiterId);
-        setCandidates(cands);
+    if (roleIds.length === 0) return;
+    const channel = supabaseClient
+      .channel(`my-roles-${recruiterId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiterId}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+        const row = payload.new || payload.old;
+        if (row && roleIds.includes(row.role_id)) loadAll();
+      })
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [appliedRoleIds.size, recruiterId]);
 
-        const roleIds = [...new Set(cands.map((c) => c.role_id))];
-        const stageIds = [...new Set(cands.map((c) => c.stage_id).filter(Boolean))];
-
-        const [rolesRes, stagesRes, msgs] = await Promise.all([
-          roleIds.length ? supabaseClient.from("roles").select("id, name, company_id").in("id", roleIds) : Promise.resolve({ data: [] }),
-          stageIds.length ? supabaseClient.from("role_stages").select("id, name").in("id", stageIds) : Promise.resolve({ data: [] }),
-          fetchMessagesForRoles(roleIds),
-        ]);
-
-        const rMap = {};
-        (rolesRes.data || []).forEach((r) => (rMap[r.id] = r));
-        setRoleMap(rMap);
-
-        const sMap = {};
-        (stagesRes.data || []).forEach((s) => (sMap[s.id] = s.name));
-        setStageMap(sMap);
-
-        setMessages(msgs);
-
-        const companyIds = [...new Set(Object.values(rMap).map((r) => r.company_id))];
-        setCompanyMap(await fetchCompaniesByIds(companyIds));
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [recruiterId]);
-
-  if (loading) return <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading your candidates…</div>;
-  if (error) return <div style={{ color: "var(--red)", fontSize: 14 }}>{error}</div>;
+  if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"loading your roles\u2026"}</div>;
+  if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
 
   const candidatesByRole = {};
-  candidates.forEach((c) => {
-    (candidatesByRole[c.role_id] = candidatesByRole[c.role_id] || []).push(c);
-  });
+  candidates.forEach((c) => { (candidatesByRole[c.role_id] = candidatesByRole[c.role_id] || []).push(c); });
 
   return (
     <div>
-      <PageHeader title="My candidates" subtitle="Everyone you've submitted, grouped by role." />
-      {candidates.length === 0 ? (
-        <EmptyState
-          icon={<IconCalendar />}
-          title="No candidates submitted yet"
-          body="Kickstart your pipeline with roles that match your expertise."
-          actions={<SecondaryButton onClick={onBrowse}>Browse roles</SecondaryButton>}
-        />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: T.ink }}>My roles</div>
+          <div style={{ fontSize: 13.5, color: T.sub, marginTop: 2 }}>Roles you've applied to, updating live as things change.</div>
+        </div>
+        {candidates.length > 0 && (
+          <GhostButton onClick={() => setView((v) => (v === "list" ? "kanban" : "list"))}>
+            <Icon name={view === "list" ? "grid" : "list"} size={14} />
+            {view === "list" ? "Kanban view" : "List view"}
+          </GhostButton>
+        )}
+      </div>
+
+      {roles.length === 0 ? (
+        <EmptyState icon="briefcase" title="You haven't applied to any roles yet" body="Browse live roles and apply \u2014 you're approved instantly, so you can submit candidates right away." actions={<PrimaryButton onClick={onBrowse}>Browse roles</PrimaryButton>} />
+      ) : view === "kanban" ? (
+        <KanbanBoard candidates={candidates} roleMap={Object.fromEntries(roles.map((r) => [r.id, r]))} companyMap={companyMap} />
       ) : (
-        Object.keys(candidatesByRole).map((roleId) => {
-          const role = roleMap[roleId];
-          if (!role) return null;
+        roles.map((role) => (
+          <RoleGroup key={role.id} role={role} companyName={companyMap[role.company_id]} candidates={candidatesByRole[role.id] || []} stageMap={stageMap} messages={messages} />
+        ))
+      )}
+    </div>
+  );
+}
+
+// ---------- messages inbox ----------
+function RecruiterInbox({ session, recruiterId, appliedRoleIds }) {
+  const [roles, setRoles] = useState([]);
+  const [companyMap, setCompanyMap] = useState({});
+  const [candidates, setCandidates] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expandedKey, setExpandedKey] = useState(null);
+
+  const roleIds = [...appliedRoleIds];
+
+  const loadAll = async () => {
+    if (roleIds.length === 0) { setLoading(false); return; }
+    try {
+      const [r, cands, allMsgs] = await Promise.all([fetchRolesByIds(roleIds), fetchMyCandidates(recruiterId), fetchMessagesForRoles(roleIds)]);
+      setRoles(r);
+      setCompanyMap(await fetchCompaniesByIds([...new Set(r.map((x) => x.company_id))]));
+      setCandidates(cands);
+      const myCandidateIds = new Set(cands.map((c) => c.id));
+      const relevant = allMsgs.filter((m) => (
+        m.recruiter_id === recruiterId ||
+        (m.candidate_id && myCandidateIds.has(m.candidate_id)) ||
+        (!m.candidate_id && !m.recruiter_id)
+      ));
+      setMessages(relevant);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAll(); }, [appliedRoleIds.size]);
+
+  useEffect(() => {
+    if (roleIds.length === 0) return;
+    const channel = supabaseClient
+      .channel(`recruiter-inbox-${recruiterId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+        const row = payload.new || payload.old;
+        if (row && roleIds.includes(row.role_id)) loadAll();
+      })
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [appliedRoleIds.size, recruiterId]);
+
+  const roleById = {};
+  roles.forEach((r) => (roleById[r.id] = r));
+  const candidateById = {};
+  candidates.forEach((c) => (candidateById[c.id] = c));
+
+  const threads = {};
+  messages.forEach((m) => {
+    const key = `${m.role_id}:${m.candidate_id || ""}:${m.recruiter_id || ""}`;
+    if (!threads[key]) threads[key] = { key, role_id: m.role_id, candidate_id: m.candidate_id, recruiter_id: m.recruiter_id, messages: [] };
+    threads[key].messages.push(m);
+  });
+  const threadList = Object.values(threads).sort((a, b) => new Date(b.messages[b.messages.length - 1].created_at) - new Date(a.messages[a.messages.length - 1].created_at));
+
+  const threadLabel = (t) => {
+    if (t.candidate_id) {
+      const c = candidateById[t.candidate_id];
+      return c ? `${c.name} \u2014 notes from company` : "Candidate notes";
+    }
+    if (t.recruiter_id) return "Direct from company";
+    return "Bench update";
+  };
+
+  const send = async (roleId, candidateId, recruiterTargetId, body) => {
+    await sendRecruiterMessage(session, recruiterId, roleId, candidateId, recruiterTargetId, body);
+    await loadAll();
+  };
+
+  if (roleIds.length === 0) {
+    return <EmptyState icon="mail" title="No messages yet" body="Apply to a role to start hearing from the companies you're working with." />;
+  }
+  if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"Loading messages\u2026"}</div>;
+  if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
+
+  return (
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: T.ink, marginBottom: 4 }}>Messages</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 22 }}>Everything sent to you about your candidates and roles, updating live.</div>
+
+      {threadList.length === 0 ? (
+        <EmptyState icon="mail" title="No messages yet" body="When a company sends feedback or an update, it'll show up here right away." />
+      ) : (
+        threadList.map((t) => {
+          const role = roleById[t.role_id];
+          const open = expandedKey === t.key;
+          const last = t.messages[t.messages.length - 1];
           return (
-            <RoleGroup
-              key={roleId}
-              role={role}
-              companyName={companyMap[role.company_id]}
-              candidates={candidatesByRole[roleId]}
-              stageMap={stageMap}
-              messages={messages}
-            />
+            <div key={t.key} style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
+              <div onClick={() => setExpandedKey(open ? null : t.key)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{threadLabel(t)}</div>
+                  <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{role ? `${role.name} \u00b7 ${companyMap[role.company_id] || ""}` : "Role"}</div>
+                  {!open && <div style={{ fontSize: 12.5, color: T.sub, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{last.body}</div>}
+                </div>
+                <div style={{ fontSize: 11, color: T.faint, whiteSpace: "nowrap" }}>{formatWhen(last.created_at)}</div>
+              </div>
+              {open && (
+                <div style={{ marginTop: 14, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 14 }}>
+                  <MessageFeed messages={t.messages} emptyLabel="" />
+                  <div style={{ marginTop: 10 }}>
+                    <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })
       )}
@@ -1078,23 +1178,20 @@ function RecruiterDashboard() {
   const [session, setSession] = useState(undefined);
   const [recruiter, setRecruiter] = useState(null);
   const [tab, setTab] = useState("browse");
+  const [appliedRoleIds, setAppliedRoleIds] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) {
-        window.location.href = LOGIN_URL;
-        return;
-      }
+      if (!session) { window.location.href = LOGIN_URL; return; }
       setSession(session);
       try {
         const r = await getMyRecruiter(session);
-        if (!r) {
-          window.location.href = LOGIN_URL;
-          return;
-        }
+        if (!r) { window.location.href = LOGIN_URL; return; }
         setRecruiter(r);
+        const apps = await fetchMyApplications(r.id);
+        setAppliedRoleIds(new Set(apps.map((a) => a.role_id)));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1108,39 +1205,24 @@ function RecruiterDashboard() {
     window.location.href = LOGIN_URL;
   };
 
-  if (session === undefined || loading) {
-    return (
-      <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "var(--muted)", fontSize: 13.5 }}>Loading…</div>
-      </div>
-    );
-  }
+  const handleApplied = (roleId) => setAppliedRoleIds((prev) => new Set([...prev, roleId]));
 
-  if (error) {
-    return (
-      <div style={pageWrap}>
-        <div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: "var(--red)" }}>{error}</div>
-      </div>
-    );
-  }
+  if (session === undefined || loading) return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.sub, fontSize: 13 }}>{"loading\u2026"}</div></div>;
+  if (error) return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.red }}>{error}</div></div>;
 
   return (
     <div style={pageWrap}>
-      <TopNav recruiterLabel={recruiter.firm_name || ""} tab={tab} onTabChange={setTab} onLogout={handleLogout} />
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "36px 28px 100px" }}>
-        {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} />}
-        {tab === "mine" && <MyCandidates recruiterId={recruiter.id} onBrowse={() => setTab("browse")} />}
+      <TopNav tab={tab} onTabChange={setTab} recruiter={recruiter} onLogout={handleLogout} />
+      <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
+        {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} />}
+        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} />}
+        {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} />}
       </div>
     </div>
   );
 }
 
-const pageWrap = {
-  minHeight: "100vh",
-  background: "var(--paper)",
-  fontFamily: "var(--font-sans)",
-  color: "var(--ink)",
-};
+const pageWrap = { minHeight: "100vh", background: "#fff", fontFamily: T.sans, color: T.ink };
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
     root.render(<RecruiterDashboard />);
