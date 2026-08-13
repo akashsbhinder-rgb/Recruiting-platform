@@ -256,11 +256,16 @@
 
     <div class="fields">
 
-      <!-- Companies: name, work email, password only -->
+      <!-- Companies: first/last name, work email, password -->
       <form id="form-companies" novalidate>
-        <div class="field">
-          <input type="text" id="c-name" placeholder="Full name" required>
-          <div class="error-msg" id="err-c-name">Please enter your name</div>
+        <div class="row">
+          <div class="field">
+            <input type="text" id="c-first-name" placeholder="First name" required>
+            <div class="error-msg" id="err-c-first-name">Please enter your first name</div>
+          </div>
+          <div class="field">
+            <input type="text" id="c-last-name" placeholder="Last name (optional)">
+          </div>
         </div>
 
         <div class="field">
@@ -281,21 +286,21 @@
         <div class="link-row">Already have an account? <a id="link-login-from-companies">Log in</a></div>
       </form>
 
-      <!-- Search firms signup -->
+      <!-- Search firms: first/last name, work email, password -->
       <form id="form-agencies" class="hidden" novalidate>
+        <div class="row">
+          <div class="field">
+            <input type="text" id="a-first-name" placeholder="First name" required>
+            <div class="error-msg" id="err-a-first-name">Please enter your first name</div>
+          </div>
+          <div class="field">
+            <input type="text" id="a-last-name" placeholder="Last name (optional)">
+          </div>
+        </div>
+
         <div class="field">
           <input type="email" id="a-email" placeholder="Work email" required>
           <div class="error-msg" id="err-a-email">Please enter a valid email</div>
-        </div>
-
-        <div class="field">
-          <input type="tel" id="a-phone" placeholder="Phone number" required>
-          <div class="error-msg" id="err-a-phone">Enter a valid phone number (at least 10 digits)</div>
-        </div>
-
-        <div class="field">
-          <input type="text" id="a-linkedin" placeholder="LinkedIn profile" required>
-          <div class="error-msg" id="err-a-linkedin">Please enter your LinkedIn profile</div>
         </div>
 
         <div class="field">
@@ -356,6 +361,7 @@
 
     const ONBOARDING_URL = 'onboarding.html';
     const RECRUITER_ONBOARDING_URL = 'recruiter_onboarding.html';
+    const RECRUITER_DASHBOARD_URL = 'recruiter_dashboard.html';
     const PENDING_KEY = 'mp_pending_signup';
 
     // ---- Show/hide password toggles ----
@@ -428,11 +434,6 @@
     }
 
     const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-    const isPhone = v => {
-      const digitCount = (v.match(/\d/g) || []).length;
-      const validChars = /^[\d\s()+\-.]+$/.test(v);
-      return validChars && digitCount >= 10;
-    };
     const isStrongEnoughPassword = v => v.length >= 8;
 
     const PERSONAL_EMAIL_DOMAINS = new Set([
@@ -452,13 +453,6 @@
         input.classList.remove('invalid');
         errorEl.classList.remove('show');
       });
-    }
-
-    function splitName(full) {
-      const parts = full.trim().split(/\s+/);
-      const first = parts.shift() || '';
-      const last = parts.join(' ');
-      return { first, last };
     }
 
     // Tries to create the account; if that email is already registered,
@@ -484,25 +478,26 @@
     }
 
     // ---- Companies form ----
-    const cName = document.getElementById('c-name');
+    const cFirstName = document.getElementById('c-first-name');
+    const cLastName = document.getElementById('c-last-name');
     const cEmail = document.getElementById('c-email');
     const cPassword = document.getElementById('c-password');
 
-    const errCName = document.getElementById('err-c-name');
+    const errCFirstName = document.getElementById('err-c-first-name');
     const errCEmail = document.getElementById('err-c-email');
     const errCPassword = document.getElementById('err-c-password');
 
-    [[cName, errCName], [cEmail, errCEmail], [cPassword, errCPassword]]
+    [[cFirstName, errCFirstName], [cEmail, errCEmail], [cPassword, errCPassword]]
       .forEach(([input, err]) => clearFieldError(input, err));
 
     formCompanies.addEventListener('submit', async e => {
       e.preventDefault();
 
-      const validName = validateField(cName, errCName);
+      const validFirstName = validateField(cFirstName, errCFirstName);
       const validEmail = validateField(cEmail, errCEmail, isWorkEmail);
       const validPassword = validateField(cPassword, errCPassword, isStrongEnoughPassword);
 
-      if (!(validName && validEmail && validPassword)) return;
+      if (!(validFirstName && validEmail && validPassword)) return;
 
       const submitBtn = formCompanies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
@@ -510,8 +505,12 @@
       submitBtn.textContent = 'Setting up your account…';
 
       const email = cEmail.value.trim();
-      const { first, last } = splitName(cName.value);
-      const pending = { type: 'company', firstName: first, lastName: last, email };
+      const pending = {
+        type: 'company',
+        firstName: cFirstName.value.trim(),
+        lastName: cLastName.value.trim(),
+        email
+      };
 
       const result = await signUpOrLogIn(email, cPassword.value);
 
@@ -543,28 +542,26 @@
     });
 
     // ---- Search firms form ----
+    const aFirstName = document.getElementById('a-first-name');
+    const aLastName = document.getElementById('a-last-name');
     const aEmail = document.getElementById('a-email');
-    const aPhone = document.getElementById('a-phone');
-    const aLinkedin = document.getElementById('a-linkedin');
     const aPassword = document.getElementById('a-password');
 
+    const errAFirstName = document.getElementById('err-a-first-name');
     const errAEmail = document.getElementById('err-a-email');
-    const errAPhone = document.getElementById('err-a-phone');
-    const errALinkedin = document.getElementById('err-a-linkedin');
     const errAPassword = document.getElementById('err-a-password');
 
-    [[aEmail, errAEmail], [aPhone, errAPhone], [aLinkedin, errALinkedin], [aPassword, errAPassword]]
+    [[aFirstName, errAFirstName], [aEmail, errAEmail], [aPassword, errAPassword]]
       .forEach(([input, err]) => clearFieldError(input, err));
 
     formAgencies.addEventListener('submit', async e => {
       e.preventDefault();
 
+      const validFirstName = validateField(aFirstName, errAFirstName);
       const validEmail = validateField(aEmail, errAEmail, isEmail);
-      const validPhone = validateField(aPhone, errAPhone, isPhone);
-      const validLinkedin = validateField(aLinkedin, errALinkedin);
       const validPassword = validateField(aPassword, errAPassword, isStrongEnoughPassword);
 
-      if (!(validEmail && validPhone && validLinkedin && validPassword)) return;
+      if (!(validFirstName && validEmail && validPassword)) return;
 
       const submitBtn = formAgencies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
@@ -572,7 +569,12 @@
       submitBtn.textContent = 'Setting up your account…';
 
       const email = aEmail.value.trim();
-      const pending = { type: 'search_firm', email, phone: aPhone.value.trim(), linkedin: aLinkedin.value.trim() };
+      const pending = {
+        type: 'search_firm',
+        firstName: aFirstName.value.trim(),
+        lastName: aLastName.value.trim(),
+        email
+      };
 
       const result = await signUpOrLogIn(email, aPassword.value);
 
@@ -650,13 +652,11 @@
       }
 
       const { data: recruiter } = await supabaseClient
-        .from('recruiters').select('id').eq('auth_user_id', session.user.id).maybeSingle();
+        .from('recruiters').select('id, years_experience').eq('auth_user_id', session.user.id).maybeSingle();
       if (recruiter) {
-        // TODO: once recruiter_dashboard.html exists, check whether this
-        // recruiter has already completed onboarding (e.g. years_experience
-        // is set) and route completed profiles there instead. For now every
-        // recruiter always lands back on onboarding, same as companies do.
-        window.location.href = RECRUITER_ONBOARDING_URL;
+        // years_experience is only set once the onboarding steps are
+        // completed and submitted -- use it as the "profile finished" signal.
+        window.location.href = recruiter.years_experience ? RECRUITER_DASHBOARD_URL : RECRUITER_ONBOARDING_URL;
         return;
       }
 
@@ -715,8 +715,8 @@
           // set explicitly on every insert or this throws too.
           await insertOrUpdate('recruiters', 'auth_user_id', session.user.id, {
             auth_user_id: session.user.id,
-            phone: pending.phone,
-            linkedin: pending.linkedin,
+            contact_first_name: pending.firstName,
+            last_name: pending.lastName,
             verified: false
           });
 
