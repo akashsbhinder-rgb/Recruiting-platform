@@ -360,15 +360,15 @@ function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 24 }}>
-        <div style={{ fontSize: 24, fontWeight: 600 }}>Your roles</div>
+        <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.01em" }}>Your roles</div>
         <a
           href={NEW_ROLE_URL}
           style={{
-            fontSize: 14,
+            fontSize: 13.5,
             fontWeight: 600,
             color: "#fff",
             background: "#111",
-            padding: "10px 16px",
+            padding: "10px 18px",
             borderRadius: 8,
             textDecoration: "none",
           }}
@@ -378,8 +378,9 @@ function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
       </div>
 
       {roles.length === 0 && (
-        <div style={{ color: "#8a8a8a", fontSize: 14 }}>
-          You haven't posted a role yet. Use "Post new role" to get started.
+        <div style={{ textAlign: "center", padding: "80px 24px", maxWidth: 380, margin: "0 auto" }}>
+          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>No roles posted yet</div>
+          <div style={{ fontSize: 13.5, color: "#8a8a8a" }}>Use "Post new role" above to get your first role in front of recruiters.</div>
         </div>
       )}
 
@@ -391,9 +392,9 @@ function RolesOverview({ roles, counts, onOpenRole, onToggleRoleStatus }) {
             <div
               key={role.id}
               style={{
-                border: "1px solid #eee",
-                borderRadius: 12,
-                padding: 20,
+                border: "1px solid #ececea",
+                borderRadius: 14,
+                padding: 22,
                 background: "#fff",
                 display: "flex",
                 justifyContent: "space-between",
