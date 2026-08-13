@@ -141,6 +141,8 @@ function Icon({ name, size = 18, style }) {
       return <svg {...common}><polyline points="20 6 9 17 4 12" /></svg>;
     case "checkCircle":
       return <svg {...common}><circle cx="12" cy="12" r="9" /><polyline points="8 12 11 15 16 9" /></svg>;
+    case "pencil":
+      return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
     case "pause":
       return <svg {...common}><rect x="7" y="5" width="3.5" height="14" rx="1" /><rect x="13.5" y="5" width="3.5" height="14" rx="1" /></svg>;
     case "play":
@@ -323,6 +325,134 @@ function RejectModal({ candidate, onCancel, onConfirm }) {
   );
 }
 
+const removeItemBtnStyle = { border: `1px solid ${T.lineSoft}`, background: "#fff", color: T.faint, borderRadius: 8, width: 36, cursor: "pointer", fontSize: 13, flexShrink: 0 };
+const addItemBtnStyle = { fontSize: 12.5, fontWeight: 600, color: T.ink, background: "none", border: `1px dashed ${T.line}`, borderRadius: 8, padding: "7px 12px", cursor: "pointer", fontFamily: T.sans };
+
+function EditableStringList({ items, onChange, placeholder }) {
+  const set = (i, v) => { const next = [...items]; next[i] = v; onChange(next); };
+  const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
+  const add = () => onChange([...items, ""]);
+  return (
+    <div>
+      {items.map((val, i) => (
+        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input style={{ ...inputStyle, marginBottom: 0 }} value={val} placeholder={placeholder} onChange={(e) => set(i, e.target.value)} />
+          {items.length > 1 && <button type="button" onClick={() => remove(i)} style={removeItemBtnStyle}>{"\u2715"}</button>}
+        </div>
+      ))}
+      <button type="button" onClick={add} style={addItemBtnStyle}>{"+ Add"}</button>
+    </div>
+  );
+}
+
+function EditRoleModal({ role, onCancel, onSaved }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const detail = await fetchRoleEditDetail(role.id);
+        setForm({
+          name: role.name || "",
+          description: role.description || "",
+          minSalary: role.min_salary != null ? String(role.min_salary) : "",
+          maxSalary: role.max_salary != null ? String(role.max_salary) : "",
+          hiringGoals: role.hiring_goals || "",
+          recruitingAdvice: role.recruiting_advice || "",
+          hmIntro: role.hm_intro || "",
+          welcomeMessage: role.welcome_message || "",
+          qualities: detail.qualities.length ? detail.qualities : [""],
+          traits: detail.traits.length ? detail.traits : [""],
+          questions: detail.questions.length ? detail.questions : [""],
+          references: detail.references.length ? detail.references : [{ note: "", linkedin: "" }],
+        });
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [role.id]);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const save = async () => {
+    if (!form.name.trim() || !form.description.trim() || !form.minSalary || !form.maxSalary) {
+      setError("Role name, description, and salary range are required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await saveRoleEdits(role.id, form);
+      await onSaved();
+    } catch (err) {
+      setError(err.message || "Something went wrong saving your changes.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onCancel} width={640}>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4, color: T.ink }}>Edit role</div>
+      <div style={{ fontSize: 13, color: T.sub, marginBottom: 18 }}>{"Fix anything you got wrong \u2014 changes go live immediately."}</div>
+
+      {loading ? (
+        <div style={{ fontSize: 13, color: T.sub }}>{"Loading\u2026"}</div>
+      ) : (
+        <div style={{ maxHeight: "65vh", overflowY: "auto", paddingRight: 4 }}>
+          <div style={sectionLabelStyle}>Role name</div>
+          <input style={inputStyle} value={form.name} onChange={(e) => set({ name: e.target.value })} />
+
+          <div style={sectionLabelStyle}>Role description</div>
+          <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={form.description} onChange={(e) => set({ description: e.target.value })} />
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={sectionLabelStyle}>Minimum salary</div>
+              <input type="number" style={inputStyle} value={form.minSalary} onChange={(e) => set({ minSalary: e.target.value })} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={sectionLabelStyle}>Maximum salary</div>
+              <input type="number" style={inputStyle} value={form.maxSalary} onChange={(e) => set({ maxSalary: e.target.value })} />
+            </div>
+          </div>
+
+          <div style={sectionLabelStyle}>Hiring goal</div>
+          <input style={inputStyle} value={form.hiringGoals} placeholder="Ex. Within 2 months" onChange={(e) => set({ hiringGoals: e.target.value })} />
+
+          <div style={sectionLabelStyle}>Ideal candidate qualities</div>
+          <EditableStringList items={form.qualities} onChange={(v) => set({ qualities: v })} placeholder="e.g. 8+ years running plant operations" />
+
+          <div style={{ ...sectionLabelStyle, marginTop: 16 }}>Traits to avoid</div>
+          <EditableStringList items={form.traits} onChange={(v) => set({ traits: v })} placeholder="e.g. Job hoppers with 5+ jobs in 3 years" />
+
+          <div style={{ ...sectionLabelStyle, marginTop: 16 }}>Candidate questions</div>
+          <EditableStringList items={form.questions} onChange={(v) => set({ questions: v })} placeholder="e.g. Do you have experience with union environments?" />
+
+          <div style={{ ...sectionLabelStyle, marginTop: 16 }}>Recruiting advice</div>
+          <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.recruitingAdvice} onChange={(e) => set({ recruitingAdvice: e.target.value })} />
+
+          <div style={sectionLabelStyle}>Hiring manager intro</div>
+          <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.hmIntro} onChange={(e) => set({ hmIntro: e.target.value })} />
+
+          <div style={sectionLabelStyle}>Welcome message</div>
+          <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.welcomeMessage} onChange={(e) => set({ welcomeMessage: e.target.value })} />
+        </div>
+      )}
+
+      {error && <div style={{ color: T.red, fontSize: 12.5, margin: "10px 0" }}>{error}</div>}
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+        <SecondaryButton onClick={onCancel} disabled={saving}>Cancel</SecondaryButton>
+        <PrimaryButton onClick={save} disabled={loading || saving}>{saving ? "Saving\u2026" : "Save changes"}</PrimaryButton>
+      </div>
+    </Modal>
+  );
+}
+
 // ---------- data ----------
 async function getMyCompany(session) {
   const { data, error } = await supabaseClient.from("companies").select("*").eq("auth_user_id", session.user.id).maybeSingle();
@@ -395,6 +525,68 @@ async function updateRoleStatus(id, status) {
   if (error) throw new Error(`Failed updating role: ${error.message}`);
 }
 
+async function updateRoleCore(id, patch) {
+  const { error } = await supabaseClient.from("roles").update(patch).eq("id", id);
+  if (error) throw new Error(`Failed updating role: ${error.message}`);
+}
+
+async function fetchRoleEditDetail(roleId) {
+  const [qualitiesRes, traitsRes, referencesRes, questionsRes] = await Promise.all([
+    supabaseClient.from("role_qualities").select("*").eq("role_id", roleId),
+    supabaseClient.from("role_traits_to_avoid").select("*").eq("role_id", roleId),
+    supabaseClient.from("role_candidate_references").select("*").eq("role_id", roleId),
+    supabaseClient.from("role_questions").select("*").eq("role_id", roleId),
+  ]);
+  if (qualitiesRes.error) throw new Error(`Failed loading qualities: ${qualitiesRes.error.message}`);
+  if (traitsRes.error) throw new Error(`Failed loading traits: ${traitsRes.error.message}`);
+  if (referencesRes.error) throw new Error(`Failed loading references: ${referencesRes.error.message}`);
+  if (questionsRes.error) throw new Error(`Failed loading questions: ${questionsRes.error.message}`);
+  return {
+    qualities: (qualitiesRes.data || []).map((q) => q.quality),
+    traits: (traitsRes.data || []).map((t) => t.trait),
+    references: (referencesRes.data || []).map((r) => ({ note: r.note || "", linkedin: r.linkedin || "" })),
+    questions: (questionsRes.data || []).map((q) => q.question),
+  };
+}
+
+// Replaces the full contents of a role's list table (qualities, traits,
+// questions, referenced profiles) with whatever the edit form has now --
+// simplest way to keep these in sync without diffing row by row.
+async function replaceRoleList(table, roleId, rows) {
+  const { error: delErr } = await supabaseClient.from(table).delete().eq("role_id", roleId);
+  if (delErr) throw new Error(`Failed updating ${table}: ${delErr.message}`);
+  if (rows.length === 0) return;
+  const { error: insErr } = await supabaseClient.from(table).insert(rows);
+  if (insErr) throw new Error(`Failed updating ${table}: ${insErr.message}`);
+}
+
+function isFilledStr(v) {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
+async function saveRoleEdits(roleId, form) {
+  await updateRoleCore(roleId, {
+    name: form.name,
+    description: form.description,
+    min_salary: Number(form.minSalary),
+    max_salary: Number(form.maxSalary),
+    hiring_goals: form.hiringGoals || null,
+    recruiting_advice: form.recruitingAdvice,
+    hm_intro: form.hmIntro,
+    welcome_message: form.welcomeMessage || null,
+  });
+  await Promise.all([
+    replaceRoleList("role_qualities", roleId, form.qualities.filter(isFilledStr).map((quality) => ({ role_id: roleId, quality }))),
+    replaceRoleList("role_traits_to_avoid", roleId, form.traits.filter(isFilledStr).map((trait) => ({ role_id: roleId, trait }))),
+    replaceRoleList("role_questions", roleId, form.questions.filter(isFilledStr).map((question) => ({ role_id: roleId, question }))),
+    replaceRoleList(
+      "role_candidate_references",
+      roleId,
+      form.references.filter((r) => isFilledStr(r.note) || isFilledStr(r.linkedin)).map((r) => ({ role_id: roleId, note: r.note || null, linkedin: r.linkedin || null }))
+    ),
+  ]);
+}
+
 async function fetchRoleMessages(roleId) {
   const { data, error } = await supabaseClient.from("messages").select("*").eq("role_id", roleId).order("created_at", { ascending: true });
   if (error) throw new Error(`Failed loading messages: ${error.message}`);
@@ -429,7 +621,6 @@ function Logomark() {
 const NAV_ITEMS = [
   { key: "roles", label: "Roles", live: true },
   { key: "messages", label: "Messages", live: true },
-  { key: "calls", label: "Calls", live: false },
 ];
 
 function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint }) {
@@ -757,10 +948,11 @@ function PipelineView({ role, stages, candidates, recruiterMap, roleRecruiters, 
 }
 
 // ---------- role status control ----------
-function RoleStatusActions({ role, onPause, onReopen, onRequestFilled }) {
+function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit }) {
   const status = (role.status || "live").toLowerCase();
   return (
-    <div style={{ display: "flex", gap: 8 }}>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <GhostButton onClick={() => onEdit(role)}><Icon name="pencil" size={13} /> Edit role</GhostButton>
       {status === "live" && <GhostButton onClick={() => onPause(role)}><Icon name="pause" size={13} /> Pause</GhostButton>}
       {(status === "paused" || status === "filled") && <GhostButton onClick={() => onReopen(role)}><Icon name="play" size={13} /> Reopen</GhostButton>}
       {status !== "filled" && <GhostButton onClick={() => onRequestFilled(role)}><Icon name="checkCircle" size={13} /> Mark filled</GhostButton>}
@@ -769,7 +961,7 @@ function RoleStatusActions({ role, onPause, onReopen, onRequestFilled }) {
 }
 
 // ---------- hero role card ----------
-function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, children }) {
+function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, onEdit, children }) {
   const status = (role.status || "live").toLowerCase();
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 16, overflow: "hidden", background: "#fff", marginBottom: 28 }}>
@@ -783,7 +975,7 @@ function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReope
             <div style={{ fontSize: 26, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em", marginBottom: 4 }}>{role.name}</div>
             <div style={{ fontSize: 14.5, color: T.sub }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}{role.hiring_goals ? ` \u00b7 Target: ${role.hiring_goals}` : ""}</div>
           </div>
-          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} />
+          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} onEdit={onEdit} />
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
@@ -987,6 +1179,7 @@ function ClientDashboard() {
   const [messages, setMessages] = useState([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [confirmFilledRole, setConfirmFilledRole] = useState(null);
+  const [editingRole, setEditingRole] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1015,6 +1208,13 @@ function ClientDashboard() {
   const handleLogout = async () => {
     await supabaseClient.auth.signOut();
     window.location.href = LOGIN_URL;
+  };
+
+  const reloadRoles = async () => {
+    if (!company) return;
+    const r = await fetchRoles(company.id);
+    setRoles(r);
+    setCounts(await fetchRoleCandidateCounts(r.map((x) => x.id)));
   };
 
   const refreshRoleCounts = async () => setCounts(await fetchRoleCandidateCounts(roles.map((r) => r.id)));
@@ -1132,6 +1332,7 @@ function ClientDashboard() {
                     onPause={(r) => toggleRoleStatus(r, "paused")}
                     onReopen={(r) => toggleRoleStatus(r, "live")}
                     onRequestFilled={(r) => setConfirmFilledRole(r)}
+                    onEdit={(r) => setEditingRole(r)}
                   >
                     {pipelineLoading ? (
                       <div style={{ fontSize: 13, color: T.sub }}>{"Loading pipeline\u2026"}</div>
@@ -1174,11 +1375,19 @@ function ClientDashboard() {
       {confirmFilledRole && (
         <ConfirmModal
           title={`Mark "${confirmFilledRole.name}" as filled?`}
-          body="This tells recruiters the role is no longer open for new candidates. Double-check with your hiring team that someone has actually been placed before confirming \u2014 you can always reopen it later if that changes."
+          body="This tells recruiters the role is no longer open for new candidates."
           confirmLabel="Mark as filled"
           danger
           onCancel={() => setConfirmFilledRole(null)}
           onConfirm={async () => { await toggleRoleStatus(confirmFilledRole, "filled"); setConfirmFilledRole(null); }}
+        />
+      )}
+
+      {editingRole && (
+        <EditRoleModal
+          role={editingRole}
+          onCancel={() => setEditingRole(null)}
+          onSaved={async () => { await reloadRoles(); setEditingRole(null); }}
         />
       )}
     </div>
