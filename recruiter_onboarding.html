@@ -22,6 +22,30 @@
     flex-direction: column;
   }
 
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #eee;
+  }
+  .topbar a {
+    font-family: 'Newsreader', serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: #17171a;
+    text-decoration: none;
+  }
+  .topbar button {
+    background: none;
+    border: none;
+    font-size: 13.5px;
+    color: #17171a;
+    text-decoration: underline;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
   .progress {
     height: 3px;
     background: #eee;
@@ -60,6 +84,28 @@
     color: #777;
     margin-bottom: 36px;
   }
+
+  .field-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #17171a;
+    margin-bottom: 10px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    outline: none;
+    color: #17171a;
+    background: #fff;
+    font-family: inherit;
+    margin-bottom: 26px;
+  }
+  input[type="text"]:focus { border-color: #4b6bfb; }
 
   .option {
     display: block;
@@ -199,6 +245,8 @@
       recruiterId: null,
       stepIndex: 0,
       data: {
+        fullName: '',
+        firmName: '',
         industries: [],
         executivePlacements: null,   // true | false
         yearsExperience: null,       // string
@@ -209,7 +257,7 @@
       submitError: '',
     };
 
-    const steps = ['industries', 'executive', 'years', 'contingency', 'review'];
+    const steps = ['profile', 'industries', 'executive', 'years', 'contingency', 'review'];
 
     function render() {
       const root = document.getElementById('root');
@@ -233,6 +281,7 @@
 
     function canProceed(stepKey) {
       const d = state.data;
+      if (stepKey === 'profile') return d.fullName.trim().length > 0 && d.firmName.trim().length > 0;
       if (stepKey === 'industries') return d.industries.length > 0;
       if (stepKey === 'executive') return d.executivePlacements !== null;
       if (stepKey === 'years') return d.yearsExperience !== null;
@@ -242,6 +291,28 @@
         return true;
       }
       return true;
+    }
+
+    function buildProfileStep() {
+      const wrap = el('div');
+      wrap.appendChild(el('h1', {}, 'Tell us about you'));
+      wrap.appendChild(el('div', { className: 'subtitle' }, 'This is how clients will identify you and your firm.'));
+
+      wrap.appendChild(el('div', { className: 'field-label' }, 'Your full name'));
+      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Jamie Rivera' });
+      nameInput.value = state.data.fullName;
+      nameInput.addEventListener('input', (e) => { state.data.fullName = e.target.value; });
+      nameInput.addEventListener('blur', render);
+      wrap.appendChild(nameInput);
+
+      wrap.appendChild(el('div', { className: 'field-label' }, 'Search firm name'));
+      const firmInput = el('input', { type: 'text', placeholder: 'e.g. Rivera Search Partners' });
+      firmInput.value = state.data.firmName;
+      firmInput.addEventListener('input', (e) => { state.data.firmName = e.target.value; });
+      firmInput.addEventListener('blur', render);
+      wrap.appendChild(firmInput);
+
+      return wrap;
     }
 
     function buildOptionStep({ title, subtitle, options, selected, onSelect, multi }) {
@@ -372,6 +443,8 @@
       wrap.appendChild(el('div', { className: 'subtitle' }, 'This is what clients see when deciding whether to approve you for a role.'));
 
       const rows = [
+        ['Name', d.fullName],
+        ['Search firm', d.firmName],
         ['Industries', d.industries.join(', ')],
         ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
         ['Years of experience', d.yearsExperience],
@@ -396,6 +469,7 @@
 
     function buildStepContent() {
       const key = steps[state.stepIndex];
+      if (key === 'profile') return buildProfileStep();
       if (key === 'industries') return buildIndustriesStep();
       if (key === 'executive') return buildExecutiveStep();
       if (key === 'years') return buildYearsStep();
@@ -411,6 +485,7 @@
         const { error } = await supabaseClient
           .from('recruiters')
           .update({
+            firm_name: state.data.firmName,
             industries: state.data.industries,
             executive_placements: state.data.executivePlacements,
             years_experience: state.data.yearsExperience,
@@ -427,12 +502,26 @@
       }
     }
 
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      window.location.href = LOGIN_URL;
+    }
+
+    function buildTopBar() {
+      const bar = el('div', { className: 'topbar' });
+      bar.appendChild(el('a', { href: LOGIN_URL }, 'MakePlacement'));
+      bar.appendChild(el('button', { type: 'button', onClick: handleLogout }, 'Log out'));
+      return bar;
+    }
+
     function buildPage() {
       const key = steps[state.stepIndex];
       const isLast = state.stepIndex === steps.length - 1;
       const pct = ((state.stepIndex + 1) / steps.length) * 100;
 
       const wrap = el('div', { className: 'wrap' });
+
+      wrap.appendChild(buildTopBar());
 
       const progress = el('div', { className: 'progress' });
       progress.appendChild(el('div', { className: 'progress-fill', style: `width:${pct}%` }));
