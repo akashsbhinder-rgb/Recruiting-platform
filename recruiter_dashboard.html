@@ -63,6 +63,9 @@
   </div>
 
   <script>
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) window.location.reload();
+    });
     window.addEventListener("error", function (event) {
       const box = document.getElementById("boot-error");
       const detail = document.getElementById("boot-error-detail");
@@ -321,6 +324,15 @@ async function applyToRole(recruiterId, roleId) {
   if (error) throw new Error(`Failed to apply: ${error.message}`);
 }
 
+async function uploadResume(recruiterId, file) {
+  const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
+  const path = `${recruiterId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error: uploadErr } = await supabaseClient.storage.from("resumes").upload(path, file);
+  if (uploadErr) throw new Error(`Failed uploading resume: ${uploadErr.message}`);
+  const { data } = supabaseClient.storage.from("resumes").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 async function submitCandidate(roleId, recruiterId, firstStageId, form) {
   const { error } = await supabaseClient.from("candidates").insert([
     { role_id: roleId, recruiter_id: recruiterId, name: form.name, email: form.email, linkedin: form.linkedin || null, resume_url: form.resumeUrl, notes: form.notes, stage_id: firstStageId || null, status: "active" },
@@ -371,8 +383,9 @@ function Logomark() {
   );
 }
 
-function TopNav({ tab, onTabChange, recruiter, onLogout }) {
+function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnread, onMarkNotifsRead, onSelectNotification }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const initial = (recruiter.firm_name || "R").trim().charAt(0).toUpperCase();
 
   return (
@@ -412,9 +425,36 @@ function TopNav({ tab, onTabChange, recruiter, onLogout }) {
             <span style={{ fontSize: 10.5, fontWeight: 600, color: T.faint, border: `1px solid ${T.line}`, borderRadius: 5, padding: "1px 5px" }}>{"\u2318K"}</span>
           </div>
 
-          <button title="Notifications \u2014 coming soon" style={{ background: "none", border: "none", color: T.sub, cursor: "default", padding: 6, display: "flex" }}>
-            <Icon name="bell" size={18} />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => { const next = !notifOpen; setNotifOpen(next); if (next) onMarkNotifsRead(); }}
+              style={{ position: "relative", background: "none", border: "none", color: T.sub, cursor: "pointer", padding: 6, display: "flex" }}
+            >
+              <Icon name="bell" size={18} />
+              {notifUnread > 0 && (
+                <span style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, borderRadius: "50%", background: T.red }} />
+              )}
+            </button>
+            {notifOpen && (
+              <div style={{ position: "absolute", right: 0, top: 40, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", width: 320, maxHeight: 400, overflowY: "auto", zIndex: 20 }}>
+                <div style={{ padding: "10px 14px", fontSize: 12.5, fontWeight: 700, color: T.sub, borderBottom: `1px solid ${T.lineSoft}` }}>Notifications</div>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: "16px 14px", fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>Nothing yet.</div>
+                ) : (
+                  notifications.map((n) => (
+                    <button
+                      key={n.key}
+                      onClick={() => { setNotifOpen(false); onSelectNotification(n); }}
+                      style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: "none", border: "none", borderBottom: `1px solid ${T.lineSoft}`, cursor: "pointer", fontFamily: T.sans }}
+                    >
+                      <div style={{ fontSize: 12.5, color: T.ink }}>{n.text}</div>
+                      <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{formatWhen(n.time)}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           <div style={{ position: "relative" }}>
             <button onClick={() => setMenuOpen((o) => !o)} style={{ width: 32, height: 32, borderRadius: "50%", background: T.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -616,7 +656,8 @@ function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, sa
 
 // ---------- submit candidate form ----------
 function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
-  const [form, setForm] = useState({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" });
+  const [form, setForm] = useState({ name: "", email: "", linkedin: "", notes: "" });
+  const [resumeFile, setResumeFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -628,7 +669,7 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
     const next = {};
     if (!form.name.trim()) next.name = "Required";
     if (!form.email.trim()) next.email = "Required";
-    if (!form.resumeUrl.trim()) next.resumeUrl = "Required";
+    if (!resumeFile) next.resume = "Required";
     if (!form.notes.trim()) next.notes = "Required";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -640,7 +681,8 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
     setSubmitting(true);
     setError("");
     try {
-      await submitCandidate(role.id, recruiterId, firstStageId, form);
+      const resumeUrl = await uploadResume(recruiterId, resumeFile);
+      await submitCandidate(role.id, recruiterId, firstStageId, { ...form, resumeUrl });
       setDone(true);
       onSubmitted && onSubmitted();
     } catch (err) {
@@ -657,7 +699,7 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
       <div style={{ padding: "4px 0" }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Candidate submitted</div>
         <div style={{ fontSize: 13, color: T.sub, marginBottom: 12 }}>{form.name} has been added to {role.name}'s pipeline.</div>
-        <button onClick={() => { setForm({ name: "", email: "", linkedin: "", resumeUrl: "", notes: "" }); setErrors({}); setDone(false); }} style={{ fontSize: 13, color: T.ink, background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}>
+        <button onClick={() => { setForm({ name: "", email: "", linkedin: "", notes: "" }); setResumeFile(null); setErrors({}); setDone(false); }} style={{ fontSize: 13, color: T.ink, background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}>
           Submit another candidate
         </button>
       </div>
@@ -676,8 +718,14 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
 
       <input style={inputStyle} placeholder="linkedin.com/in/... (optional)" value={form.linkedin} onChange={(e) => set({ linkedin: e.target.value })} />
 
-      <input style={fieldStyle("resumeUrl")} placeholder="Resume link *" value={form.resumeUrl} onChange={(e) => set({ resumeUrl: e.target.value })} />
-      {errors.resumeUrl && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>A resume link is required.</div>}
+      <div style={{ marginBottom: errors.resume ? 4 : 12 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${errors.resume ? T.red : T.line}`, borderRadius: 10, padding: "10px 13px", cursor: "pointer", fontSize: 13, color: resumeFile ? T.ink : T.faint, background: "#fff" }}>
+          <Icon name="briefcase" size={14} />
+          {resumeFile ? resumeFile.name : "Upload resume *"}
+          <input type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => setResumeFile(e.target.files[0] || null)} />
+        </label>
+      </div>
+      {errors.resume && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>A resume file is required.</div>}
 
       <textarea style={{ ...fieldStyle("notes"), minHeight: 70, resize: "vertical" }} placeholder="Why this candidate is a fit *" value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
       {errors.notes && <div style={{ color: T.red, fontSize: 11.5, marginBottom: 8 }}>Tell the company why this candidate is a fit.</div>}
@@ -911,6 +959,81 @@ function KanbanBoard({ candidates, roleMap, companyMap }) {
 }
 
 // ---------- role workspace (one role, fully focused) ----------
+// ---------- role info panel (collapsed by default) ----------
+function RoleInfoPanel({ role, detail }) {
+  const [open, setOpen] = useState(false);
+  const hasAnything = role.description || detail.qualities.length || detail.traits.length || detail.references.length || role.recruiting_advice || role.hm_intro || detail.stages.length;
+  if (!hasAnything) return null;
+
+  return (
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, marginBottom: 24, overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "14px 16px", background: T.paperDim, border: "none", cursor: "pointer", fontFamily: T.sans }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: T.ink }}>
+          <Icon name="briefcase" size={15} /> Information to help you fill this role
+        </span>
+        <Icon name="chevronDown" size={15} style={{ transform: open ? "rotate(180deg)" : "none" }} />
+      </button>
+
+      {open && (
+        <div style={{ padding: "18px 16px" }}>
+          {role.description && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>About this role</div>
+              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
+            </div>
+          )}
+          {detail.qualities.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Ideal candidate qualities</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}</ul>
+            </div>
+          )}
+          {detail.traits.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Traits to avoid</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.traits.map((t) => <li key={t.id}>{t.trait}</li>)}</ul>
+            </div>
+          )}
+          {detail.references.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Profiles referenced</div>
+              {detail.references.map((r) => (
+                <div key={r.id} style={{ fontSize: 13.5, marginBottom: 6 }}>
+                  <div style={{ color: "#333" }}>{r.note}</div>
+                  {r.linkedin && <div style={{ color: T.sub, fontSize: 12.5 }}>{r.linkedin}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+          {role.recruiting_advice && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Recruiting advice</div>
+              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div>
+            </div>
+          )}
+          {role.hm_intro && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Hiring manager intro</div>
+              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.hm_intro}</div>
+            </div>
+          )}
+          {detail.stages.length > 0 && (
+            <div>
+              <div style={sectionLabelStyle}>Interview stages</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {detail.stages.map((s, i) => <span key={s.id} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 999, border: `1px solid ${T.line}`, color: T.ink }}>{i + 1}. {s.name}</span>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
   const [detail, setDetail] = useState(null);
   const [candidates, setCandidates] = useState([]);
@@ -990,18 +1113,7 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
             ))
           )}
 
-          {role.description && (
-            <div style={{ marginTop: 24 }}>
-              <div style={sectionLabelStyle}>About this role</div>
-              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
-            </div>
-          )}
-          {detail.qualities.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <div style={sectionLabelStyle}>Ideal candidate qualities</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.qualities.map((q) => <li key={q.id}>{q.quality}</li>)}</ul>
-            </div>
-          )}
+          <RoleInfoPanel role={role} detail={detail} />
         </div>
 
         <div>
@@ -1268,12 +1380,109 @@ function RecruiterDashboard() {
     setTab("myroles");
   };
 
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifSeenAt, setNotifSeenAt] = useState(null);
+  const notifKey = recruiter ? `mp_notif_seen_recruiter_${recruiter.id}` : null;
+
+  useEffect(() => {
+    if (!notifKey) return;
+    const stored = localStorage.getItem(notifKey);
+    if (stored) {
+      setNotifSeenAt(stored);
+    } else {
+      const now = new Date().toISOString();
+      localStorage.setItem(notifKey, now);
+      setNotifSeenAt(now);
+    }
+  }, [notifKey]);
+
+  const loadNotifications = async () => {
+    if (!recruiter || appliedRoleIds.size === 0) { setNotifItems([]); return; }
+    const roleIds = [...appliedRoleIds];
+    try {
+      const [roleList, allMsgs, myCandidates] = await Promise.all([
+        fetchRolesByIds(roleIds),
+        fetchMessagesForRoles(roleIds),
+        fetchMyCandidates(recruiter.id),
+      ]);
+      const roleById = {};
+      roleList.forEach((r) => (roleById[r.id] = r));
+      const myCandidateIds = new Set(myCandidates.map((c) => c.id));
+      const relevantMsgs = allMsgs.filter((m) => (
+        m.sender_type === "company" && (
+          m.recruiter_id === recruiter.id ||
+          (m.candidate_id && myCandidateIds.has(m.candidate_id)) ||
+          (!m.candidate_id && !m.recruiter_id)
+        )
+      ));
+      const updatedCandidates = myCandidates.filter((c) => c.updated_at && new Date(c.updated_at) - new Date(c.created_at) > 1000);
+
+      const items = [
+        ...relevantMsgs.map((m) => ({
+          key: `msg-${m.id}`,
+          time: m.created_at,
+          text: m.candidate_id ? `New note on a candidate for ${roleById[m.role_id] ? roleById[m.role_id].name : "a role"}` : `New message on ${roleById[m.role_id] ? roleById[m.role_id].name : "a role"}`,
+          roleId: m.role_id,
+          kind: "message",
+        })),
+        ...updatedCandidates.map((c) => ({
+          key: `cand-${c.id}`,
+          time: c.updated_at,
+          text: `Update on ${c.name} \u2014 ${roleById[c.role_id] ? roleById[c.role_id].name : "your submission"}`,
+          roleId: c.role_id,
+          kind: "candidate",
+        })),
+      ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 25);
+      setNotifItems(items);
+    } catch (err) {
+      // best-effort
+    }
+  };
+
+  useEffect(() => {
+    if (!recruiter || appliedRoleIds.size === 0) return;
+    loadNotifications();
+    const channel = supabaseClient
+      .channel(`recruiter-notifications-${recruiter.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+        const row = payload.new || payload.old;
+        if (row && appliedRoleIds.has(row.role_id)) loadNotifications();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiter.id}` }, () => loadNotifications())
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [recruiter && recruiter.id, appliedRoleIds.size]);
+
+  const markNotifsRead = () => {
+    if (!notifKey) return;
+    const now = new Date().toISOString();
+    localStorage.setItem(notifKey, now);
+    setNotifSeenAt(now);
+  };
+
+  const notifUnreadCount = notifSeenAt ? notifItems.filter((n) => new Date(n.time) > new Date(notifSeenAt)).length : notifItems.length;
+
+  const goToNotification = (item) => {
+    if (item.kind === "message") { setTab("messages"); return; }
+    setTab("myroles");
+    setFocusRoleId(item.roleId);
+  };
+
   if (session === undefined || loading) return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.sub, fontSize: 13 }}>{"loading\u2026"}</div></div>;
   if (error) return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.red }}>{error}</div></div>;
 
   return (
     <div style={pageWrap}>
-      <TopNav tab={tab} onTabChange={(t) => { setTab(t); if (t !== "myroles") setFocusRoleId(null); }} recruiter={recruiter} onLogout={handleLogout} />
+      <TopNav
+        tab={tab}
+        onTabChange={(t) => { setTab(t); if (t !== "myroles") setFocusRoleId(null); }}
+        recruiter={recruiter}
+        onLogout={handleLogout}
+        notifications={notifItems}
+        notifUnread={notifUnreadCount}
+        onMarkNotifsRead={markNotifsRead}
+        onSelectNotification={goToNotification}
+      />
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
         {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} />}
         {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} />}
