@@ -355,6 +355,16 @@
   </div>
 
   <script>
+    // If the browser restores this page from bfcache (e.g. pressing Back),
+    // re-run everything from scratch instead of showing whatever was on
+    // screen before -- otherwise a signed-in user can land back on a stale
+    // "logged out" view and Forward/Back stop making sense.
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) window.location.reload();
+    });
+  </script>
+
+  <script>
     const SUPABASE_URL = 'https://cnayvrtkxgqpejhrlakm.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -717,14 +727,13 @@
         }
 
         if (pending.type === 'search_firm') {
-          // recruiters has no "email" column -- Supabase auth already
-          // stores the user's email on auth.users against this same id.
           // "verified" is NOT NULL with no DB default, so it must be
           // set explicitly on every insert or this throws too.
           await insertOrUpdate('recruiters', 'auth_user_id', session.user.id, {
             auth_user_id: session.user.id,
             contact_first_name: pending.firstName,
             last_name: pending.lastName,
+            email: pending.email,
             verified: false
           });
 
