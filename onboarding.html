@@ -80,7 +80,7 @@ async function getMyCompany(session) {
 
   const [created] = await sbInsertRows(
     "companies",
-    [{ auth_user_id: session.user.id, name: "Unnamed company" }],
+    [{ auth_user_id: session.user.id, name: "" }],
     { returnRep: true }
   );
   return created;
@@ -252,101 +252,53 @@ function TextArea(props) {
   );
 }
 
-function RichBox({ value, onChange, placeholder, suggestions }) {
-  const [showSug, setShowSug] = useState(false);
+// Plain rich-style text box -- no canned suggestion snippets, just a
+// lightweight toolbar and a textarea. Employers write their own copy.
+function RichBox({ value, onChange, placeholder }) {
   return (
-    <div>
-      {suggestions && (
-        <button
-          type="button"
-          onClick={() => setShowSug((s) => !s)}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 13,
-            fontWeight: 500,
-            padding: "7px 12px",
-            borderRadius: 7,
-            border: "1px solid #111",
-            background: "#fff",
-            cursor: "pointer",
-            marginBottom: 12,
-          }}
-        >
-          Suggestions ✨
-        </button>
-      )}
-      {showSug && (
-        <div
-          style={{
-            fontSize: 13,
-            color: "#555",
-            background: "#f7f7f5",
-            border: "1px solid #eee",
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 10,
-          }}
-        >
-          {suggestions.map((s, i) => (
-            <div
-              key={i}
-              onClick={() => {
-                onChange(value ? value + "\n" + s : s);
-                setShowSug(false);
-              }}
-              style={{ cursor: "pointer", padding: "4px 0" }}
-            >
-              + {s}
-            </div>
-          ))}
-        </div>
-      )}
+    <div
+      style={{
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "#fff",
+      }}
+    >
       <div
         style={{
-          border: "1px solid #ddd",
-          borderRadius: 8,
-          overflow: "hidden",
-          background: "#fff",
+          display: "flex",
+          gap: 14,
+          padding: "9px 14px",
+          borderBottom: "1px solid #eee",
+          background: "#fafaf9",
+          color: "#9a9a9a",
+          fontSize: 13,
+          fontFamily: "serif",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            padding: "9px 14px",
-            borderBottom: "1px solid #eee",
-            background: "#fafaf9",
-            color: "#9a9a9a",
-            fontSize: 13,
-            fontFamily: "serif",
-          }}
-        >
-          <b>B</b>
-          <i>I</i>
-          <u>U</u>
-          <span>⛓</span>
-          <span>≣</span>
-          <span>≡</span>
-        </div>
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            minHeight: 150,
-            padding: 14,
-            border: "none",
-            outline: "none",
-            fontSize: 14,
-            resize: "vertical",
-            fontFamily: "inherit",
-          }}
-        />
+        <b>B</b>
+        <i>I</i>
+        <u>U</u>
+        <span>⛓</span>
+        <span>≣</span>
+        <span>≡</span>
       </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          minHeight: 150,
+          padding: 14,
+          border: "none",
+          outline: "none",
+          fontSize: 14,
+          resize: "vertical",
+          fontFamily: "inherit",
+        }}
+      />
     </div>
   );
 }
@@ -541,7 +493,7 @@ const steps = [
   { key: "candidates", title: "Ideal candidates", subtitle: "Tell recruiters exactly who to look for" },
   { key: "recruiter", title: "Helping the recruiter", subtitle: "Give recruiters the context they need to represent this role well" },
   { key: "questions", title: "Candidate questions", subtitle: "Key things you want recruiters to ask before submitting a candidate" },
-  { key: "review", title: "Recruiter dashboard preview", subtitle: "This is what recruiters will see for this role" },
+  { key: "review", title: "Review & submit", subtitle: "Double-check everything below \u2014 recruiters only see a short overview and your estimated earnings until they apply" },
 ];
 
 function isFilled(v) {
@@ -783,7 +735,7 @@ function EmployerOnboarding() {
         <div style={{ maxWidth: 520, margin: "120px auto", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Role submitted</div>
           <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
-            {data.roleName || "This role"} is now live for recruiters to view.
+            {data.roleName || "Your role"} at {data.companyName || "your company"} is now live for recruiters to view.
           </div>
           <button
             onClick={() => setSubmitted(false)}
@@ -849,12 +801,6 @@ function EmployerOnboarding() {
                 value={data.roleDescription}
                 onChange={(v) => set({ roleDescription: v })}
                 placeholder="Our mission, who we're looking for, why this role matters..."
-                suggestions={[
-                  "Our Mission",
-                  "Who we are looking for",
-                  "Our Value Proposition to You",
-                  "You Might Be A Great Fit If...",
-                ]}
               />
             </Field>
             <div style={{ display: "flex", gap: 16 }}>
@@ -889,7 +835,7 @@ function EmployerOnboarding() {
             <Field label="Hiring goals" hint="When do you want to have this role filled by?">
               <TextInput
                 value={data.hiringGoals}
-                placeholder="Ex. Within 2 weeks"
+                placeholder="Ex. Within 2 months"
                 onChange={(e) => set({ hiringGoals: e.target.value })}
               />
             </Field>
@@ -952,10 +898,6 @@ function EmployerOnboarding() {
                 value={data.welcomeMessage}
                 onChange={(v) => set({ welcomeMessage: v })}
                 placeholder="Welcome! We're excited to have you recruiting for..."
-                suggestions={[
-                  "Welcome! We're excited to have you working on this role.",
-                  "Thanks for joining — here's what success looks like for us.",
-                ]}
               />
             </Field>
           </>
