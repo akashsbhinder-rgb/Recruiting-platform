@@ -39,6 +39,9 @@
   </div>
 
   <script>
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) window.location.reload();
+    });
     window.addEventListener("error", function (event) {
       const box = document.getElementById("boot-error");
       const detail = document.getElementById("boot-error-detail");
