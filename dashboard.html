@@ -769,7 +769,7 @@ function MessageFeed({ messages, emptyLabel }) {
       {messages.map((m) => (
         <div key={m.id} style={{ padding: "8px 0", borderBottom: `1px solid ${T.lineSoft}` }}>
           <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontSize: 11, color: T.faint, marginTop: 3 }}>{m.sender_type === "company" ? "you" : "recruiter"} {"\u00b7"} {formatWhen(m.created_at)}</div>
+          <div style={{ fontSize: 11, color: T.faint, marginTop: 3 }}>{m.sender_type === "company" ? "you" : m.sender_type === "admin" ? "Akash (admin)" : "recruiter"} {"\u00b7"} {formatWhen(m.created_at)}</div>
         </div>
       ))}
     </div>
@@ -1379,10 +1379,10 @@ function ClientDashboard() {
       const roleById = {};
       roleList.forEach((r) => (roleById[r.id] = r));
       const items = [
-        ...msgs.filter((m) => m.sender_type === "recruiter").map((m) => ({
+        ...msgs.filter((m) => m.sender_type !== "company").map((m) => ({
           key: `msg-${m.id}`,
           time: m.created_at,
-          text: `New message on ${roleById[m.role_id] ? roleById[m.role_id].name : "a role"}`,
+          text: `${m.sender_type === "admin" ? "Akash (admin) sent a message" : "New message"} on ${roleById[m.role_id] ? roleById[m.role_id].name : "a role"}`,
           roleId: m.role_id,
           kind: "message",
         })),
@@ -1409,9 +1409,9 @@ function ClientDashboard() {
     const channel = supabaseClient
       .channel("employer-notifications")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-        if (payload.new && ids.includes(payload.new.role_id) && payload.new.sender_type === "recruiter") {
+        if (payload.new && ids.includes(payload.new.role_id) && payload.new.sender_type !== "company") {
           loadNotifications(roles);
-          pushToast(`New message on ${roleById[payload.new.role_id] ? roleById[payload.new.role_id].name : "a role"}`);
+          pushToast(payload.new.sender_type === "admin" ? `Akash (admin) sent a message on ${roleById[payload.new.role_id] ? roleById[payload.new.role_id].name : "a role"}` : `New message on ${roleById[payload.new.role_id] ? roleById[payload.new.role_id].name : "a role"}`);
         }
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "candidates" }, (payload) => {
