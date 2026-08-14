@@ -598,7 +598,7 @@ function ApplyPanel({ role, onApply }) {
 }
 
 // ---------- role card ----------
-function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, saved, onToggleSave, applied, onApply }) {
+function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, saved, onToggleSave, applied, onApply, readOnly }) {
   const gradient = gradientFor(companyName || role.name);
   const initial = (companyName || "?").trim().charAt(0).toUpperCase();
   const commissionPct = (COMMISSION_PCT * 100).toFixed(1).replace(/\.0$/, "");
@@ -661,7 +661,7 @@ function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, sa
 
           {applied ? (
             <div style={{ fontSize: 12.5, color: T.sub }}>{"You're already applied \u2014 find this role under \"My roles\" to submit candidates."}</div>
-          ) : (
+          ) : readOnly ? null : (
             <ApplyPanel role={role} onApply={onApply} />
           )}
         </div>
@@ -753,7 +753,7 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
 }
 
 // ---------- browse roles ----------
-function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
+function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly }) {
   const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
   const [counts, setCounts] = useState({});
@@ -838,6 +838,7 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied }) {
               onToggleSave={() => toggleSave(role.id)}
               applied={appliedRoleIds.has(role.id)}
               onApply={async () => { await applyToRole(recruiterId, role.id); onApplied(role.id); }}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -1050,7 +1051,7 @@ function RoleInfoPanel({ role, detail }) {
   );
 }
 
-function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
+function RoleWorkspace({ role, companyName, recruiterId, session, onBack, readOnly }) {
   const [detail, setDetail] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -1124,7 +1125,7 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
                 candidate={c}
                 stageName={stageMap[c.stage_id]}
                 feedbackMessages={messagesForCandidate(c.id)}
-                onSendFeedback={async (body) => { await sendRecruiterMessage(session, recruiterId, role.id, c.id, null, body); await load(); }}
+                onSendFeedback={readOnly ? null : async (body) => { await sendRecruiterMessage(session, recruiterId, role.id, c.id, null, body); await load(); }}
               />
             ))
           )}
@@ -1133,9 +1134,11 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
         </div>
 
         <div>
-          <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
-            <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} onSubmitted={load} />
-          </div>
+          {!readOnly && (
+            <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+              <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} onSubmitted={load} />
+            </div>
+          )}
 
           <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>Updates from {companyName || "the company"}</div>
@@ -1145,9 +1148,11 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
           <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>Message {companyName || "the company"} directly</div>
             <MessageFeed messages={directMessages} emptyLabel="No messages yet." />
-            <div style={{ marginTop: directMessages.length ? 10 : 0 }}>
-              <MessageComposer onSend={(body) => sendRecruiterMessage(session, recruiterId, role.id, null, null, body).then(load)} placeholder="Write a message\u2026" buttonLabel="Send" />
-            </div>
+            {!readOnly && (
+              <div style={{ marginTop: directMessages.length ? 10 : 0 }}>
+                <MessageComposer onSend={(body) => sendRecruiterMessage(session, recruiterId, role.id, null, null, body).then(load)} placeholder="Write a message\u2026" buttonLabel="Send" />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1156,7 +1161,7 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack }) {
 }
 
 // ---------- my roles ----------
-function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, onFocusRole }) {
+function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, onFocusRole, readOnly }) {
   const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
   const [candidates, setCandidates] = useState([]);
@@ -1187,7 +1192,7 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, 
 
   const focusedRole = roles.find((r) => r.id === focusRoleId);
   if (focusedRole) {
-    return <RoleWorkspace role={focusedRole} companyName={companyMap[focusedRole.company_id]} recruiterId={recruiterId} session={session} onBack={() => onFocusRole(null)} />;
+    return <RoleWorkspace role={focusedRole} companyName={companyMap[focusedRole.company_id]} recruiterId={recruiterId} session={session} onBack={() => onFocusRole(null)} readOnly={readOnly} />;
   }
 
   const candidatesByRole = {};
@@ -1240,7 +1245,7 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, 
 }
 
 // ---------- messages inbox ----------
-function RecruiterInbox({ session, recruiterId, appliedRoleIds }) {
+function RecruiterInbox({ session, recruiterId, appliedRoleIds, readOnly }) {
   const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
   const [candidates, setCandidates] = useState([]);
@@ -1344,9 +1349,11 @@ function RecruiterInbox({ session, recruiterId, appliedRoleIds }) {
               {open && (
                 <div style={{ marginTop: 14, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 14 }}>
                   <MessageFeed messages={t.messages} emptyLabel="" />
-                  <div style={{ marginTop: 10 }}>
-                    <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
-                  </div>
+                  {!readOnly && (
+                    <div style={{ marginTop: 10 }}>
+                      <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1366,13 +1373,27 @@ function RecruiterDashboard() {
   const [focusRoleId, setFocusRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adminViewMode, setAdminViewMode] = useState(false);
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { window.location.href = LOGIN_URL; return; }
       setSession(session);
       try {
-        const r = await getMyRecruiter(session);
+        const params = new URLSearchParams(window.location.search);
+        const viewRecruiterId = params.get("admin_view_recruiter");
+
+        let r = null;
+        if (viewRecruiterId) {
+          const { data: adminRow } = await supabaseClient.from("admins").select("id").ilike("email", session.user.email).maybeSingle();
+          if (adminRow) {
+            const { data: viewedRecruiter, error: viewErr } = await supabaseClient.from("recruiters").select("*").eq("id", viewRecruiterId).maybeSingle();
+            if (viewErr || !viewedRecruiter) { setError("Could not load that recruiter."); setLoading(false); return; }
+            r = viewedRecruiter;
+            setAdminViewMode(true);
+          }
+        }
+        if (!r) r = await getMyRecruiter(session);
         if (!r) { window.location.href = LOGIN_URL; return; }
         setRecruiter(r);
         const apps = await fetchMyApplications(r.id);
@@ -1506,6 +1527,12 @@ function RecruiterDashboard() {
 
   return (
     <div style={pageWrap}>
+      {adminViewMode && (
+        <div style={{ background: T.ink, color: "#fff", padding: "10px 20px", fontSize: 13, display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span>Admin view \u2014 viewing as {recruiter.firm_name || [recruiter.contact_first_name, recruiter.last_name].filter(Boolean).join(" ") || "this recruiter"} (read-only)</span>
+          <a href="admin.html" style={{ color: "#fff", textDecoration: "underline" }}>Exit to admin</a>
+        </div>
+      )}
       <TopNav
         tab={tab}
         onTabChange={(t) => { setTab(t); if (t !== "myroles") setFocusRoleId(null); }}
@@ -1518,9 +1545,9 @@ function RecruiterDashboard() {
         bellPulse={bellPulse}
       />
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
-        {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} />}
-        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} />}
-        {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} />}
+        {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} readOnly={adminViewMode} />}
+        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} readOnly={adminViewMode} />}
+        {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} readOnly={adminViewMode} />}
       </div>
       <ToastStack toasts={toasts} />
     </div>
