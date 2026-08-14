@@ -855,7 +855,7 @@ function MessageFeed({ messages, emptyLabel }) {
       {messages.map((m) => (
         <div key={m.id} style={{ padding: "7px 0", borderBottom: `1px solid ${T.lineSoft}` }}>
           <div style={{ fontSize: 12.5, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{m.sender_type === "recruiter" ? "you" : "company"} {"\u00b7"} {formatWhen(m.created_at)}</div>
+          <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{m.sender_type === "recruiter" ? "you" : m.sender_type === "admin" ? "Akash (admin)" : "company"} {"\u00b7"} {formatWhen(m.created_at)}</div>
         </div>
       ))}
     </div>
@@ -1456,7 +1456,7 @@ function RecruiterDashboard() {
       roleList.forEach((r) => (roleById[r.id] = r));
       const myCandidateIds = new Set(myCandidates.map((c) => c.id));
       const relevantMsgs = allMsgs.filter((m) => (
-        m.sender_type === "company" && (
+        m.sender_type !== "recruiter" && (
           m.recruiter_id === recruiter.id ||
           (m.candidate_id && myCandidateIds.has(m.candidate_id)) ||
           (!m.candidate_id && !m.recruiter_id)
@@ -1494,9 +1494,9 @@ function RecruiterDashboard() {
       .channel(`recruiter-notifications-${recruiter.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         const row = payload.new;
-        if (row && appliedRoleIds.has(row.role_id) && row.sender_type === "company") {
+        if (row && appliedRoleIds.has(row.role_id) && row.sender_type !== "recruiter") {
           loadNotifications();
-          pushToast("New message from a company");
+          pushToast(row.sender_type === "admin" ? "New message from Akash (admin)" : "New message from a company");
         }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiter.id}` }, (payload) => {
