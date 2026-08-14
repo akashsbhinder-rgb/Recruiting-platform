@@ -1,770 +1,555 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Make your next hire</title>
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-<link rel="icon" href="favicon.ico">
-<link rel="manifest" href="site.webmanifest">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin | MakePlacement</title>
+  <meta name="robots" content="noindex, nofollow">
 
-  :root {
-    --bg: #ffffff;
-    --fg: #17171a;
-    --muted: #8a8a92;
-    --border: #e4e4e8;
-    --input-bg: #ffffff;
-    --pill-bg: #f0f0f2;
-    --pill-active-bg: #17171a;
-    --pill-active-fg: #ffffff;
-    --btn-bg: #17171a;
-    --btn-fg: #ffffff;
-    --focus: #4b6bfb;
-    --error: #d13c3c;
-  }
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.10/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  [data-mode="agencies"] {
-    --bg: #121214;
-    --fg: #f5f5f6;
-    --muted: #97979e;
-    --border: #2c2c30;
-    --input-bg: #121214;
-    --pill-bg: #1d1d20;
-    --pill-active-bg: #f5f5f6;
-    --pill-active-fg: #121214;
-    --btn-bg: #f5f5f6;
-    --btn-fg: #121214;
-    --focus: #6d8bff;
-    --error: #ff6b6b;
-  }
-
-  * { box-sizing: border-box; }
-
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: 'Inter', -apple-system, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 24px;
-    transition: background 0.35s ease, color 0.35s ease;
-  }
-
-  .card {
-    width: 100%;
-    max-width: 340px;
-  }
-
-  h1 {
-    font-family: 'Newsreader', serif;
-    font-weight: 400;
-    font-size: 34px;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-    margin: 0 0 28px;
-  }
-
-  .pills {
-    display: inline-flex;
-    background: var(--pill-bg);
-    border-radius: 999px;
-    padding: 3px;
-    margin-bottom: 20px;
-    transition: background 0.35s ease;
-  }
-
-  .pill {
-    border: none;
-    background: transparent;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 500;
-    padding: 9px 16px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background 0.25s ease, color 0.25s ease;
-    outline-offset: 2px;
-  }
-
-  .pill.active {
-    background: var(--pill-active-bg);
-    color: var(--pill-active-fg);
-  }
-
-  .row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .field {
-    margin-bottom: 10px;
-  }
-
-  .row .field {
-    flex: 1;
-    margin-bottom: 0;
-  }
-
-  input {
-    width: 100%;
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    color: var(--fg);
-    font-family: inherit;
-    font-size: 14px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    outline: none;
-    transition: border-color 0.2s ease, background 0.35s ease, color 0.35s ease;
-  }
-
-  input::placeholder {
-    color: var(--muted);
-  }
-
-  input:focus {
-    border-color: var(--focus);
-  }
-
-  input.invalid {
-    border-color: var(--error);
-  }
-
-  .error-msg {
-    font-size: 12px;
-    color: var(--error);
-    margin-top: 4px;
-    min-height: 14px;
-    display: none;
-  }
-
-  .error-msg.show {
-    display: block;
-  }
-
-  .password-wrap {
-    position: relative;
-  }
-
-  .password-wrap input {
-    padding-right: 44px;
-  }
-
-  .toggle-password {
-    position: absolute;
-    right: 6px;
-    top: 6px;
-    bottom: 6px;
-    width: 34px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  button.submit {
-    width: 100%;
-    background: var(--btn-bg);
-    color: var(--btn-fg);
-    border: none;
-    font-family: inherit;
-    font-size: 14.5px;
-    font-weight: 600;
-    padding: 13px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    margin-top: 6px;
-    transition: background 0.35s ease, color 0.35s ease, opacity 0.2s ease;
-  }
-
-  button.submit:hover {
-    opacity: 0.88;
-  }
-
-  .link-row {
-    margin-top: 14px;
-    font-size: 13px;
-    color: var(--muted);
-    text-align: center;
-  }
-
-  .link-row a {
-    color: var(--fg);
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: underline;
-  }
-
-  .fields {
-    display: grid;
-  }
-
-  .fields > * {
-    grid-area: 1 / 1;
-    transition: opacity 0.25s ease;
-  }
-
-  .fields > .hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .status-box {
-    font-size: 14px;
-    color: var(--fg);
-    line-height: 1.5;
-  }
-
-  .status-box .muted {
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 8px;
-  }
-
-  .status-box .error-text {
-    color: var(--error);
-    font-size: 13px;
-    margin-top: 10px;
-  }
-</style>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; }
+    html, body, #root { margin: 0; min-height: 100%; }
+    body { background: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    button, input { font-family: inherit; }
+    button:focus-visible, input:focus-visible { outline: 2px solid #3b6fe0; outline-offset: 2px; }
+    table { border-collapse: collapse; width: 100%; }
+    #boot-error { display: none; max-width: 760px; margin: 48px auto; padding: 20px; color: #111; }
+    #boot-error pre { white-space: pre-wrap; background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
+  </style>
 </head>
-
-<body data-mode="companies">
-  <div class="card">
-    <h1 id="heading">Make your next hire</h1>
-
-    <div class="pills" role="tablist" id="pills">
-      <button class="pill active" id="btn-companies" role="tab" aria-selected="true">Companies</button>
-      <button class="pill" id="btn-agencies" role="tab" aria-selected="false">Search firms</button>
-    </div>
-
-    <div class="fields">
-
-      <!-- Companies: first/last name, work email, password -->
-      <form id="form-companies" novalidate>
-        <div class="row">
-          <div class="field">
-            <input type="text" id="c-first-name" placeholder="First name" required>
-            <div class="error-msg" id="err-c-first-name">Please enter your first name</div>
-          </div>
-          <div class="field">
-            <input type="text" id="c-last-name" placeholder="Last name (optional)">
-          </div>
-        </div>
-
-        <div class="field">
-          <input type="email" id="c-email" placeholder="Work email" required>
-          <div class="error-msg" id="err-c-email">Please enter your work email (not a personal address)</div>
-        </div>
-
-        <div class="field">
-          <div class="password-wrap">
-            <input type="password" id="c-password" placeholder="Create a password" required>
-            <button type="button" class="toggle-password" data-target="c-password">Show</button>
-          </div>
-          <div class="error-msg" id="err-c-password">Password must be at least 8 characters</div>
-        </div>
-
-        <button type="submit" class="submit">Submit</button>
-
-        <div class="link-row">Already have an account? <a id="link-login-from-companies">Log in</a></div>
-      </form>
-
-      <!-- Search firms: first/last name, work email, password -->
-      <form id="form-agencies" class="hidden" novalidate>
-        <div class="row">
-          <div class="field">
-            <input type="text" id="a-first-name" placeholder="First name" required>
-            <div class="error-msg" id="err-a-first-name">Please enter your first name</div>
-          </div>
-          <div class="field">
-            <input type="text" id="a-last-name" placeholder="Last name (optional)">
-          </div>
-        </div>
-
-        <div class="field">
-          <input type="email" id="a-email" placeholder="Work email" required>
-          <div class="error-msg" id="err-a-email">Please enter a valid email</div>
-        </div>
-
-        <div class="field">
-          <div class="password-wrap">
-            <input type="password" id="a-password" placeholder="Create a password" required>
-            <button type="button" class="toggle-password" data-target="a-password">Show</button>
-          </div>
-          <div class="error-msg" id="err-a-password">Password must be at least 8 characters</div>
-        </div>
-
-        <button type="submit" class="submit">Submit</button>
-
-        <div class="link-row">Already have an account? <a id="link-login-from-agencies">Log in</a></div>
-      </form>
-
-      <!-- Manual login (fallback -- the signup forms above also auto-detect an existing account) -->
-      <form id="form-login" class="hidden" novalidate>
-        <div class="field">
-          <input type="email" id="l-email" placeholder="Work email" required>
-          <div class="error-msg" id="err-l-email">Please enter a valid email</div>
-        </div>
-
-        <div class="field">
-          <div class="password-wrap">
-            <input type="password" id="l-password" placeholder="Password" required>
-            <button type="button" class="toggle-password" data-target="l-password">Show</button>
-          </div>
-          <div class="error-msg" id="err-l-password">Please enter your password</div>
-        </div>
-
-        <button type="submit" class="submit">Log in</button>
-
-        <div class="link-row">New here? <a id="link-back-to-signup">Sign up</a></div>
-      </form>
-
-      <!-- Shown only if Confirm email hasn't been turned off yet -->
-      <div id="check-email" class="hidden status-box">
-        <div id="check-email-text">Check your email to confirm your account.</div>
-        <div class="muted">Click the link on this device or any device — once you do, we'll finish setting up your account here.</div>
-      </div>
-
-      <div id="finishing" class="hidden status-box">
-        <div>Setting up your account…</div>
-      </div>
-
-      <div id="post-auth-error" class="hidden status-box">
-        <div>Something went wrong finishing your signup.</div>
-        <div class="error-text" id="post-auth-error-text"></div>
-      </div>
-
-    </div>
+<body>
+  <div id="root"></div>
+  <div id="boot-error">
+    <h2>Something went wrong.</h2>
+    <pre id="boot-error-detail"></pre>
   </div>
 
   <script>
-    // If the browser restores this page from bfcache (e.g. pressing Back),
-    // re-run everything from scratch instead of showing whatever was on
-    // screen before -- otherwise a signed-in user can land back on a stale
-    // "logged out" view and Forward/Back stop making sense.
-    window.addEventListener('pageshow', function (event) {
-      if (event.persisted) window.location.reload();
+    window.addEventListener("pageshow", function (event) { if (event.persisted) window.location.reload(); });
+    window.addEventListener("error", function (event) {
+      const box = document.getElementById("boot-error");
+      const detail = document.getElementById("boot-error-detail");
+      if (box && detail && !document.getElementById("root").hasChildNodes()) {
+        box.style.display = "block";
+        detail.textContent = event.error ? (event.error.stack || event.error.message) : event.message;
+      }
     });
   </script>
 
-  <script>
-    const SUPABASE_URL = 'https://cnayvrtkxgqpejhrlakm.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT';
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
 
-    const ONBOARDING_URL = 'onboarding.html';
-    const DASHBOARD_URL = 'dashboard.html';
-    const RECRUITER_ONBOARDING_URL = 'recruiter_onboarding.html';
-    const RECRUITER_DASHBOARD_URL = 'recruiter_dashboard.html';
-    const PENDING_KEY = 'mp_pending_signup';
+const SUPABASE_URL = "https://cnayvrtkxgqpejhrlakm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_HM9zyIedXScyxXhT2qpV5g_-rUlXyGT";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ---- Show/hide password toggles ----
-    document.querySelectorAll('.toggle-password').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const input = document.getElementById(btn.dataset.target);
-        const showing = input.type === 'text';
-        input.type = showing ? 'password' : 'text';
-        btn.textContent = showing ? 'Show' : 'Hide';
-      });
+const T = {
+  ink: "#111214", sub: "#6b7075", faint: "#9a9ea3", line: "#e7e7e9", lineSoft: "#f0f0f1",
+  paper: "#ffffff", paperDim: "#fafafa", pillBg: "#f2f2f3", blue: "#3b6fe0", blueBg: "#eaf1ff",
+  green: "#1a8a4a", greenBg: "#e8f6ec", red: "#c0392b", redBg: "#fbeceb", gold: "#a06a1d", goldBg: "#faf1e0",
+  sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+};
+
+function money(v) { return v == null || v === "" ? "\u2014" : `$${Number(v).toLocaleString()}`; }
+function formatWhen(iso) {
+  if (!iso) return "\u2014";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+function fullName(row) { return [row.contact_first_name, row.last_name].filter(Boolean).join(" ") || "\u2014"; }
+function externalUrl(url) { if (!url) return ""; return /^https?:\/\//i.test(url) ? url : `https://${url}`; }
+
+function Icon({ name, size = 16, style }) {
+  const c = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", style };
+  switch (name) {
+    case "logout": return <svg {...c}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>;
+    case "search": return <svg {...c}><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
+    case "x": return <svg {...c}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+    case "shield": return <svg {...c}><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3Z" /><polyline points="9 12 11 14 15 10" /></svg>;
+    default: return null;
+  }
+}
+
+function Pill({ children, tone, style }) {
+  const tones = {
+    default: { bg: T.pillBg, fg: T.ink }, live: { bg: T.blueBg, fg: T.blue },
+    paused: { bg: T.goldBg, fg: T.gold }, filled: { bg: T.greenBg, fg: T.green },
+    rejected: { bg: T.redBg, fg: T.red }, placed: { bg: T.greenBg, fg: T.green },
+  };
+  const t = tones[tone] || tones.default;
+  return <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11.5, fontWeight: 600, padding: "3px 9px", borderRadius: 999, background: t.bg, color: t.fg, whiteSpace: "nowrap", ...style }}>{children}</span>;
+}
+
+const inputStyle = { width: "100%", boxSizing: "border-box", padding: "10px 13px", fontSize: 13.5, borderRadius: 10, border: `1px solid ${T.line}`, outline: "none", color: T.ink, background: "#fff", fontFamily: T.sans };
+
+// ---------- generic table ----------
+function DataTable({ columns, rows, onRowClick, emptyLabel }) {
+  if (rows.length === 0) return <div style={{ fontSize: 13, color: T.faint, fontStyle: "italic", padding: "24px 4px" }}>{emptyLabel || "Nothing here."}</div>;
+  return (
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, overflow: "auto" }}>
+      <table style={{ fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: T.paperDim }}>
+            {columns.map((c) => (
+              <th key={c.key} style={{ textAlign: "left", padding: "10px 14px", fontSize: 11, fontWeight: 700, color: T.sub, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: `1px solid ${T.line}`, whiteSpace: "nowrap" }}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={row.id != null ? row.id : i} onClick={() => onRowClick && onRowClick(row)} style={{ cursor: onRowClick ? "pointer" : "default", borderBottom: `1px solid ${T.lineSoft}` }}>
+              {columns.map((c) => <td key={c.key} style={{ padding: "10px 14px", color: T.ink, whiteSpace: "nowrap" }}>{c.render ? c.render(row) : (row[c.key] == null || row[c.key] === "" ? "\u2014" : row[c.key])}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StatCard({ label, value }) {
+  return (
+    <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: "16px 18px", flex: 1, minWidth: 140 }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: T.ink }}>{value}</div>
+      <div style={{ fontSize: 12.5, color: T.sub, marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
+
+function SearchBox({ value, onChange, placeholder }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${T.line}`, borderRadius: 10, padding: "9px 13px", marginBottom: 14, maxWidth: 360 }}>
+      <Icon name="search" size={15} style={{ color: T.faint }} />
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ border: "none", outline: "none", fontSize: 13.5, flex: 1, fontFamily: T.sans, color: T.ink }} />
+    </div>
+  );
+}
+
+function FilterChip({ label, onClear }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999, marginBottom: 14 }}>
+      Filtered: {label}
+      <button onClick={onClear} style={{ background: "none", border: "none", color: T.blue, cursor: "pointer", display: "flex", padding: 0 }}><Icon name="x" size={12} /></button>
+    </div>
+  );
+}
+
+// ---------- data ----------
+async function fetchTable(table, opts = {}) {
+  let q = supabaseClient.from(table).select(opts.select || "*");
+  if (opts.order) q = q.order(opts.order, { ascending: opts.ascending !== false });
+  if (opts.limit) q = q.limit(opts.limit);
+  const { data, error } = await q;
+  if (error) throw new Error(`Failed loading ${table}: ${error.message}`);
+  return data || [];
+}
+
+// ---------- sections ----------
+function OverviewTab({ data, onJump }) {
+  const live = data.roles.filter((r) => (r.status || "live").toLowerCase() === "live").length;
+  const placed = data.candidates.filter((c) => (c.status || "").toLowerCase() === "placed").length;
+  const active = data.candidates.filter((c) => (c.status || "").toLowerCase() !== "rejected" && (c.status || "").toLowerCase() !== "placed").length;
+
+  const recent = [
+    ...data.messages.slice(0, 15).map((m) => ({ key: `m-${m.id}`, time: m.created_at, text: `Message on ${data.roleById[m.role_id] ? data.roleById[m.role_id].name : "a role"}`, jump: () => onJump("messages") })),
+    ...data.candidates.slice(0, 15).map((c) => ({ key: `c-${c.id}`, time: c.created_at, text: `${c.name} submitted for ${data.roleById[c.role_id] ? data.roleById[c.role_id].name : "a role"}`, jump: () => onJump("candidates", { roleId: c.role_id }) })),
+  ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 15);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
+        <StatCard label="Companies" value={data.companies.length} />
+        <StatCard label="Recruiters" value={data.recruiters.length} />
+        <StatCard label="Live roles" value={live} />
+        <StatCard label="Candidates interviewing" value={active} />
+        <StatCard label="Candidates placed" value={placed} />
+        <StatCard label="Messages sent" value={data.messages.length} />
+      </div>
+
+      <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 12 }}>Recent activity</div>
+      {recent.length === 0 ? (
+        <div style={{ fontSize: 13, color: T.faint, fontStyle: "italic" }}>Nothing yet.</div>
+      ) : (
+        <div style={{ border: `1px solid ${T.line}`, borderRadius: 12 }}>
+          {recent.map((r) => (
+            <div key={r.key} onClick={r.jump} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "11px 14px", borderBottom: `1px solid ${T.lineSoft}`, cursor: "pointer", fontSize: 13 }}>
+              <span style={{ color: T.ink }}>{r.text}</span>
+              <span style={{ color: T.faint, whiteSpace: "nowrap" }}>{formatWhen(r.time)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompaniesTab({ data, onJump }) {
+  const [q, setQ] = useState("");
+  const roleCountByCompany = {};
+  data.roles.forEach((r) => { roleCountByCompany[r.company_id] = (roleCountByCompany[r.company_id] || 0) + 1; });
+
+  const rows = data.companies.filter((c) => {
+    if (!q) return true;
+    const hay = `${c.name || ""} ${fullName(c)} ${c.email || ""}`.toLowerCase();
+    return hay.includes(q.toLowerCase());
+  });
+
+  return (
+    <div>
+      <SearchBox value={q} onChange={setQ} placeholder="Search companies by name, contact, or email\u2026" />
+      <DataTable
+        emptyLabel="No companies yet."
+        rows={rows}
+        onRowClick={(row) => onJump("roles", { companyId: row.id })}
+        columns={[
+          { key: "name", label: "Company", render: (r) => r.name || "\u2014" },
+          { key: "contact", label: "Contact", render: (r) => fullName(r) },
+          { key: "email", label: "Email", render: (r) => r.email || "\u2014" },
+          { key: "roles", label: "Roles posted", render: (r) => roleCountByCompany[r.id] || 0 },
+          { key: "created_at", label: "Signed up", render: (r) => formatWhen(r.created_at) },
+        ]}
+      />
+    </div>
+  );
+}
+
+function RecruitersTab({ data, onJump }) {
+  const [q, setQ] = useState("");
+  const candidateCountByRecruiter = {};
+  data.candidates.forEach((c) => { if (c.recruiter_id) candidateCountByRecruiter[c.recruiter_id] = (candidateCountByRecruiter[c.recruiter_id] || 0) + 1; });
+  const appCountByRecruiter = {};
+  data.applications.forEach((a) => { appCountByRecruiter[a.recruiter_id] = (appCountByRecruiter[a.recruiter_id] || 0) + 1; });
+
+  const rows = data.recruiters.filter((r) => {
+    if (!q) return true;
+    const hay = `${r.firm_name || ""} ${fullName(r)} ${r.email || ""}`.toLowerCase();
+    return hay.includes(q.toLowerCase());
+  });
+
+  return (
+    <div>
+      <SearchBox value={q} onChange={setQ} placeholder="Search recruiters by name, firm, or email\u2026" />
+      <DataTable
+        emptyLabel="No recruiters yet."
+        rows={rows}
+        onRowClick={(row) => onJump("candidates", { recruiterId: row.id })}
+        columns={[
+          { key: "name", label: "Name", render: (r) => fullName(r) },
+          { key: "firm_name", label: "Search firm" },
+          { key: "email", label: "Email" },
+          { key: "years_experience", label: "Experience" },
+          { key: "apps", label: "Roles applied", render: (r) => appCountByRecruiter[r.id] || 0 },
+          { key: "candidates", label: "Candidates submitted", render: (r) => candidateCountByRecruiter[r.id] || 0 },
+          { key: "created_at", label: "Signed up", render: (r) => formatWhen(r.created_at) },
+        ]}
+      />
+    </div>
+  );
+}
+
+function RolesTab({ data, filters, onClearFilter, onJump }) {
+  const [q, setQ] = useState("");
+  const candidateCountByRole = {};
+  data.candidates.forEach((c) => { candidateCountByRole[c.role_id] = (candidateCountByRole[c.role_id] || 0) + 1; });
+
+  let rows = data.roles;
+  if (filters.companyId) rows = rows.filter((r) => r.company_id === filters.companyId);
+  if (q) {
+    const hay = q.toLowerCase();
+    rows = rows.filter((r) => `${r.name || ""} ${data.companyById[r.company_id] ? data.companyById[r.company_id].name : ""}`.toLowerCase().includes(hay));
+  }
+
+  return (
+    <div>
+      {filters.companyId && data.companyById[filters.companyId] && (
+        <FilterChip label={data.companyById[filters.companyId].name || "company"} onClear={() => onClearFilter("companyId")} />
+      )}
+      <SearchBox value={q} onChange={setQ} placeholder="Search roles by name or company\u2026" />
+      <DataTable
+        emptyLabel="No roles yet."
+        rows={rows}
+        onRowClick={(row) => onJump("candidates", { roleId: row.id })}
+        columns={[
+          { key: "name", label: "Role" },
+          { key: "company", label: "Company", render: (r) => (data.companyById[r.company_id] ? data.companyById[r.company_id].name : "\u2014") || "\u2014" },
+          { key: "status", label: "Status", render: (r) => <Pill tone={(r.status || "live").toLowerCase()}>{(r.status || "live").toLowerCase()}</Pill> },
+          { key: "salary", label: "Salary", render: (r) => `${money(r.min_salary)} \u2013 ${money(r.max_salary)}` },
+          { key: "candidates", label: "Candidates", render: (r) => candidateCountByRole[r.id] || 0 },
+          { key: "created_at", label: "Posted", render: (r) => formatWhen(r.created_at) },
+        ]}
+      />
+    </div>
+  );
+}
+
+function CandidatesTab({ data, filters, onClearFilter }) {
+  const [q, setQ] = useState("");
+
+  let rows = data.candidates;
+  if (filters.roleId) rows = rows.filter((c) => c.role_id === filters.roleId);
+  if (filters.recruiterId) rows = rows.filter((c) => c.recruiter_id === filters.recruiterId);
+  if (q) {
+    const hay = q.toLowerCase();
+    rows = rows.filter((c) => `${c.name || ""} ${c.email || ""}`.toLowerCase().includes(hay));
+  }
+
+  const filterLabel = filters.roleId && data.roleById[filters.roleId]
+    ? data.roleById[filters.roleId].name
+    : filters.recruiterId && data.recruiterById[filters.recruiterId]
+      ? fullName(data.recruiterById[filters.recruiterId])
+      : null;
+
+  return (
+    <div>
+      {filterLabel && <FilterChip label={filterLabel} onClear={() => onClearFilter(filters.roleId ? "roleId" : "recruiterId")} />}
+      <SearchBox value={q} onChange={setQ} placeholder="Search candidates by name or email\u2026" />
+      <DataTable
+        emptyLabel="No candidates yet."
+        rows={rows}
+        columns={[
+          { key: "name", label: "Candidate" },
+          { key: "role", label: "Role", render: (c) => (data.roleById[c.role_id] ? data.roleById[c.role_id].name : "\u2014") },
+          { key: "company", label: "Company", render: (c) => { const role = data.roleById[c.role_id]; return role && data.companyById[role.company_id] ? data.companyById[role.company_id].name : "\u2014"; } },
+          { key: "recruiter", label: "Recruiter", render: (c) => (c.recruiter_id && data.recruiterById[c.recruiter_id] ? fullName(data.recruiterById[c.recruiter_id]) : "\u2014") },
+          { key: "status", label: "Status", render: (c) => <Pill tone={(c.status || "active").toLowerCase() === "active" ? "live" : (c.status || "").toLowerCase()}>{c.status || "active"}</Pill> },
+          { key: "links", label: "Links", render: (c) => (
+            <span style={{ display: "flex", gap: 8 }}>
+              {c.linkedin && <a href={externalUrl(c.linkedin)} target="_blank" rel="noreferrer" style={{ color: T.blue, fontSize: 12.5 }}>LinkedIn</a>}
+              {c.resume_url && <a href={externalUrl(c.resume_url)} target="_blank" rel="noreferrer" style={{ color: T.blue, fontSize: 12.5 }}>Resume</a>}
+            </span>
+          ) },
+          { key: "created_at", label: "Submitted", render: (c) => formatWhen(c.created_at) },
+        ]}
+      />
+    </div>
+  );
+}
+
+function MessagesTab({ data, filters, onClearFilter }) {
+  const [q, setQ] = useState("");
+
+  let rows = data.messages;
+  if (filters.roleId) rows = rows.filter((m) => m.role_id === filters.roleId);
+  if (q) {
+    const hay = q.toLowerCase();
+    rows = rows.filter((m) => (m.body || "").toLowerCase().includes(hay));
+  }
+
+  const filterLabel = filters.roleId && data.roleById[filters.roleId] ? data.roleById[filters.roleId].name : null;
+
+  return (
+    <div>
+      {filterLabel && <FilterChip label={filterLabel} onClear={() => onClearFilter("roleId")} />}
+      <SearchBox value={q} onChange={setQ} placeholder="Search message text\u2026" />
+      <div style={{ border: `1px solid ${T.line}`, borderRadius: 12 }}>
+        {rows.length === 0 ? (
+          <div style={{ fontSize: 13, color: T.faint, fontStyle: "italic", padding: "24px 14px" }}>No messages yet.</div>
+        ) : (
+          rows.map((m) => {
+            const role = data.roleById[m.role_id];
+            const company = role ? data.companyById[role.company_id] : null;
+            const recruiter = m.recruiter_id ? data.recruiterById[m.recruiter_id] : null;
+            const candidate = m.candidate_id ? data.candidateById[m.candidate_id] : null;
+            return (
+              <div key={m.id} style={{ padding: "12px 14px", borderBottom: `1px solid ${T.lineSoft}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>
+                    {m.sender_type === "company" ? (company ? company.name : "Company") : (recruiter ? fullName(recruiter) : "Recruiter")}
+                    <span style={{ color: T.faint, fontWeight: 400 }}> {"\u2192"} {role ? role.name : "a role"}{candidate ? ` \u00b7 re: ${candidate.name}` : ""}</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: T.faint, whiteSpace: "nowrap" }}>{formatWhen(m.created_at)}</div>
+                </div>
+                <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- login ----------
+function Login({ onSignedIn }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+    const { data, error: signInErr } = await supabaseClient.auth.signInWithPassword({ email: email.trim(), password });
+    if (signInErr) {
+      setError("Incorrect email or password.");
+      setSubmitting(false);
+      return;
+    }
+    const { data: adminRow, error: adminErr } = await supabaseClient.from("admins").select("id").ilike("email", email.trim()).maybeSingle();
+    if (adminErr) {
+      await supabaseClient.auth.signOut();
+      setError("Admin check failed: " + adminErr.message + (adminErr.code ? ` (${adminErr.code})` : ""));
+      setSubmitting(false);
+      return;
+    }
+    if (!adminRow) {
+      await supabaseClient.auth.signOut();
+      setError("This account isn't authorized for admin access.");
+      setSubmitting(false);
+      return;
+    }
+    onSignedIn(data.session);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" }}>
+      <form onSubmit={submit} style={{ width: "100%", maxWidth: 320, padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+          <Icon name="shield" size={18} style={{ color: T.ink }} />
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>Admin sign in</div>
+        </div>
+        <input style={{ ...inputStyle, marginBottom: 10 }} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input style={{ ...inputStyle, marginBottom: 14 }} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        {error && <div style={{ color: T.red, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
+        <button type="submit" disabled={submitting} style={{ width: "100%", background: T.ink, color: "#fff", border: "none", borderRadius: 10, padding: "11px 16px", fontSize: 13.5, fontWeight: 600, cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.6 : 1, fontFamily: T.sans }}>
+          {submitting ? "Signing in\u2026" : "Sign in"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ---------- main ----------
+const TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "companies", label: "Companies" },
+  { key: "recruiters", label: "Recruiters" },
+  { key: "roles", label: "Roles" },
+  { key: "candidates", label: "Candidates" },
+  { key: "messages", label: "Messages" },
+];
+
+function AdminApp() {
+  const [session, setSession] = useState(undefined);
+  const [authorized, setAuthorized] = useState(false);
+  const [tab, setTab] = useState("overview");
+  const [filters, setFilters] = useState({});
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const checkAdmin = async (sess) => {
+    const { data: adminRow } = await supabaseClient.from("admins").select("id").ilike("email", sess.user.email).maybeSingle();
+    return !!adminRow;
+  };
+
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setSession(null); return; }
+      const ok = await checkAdmin(session);
+      if (!ok) { await supabaseClient.auth.signOut(); setSession(null); return; }
+      setSession(session);
+      setAuthorized(true);
     });
+  }, []);
 
-    // ---- View switching ----
-    const body = document.body;
-    const heading = document.getElementById('heading');
-    const btnCompanies = document.getElementById('btn-companies');
-    const btnAgencies = document.getElementById('btn-agencies');
-    const formCompanies = document.getElementById('form-companies');
-    const formAgencies = document.getElementById('form-agencies');
-    const formLogin = document.getElementById('form-login');
-    const checkEmailBox = document.getElementById('check-email');
-    const checkEmailText = document.getElementById('check-email-text');
-    const finishingBox = document.getElementById('finishing');
-    const postAuthErrorBox = document.getElementById('post-auth-error');
-    const postAuthErrorText = document.getElementById('post-auth-error-text');
-    const pillsWrap = document.getElementById('pills');
-
-    const allViews = [formCompanies, formAgencies, formLogin, checkEmailBox, finishingBox, postAuthErrorBox];
-
-    let mode = 'companies';
-
-    function setMode(next) {
-      mode = next;
-      const isCompanies = mode === 'companies';
-      body.dataset.mode = isCompanies ? 'companies' : 'agencies';
-      btnCompanies.classList.toggle('active', isCompanies);
-      btnAgencies.classList.toggle('active', !isCompanies);
-      btnCompanies.setAttribute('aria-selected', isCompanies);
-      btnAgencies.setAttribute('aria-selected', !isCompanies);
-      pillsWrap.classList.remove('hidden');
-      heading.textContent = isCompanies ? 'Make your next hire' : 'Grow your recruiting business';
-      showOnly(isCompanies ? formCompanies : formAgencies);
+  const loadAll = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [companies, recruiters, roles, candidates, messages, applications] = await Promise.all([
+        fetchTable("companies", { order: "created_at" }),
+        fetchTable("recruiters", { order: "created_at" }),
+        fetchTable("roles", { order: "created_at" }),
+        fetchTable("candidates", { order: "created_at" }),
+        fetchTable("messages", { order: "created_at", limit: 1000 }),
+        fetchTable("role_applications"),
+      ]);
+      const companyById = {}; companies.forEach((c) => (companyById[c.id] = c));
+      const recruiterById = {}; recruiters.forEach((r) => (recruiterById[r.id] = r));
+      const roleById = {}; roles.forEach((r) => (roleById[r.id] = r));
+      const candidateById = {}; candidates.forEach((c) => (candidateById[c.id] = c));
+      setData({ companies, recruiters, roles, candidates, messages: messages.reverse(), applications, companyById, recruiterById, roleById, candidateById });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    btnCompanies.addEventListener('click', () => setMode('companies'));
-    btnAgencies.addEventListener('click', () => setMode('agencies'));
-
-    function showOnly(el) {
-      allViews.forEach(node => node.classList.toggle('hidden', node !== el));
-    }
-
-    function showLogin() {
-      pillsWrap.classList.add('hidden');
-      heading.textContent = 'Log in';
-      showOnly(formLogin);
-    }
-
-    document.getElementById('link-login-from-companies').addEventListener('click', showLogin);
-    document.getElementById('link-login-from-agencies').addEventListener('click', showLogin);
-    document.getElementById('link-back-to-signup').addEventListener('click', () => setMode(mode));
-
-    // ---- Validation helpers ----
-    function validateField(input, errorEl, customCheck) {
-      const value = input.value.trim();
-      let valid = value.length > 0;
-      if (valid && customCheck) valid = customCheck(value);
-      input.classList.toggle('invalid', !valid);
-      errorEl.classList.toggle('show', !valid);
-      return valid;
-    }
-
-    const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-    const isStrongEnoughPassword = v => v.length >= 8;
-
-    const PERSONAL_EMAIL_DOMAINS = new Set([
-      'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com', 'hotmail.com',
-      'outlook.com', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com',
-      'mac.com', 'protonmail.com', 'proton.me', 'mail.com', 'gmx.com',
-      'yandex.com', 'zoho.com', 'comcast.net', 'verizon.net', 'att.net'
-    ]);
-    const isWorkEmail = v => {
-      if (!isEmail(v)) return false;
-      const domain = v.split('@')[1].toLowerCase();
-      return !PERSONAL_EMAIL_DOMAINS.has(domain);
-    };
-
-    function clearFieldError(input, errorEl) {
-      input.addEventListener('input', () => {
-        input.classList.remove('invalid');
-        errorEl.classList.remove('show');
-      });
-    }
-
-    // Tries to create the account; if that email is already registered,
-    // transparently logs in with the same password instead of erroring.
-    async function signUpOrLogIn(email, password) {
-      const signUpResult = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname }
-      });
-
-      if (!signUpResult.error) return { kind: 'signed_up', ...signUpResult };
-
-      if (signUpResult.error.message.toLowerCase().includes('already registered')) {
-        const signInResult = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (signInResult.error) {
-          return { kind: 'existing_wrong_password', error: signInResult.error };
-        }
-        return { kind: 'logged_in', ...signInResult };
-      }
-
-      return { kind: 'error', error: signUpResult.error };
-    }
-
-    // ---- Companies form ----
-    const cFirstName = document.getElementById('c-first-name');
-    const cLastName = document.getElementById('c-last-name');
-    const cEmail = document.getElementById('c-email');
-    const cPassword = document.getElementById('c-password');
-
-    const errCFirstName = document.getElementById('err-c-first-name');
-    const errCEmail = document.getElementById('err-c-email');
-    const errCPassword = document.getElementById('err-c-password');
-
-    [[cFirstName, errCFirstName], [cEmail, errCEmail], [cPassword, errCPassword]]
-      .forEach(([input, err]) => clearFieldError(input, err));
-
-    formCompanies.addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const validFirstName = validateField(cFirstName, errCFirstName);
-      const validEmail = validateField(cEmail, errCEmail, isWorkEmail);
-      const validPassword = validateField(cPassword, errCPassword, isStrongEnoughPassword);
-
-      if (!(validFirstName && validEmail && validPassword)) return;
-
-      const submitBtn = formCompanies.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Setting up your account…';
-
-      const email = cEmail.value.trim();
-      const pending = {
-        type: 'company',
-        firstName: cFirstName.value.trim(),
-        lastName: cLastName.value.trim(),
-        email
-      };
-
-      const result = await signUpOrLogIn(email, cPassword.value);
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-
-      if (result.kind === 'existing_wrong_password') {
-        alert("An account with this email already exists, and that password doesn't match it. Double check for typos.");
-        return;
-      }
-      if (result.kind === 'error') {
-        console.error('signUp error:', result.error);
-        alert('Something went wrong creating your account: ' + result.error.message);
-        return;
-      }
-
-      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-
-      if (result.data.session) {
-        pillsWrap.classList.add('hidden');
-        await completeSignup(result.data.session, pending);
-        return;
-      }
-
-      // Confirm email is still on -- wait for the confirmation click.
-      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
-      pillsWrap.classList.add('hidden');
-      showOnly(checkEmailBox);
-    });
-
-    // ---- Search firms form ----
-    const aFirstName = document.getElementById('a-first-name');
-    const aLastName = document.getElementById('a-last-name');
-    const aEmail = document.getElementById('a-email');
-    const aPassword = document.getElementById('a-password');
-
-    const errAFirstName = document.getElementById('err-a-first-name');
-    const errAEmail = document.getElementById('err-a-email');
-    const errAPassword = document.getElementById('err-a-password');
-
-    [[aFirstName, errAFirstName], [aEmail, errAEmail], [aPassword, errAPassword]]
-      .forEach(([input, err]) => clearFieldError(input, err));
-
-    formAgencies.addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const validFirstName = validateField(aFirstName, errAFirstName);
-      const validEmail = validateField(aEmail, errAEmail, isEmail);
-      const validPassword = validateField(aPassword, errAPassword, isStrongEnoughPassword);
-
-      if (!(validFirstName && validEmail && validPassword)) return;
-
-      const submitBtn = formAgencies.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Setting up your account…';
-
-      const email = aEmail.value.trim();
-      const pending = {
-        type: 'search_firm',
-        firstName: aFirstName.value.trim(),
-        lastName: aLastName.value.trim(),
-        email
-      };
-
-      const result = await signUpOrLogIn(email, aPassword.value);
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-
-      if (result.kind === 'existing_wrong_password') {
-        alert("An account with this email already exists, and that password doesn't match it. Double check for typos.");
-        return;
-      }
-      if (result.kind === 'error') {
-        console.error('signUp error:', result.error);
-        alert('Something went wrong creating your account: ' + result.error.message);
-        return;
-      }
-
-      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-
-      if (result.data.session) {
-        pillsWrap.classList.add('hidden');
-        await completeSignup(result.data.session, pending);
-        return;
-      }
-
-      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
-      pillsWrap.classList.add('hidden');
-      showOnly(checkEmailBox);
-    });
-
-    // ---- Manual login form ----
-    const lEmail = document.getElementById('l-email');
-    const lPassword = document.getElementById('l-password');
-    const errLEmail = document.getElementById('err-l-email');
-    const errLPassword = document.getElementById('err-l-password');
-
-    [[lEmail, errLEmail], [lPassword, errLPassword]].forEach(([input, err]) => clearFieldError(input, err));
-
-    formLogin.addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const validEmail = validateField(lEmail, errLEmail, isEmail);
-      const validPassword = validateField(lPassword, errLPassword, v => v.length > 0);
-      if (!(validEmail && validPassword)) return;
-
-      const submitBtn = formLogin.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Logging in…';
-
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: lEmail.value.trim(),
-        password: lPassword.value
-      });
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-
-      if (error) {
-        console.error('signInWithPassword error:', error);
-        alert('Could not log in: ' + error.message);
-        return;
-      }
-
-      showOnly(finishingBox);
-      finishingBox.querySelector('div').textContent = 'Logging you in…';
-      await routeSignedInUser(data.session);
-    });
-
-    // Sends a returning, already-signed-in user to the right place:
-    //   - a company that has posted at least one role -> straight to the dashboard
-    //   - a company that hasn't posted a role yet -> the role-posting wizard
-    //   - a recruiter who's finished their profile -> straight to the dashboard
-    //   - a recruiter who hasn't -> the recruiter onboarding wizard
-    // Uses replace() rather than href so the onboarding page doesn't linger
-    // in browser history -- pressing Back shouldn't land you back on it.
-    async function routeSignedInUser(session) {
-      const { data: company } = await supabaseClient
-        .from("companies").select("id").eq("auth_user_id", session.user.id).maybeSingle();
-      if (company) {
-        const { data: existingRole } = await supabaseClient
-          .from("roles").select("id").eq("company_id", company.id).limit(1).maybeSingle();
-        window.location.replace(existingRole ? DASHBOARD_URL : ONBOARDING_URL);
-        return;
-      }
-
-      const { data: recruiter } = await supabaseClient
-        .from("recruiters").select("id, years_experience").eq("auth_user_id", session.user.id).maybeSingle();
-      if (recruiter) {
-        // years_experience is only set once the onboarding steps are
-        // completed and submitted -- use it as the "profile finished" signal.
-        window.location.replace(recruiter.years_experience ? RECRUITER_DASHBOARD_URL : RECRUITER_ONBOARDING_URL);
-        return;
-      }
-
-      window.location.replace(ONBOARDING_URL);
-    }
-
-    // Tries a plain insert; if a row already exists for this account
-    // (e.g. a returning user whose signUp fell back to a login),
-    // updates it instead. Avoids upsert/ON CONFLICT, which doesn't
-    // play well with RLS here.
-    async function insertOrUpdate(table, matchColumn, matchValue, row) {
-      const { error: insertErr } = await supabaseClient.from(table).insert([row]);
-      if (!insertErr) return;
-
-      if (insertErr.code === '23505') {
-        const { [matchColumn]: _drop, ...updateFields } = row;
-        const { error: updateErr } = await supabaseClient
-          .from(table)
-          .update(updateFields)
-          .eq(matchColumn, matchValue);
-        if (updateErr) throw updateErr;
-        return;
-      }
-
-      throw insertErr;
-    }
-
-    // Company name is intentionally left blank here -- it's collected as
-    // its own field on the first page of onboarding, not assumed from the
-    // contact's name. "name" here is the contact's full name (first +
-    // optional last), used for greetings, not the company name.
-    async function completeSignup(session, pending) {
-      showOnly(finishingBox);
-
-      try {
-        if (pending.type === 'company') {
-          await insertOrUpdate('companies', 'auth_user_id', session.user.id, {
-            auth_user_id: session.user.id,
-            contact_first_name: pending.firstName,
-            last_name: pending.lastName,
-            name: '',
-            email: pending.email
-          });
-
-          localStorage.removeItem(PENDING_KEY);
-          window.location.href = ONBOARDING_URL;
-          return;
-        }
-
-        if (pending.type === 'search_firm') {
-          // "verified" is NOT NULL with no DB default, so it must be
-          // set explicitly on every insert or this throws too.
-          await insertOrUpdate('recruiters', 'auth_user_id', session.user.id, {
-            auth_user_id: session.user.id,
-            contact_first_name: pending.firstName,
-            last_name: pending.lastName,
-            email: pending.email,
-            verified: false
-          });
-
-          localStorage.removeItem(PENDING_KEY);
-          window.location.href = RECRUITER_ONBOARDING_URL;
-          return;
-        }
-      } catch (err) {
-        console.error('complete signup error:', err);
-        postAuthErrorText.textContent = err.message || 'Please try signing up again.';
-        showOnly(postAuthErrorBox);
-      }
-    }
-
-    async function init() {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (!session) return;
-
-      const pendingRaw = localStorage.getItem(PENDING_KEY);
-      if (pendingRaw) {
-        pillsWrap.classList.add('hidden');
-        await completeSignup(session, JSON.parse(pendingRaw));
-        return;
-      }
-
-      pillsWrap.classList.add('hidden');
-      showOnly(finishingBox);
-      await routeSignedInUser(session);
-    }
-
-    init();
+  };
+
+  useEffect(() => { if (authorized) loadAll(); }, [authorized]);
+
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    setSession(null);
+    setAuthorized(false);
+  };
+
+  const jump = (nextTab, nextFilters) => {
+    setTab(nextTab);
+    setFilters(nextFilters || {});
+  };
+
+  const clearFilter = (key) => setFilters((f) => { const next = { ...f }; delete next[key]; return next; });
+
+  if (session === undefined) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: T.sub, fontSize: 13 }}>{"loading\u2026"}</div>;
+  if (!session || !authorized) return <Login onSignedIn={(s) => { setSession(s); setAuthorized(true); }} />;
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#fff", color: T.ink, fontFamily: T.sans }}>
+      <div style={{ borderBottom: `1px solid ${T.line}` }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Icon name="shield" size={17} />
+            <span style={{ fontSize: 15, fontWeight: 700 }}>MakePlacement Admin</span>
+          </div>
+          <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: T.sub, fontSize: 13, cursor: "pointer", fontFamily: T.sans }}>
+            <Icon name="logout" size={14} /> Log out
+          </button>
+        </div>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", display: "flex", gap: 20 }}>
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{ background: "none", border: "none", padding: "10px 0", fontSize: 13.5, fontWeight: tab === t.key ? 700 : 500, color: tab === t.key ? T.ink : T.sub, cursor: "pointer", borderBottom: tab === t.key ? `2px solid ${T.ink}` : "2px solid transparent", fontFamily: T.sans }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 24px 80px" }}>
+        {loading || !data ? (
+          <div style={{ fontSize: 13, color: T.sub }}>{"Loading everything\u2026"}</div>
+        ) : error ? (
+          <div style={{ fontSize: 13, color: T.red }}>{error}</div>
+        ) : (
+          <>
+            {tab === "overview" && <OverviewTab data={data} onJump={jump} />}
+            {tab === "companies" && <CompaniesTab data={data} onJump={jump} />}
+            {tab === "recruiters" && <RecruitersTab data={data} onJump={jump} />}
+            {tab === "roles" && <RolesTab data={data} filters={filters} onClearFilter={clearFilter} onJump={jump} />}
+            {tab === "candidates" && <CandidatesTab data={data} filters={filters} onClearFilter={clearFilter} />}
+            {tab === "messages" && <MessagesTab data={data} filters={filters} onClearFilter={clearFilter} />}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<AdminApp />);
   </script>
 </body>
 </html>
