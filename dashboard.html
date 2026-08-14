@@ -804,9 +804,10 @@ function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
   );
 }
 
-function BenchUpdatesPanel({ messages, onSend }) {
+function BenchUpdatesPanel({ messages, onSend, readOnly }) {
   const [open, setOpen] = useState(false);
   const broadcasts = messages.filter((m) => !m.candidate_id && !m.recruiter_id);
+  if (readOnly && broadcasts.length === 0) return null;
   return (
     <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -821,16 +822,18 @@ function BenchUpdatesPanel({ messages, onSend }) {
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 12, color: T.sub, marginBottom: 10 }}>Visible to every recruiter with a candidate currently in this role's pipeline.</div>
           <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
-          <div style={{ marginTop: broadcasts.length ? 10 : 0 }}>
-            <MessageComposer onSend={onSend} placeholder="e.g. We're prioritizing candidates with security clearance this week." buttonLabel="Send to bench" />
-          </div>
+          {!readOnly && (
+            <div style={{ marginTop: broadcasts.length ? 10 : 0 }}>
+              <MessageComposer onSend={onSend} placeholder="e.g. We're prioritizing candidates with security clearance this week." buttonLabel="Send to bench" />
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function RecruitersModal({ role, recruiters, loading, onClose, onMessage }) {
+function RecruitersModal({ role, recruiters, loading, onClose, onMessage, readOnly }) {
   const [openId, setOpenId] = useState(null);
   return (
     <Modal onClose={onClose} width={480}>
@@ -854,10 +857,12 @@ function RecruitersModal({ role, recruiters, loading, onClose, onMessage }) {
                   <div style={{ fontSize: 12.5, color: T.sub }}>{r.email || "\u2014"}</div>
                 </div>
               </div>
-              <div style={{ marginTop: 10 }}>
-                <GhostButton onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? "Close" : "Message"}</GhostButton>
-              </div>
-              {openId === r.id && (
+              {!readOnly && (
+                <div style={{ marginTop: 10 }}>
+                  <GhostButton onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? "Close" : "Message"}</GhostButton>
+                </div>
+              )}
+              {!readOnly && openId === r.id && (
                 <div style={{ marginTop: 10 }}>
                   <MessageComposer onSend={(body) => onMessage(r.id, body)} placeholder={`Message to ${recruiterName(r) || "this recruiter"}`} buttonLabel="Send" />
                 </div>
@@ -870,8 +875,9 @@ function RecruitersModal({ role, recruiters, loading, onClose, onMessage }) {
   );
 }
 
-function CandidateFeedbackThread({ messages, onSend }) {
+function CandidateFeedbackThread({ messages, onSend, readOnly }) {
   const [open, setOpen] = useState(false);
+  if (readOnly && messages.length === 0) return null;
   return (
     <div style={{ marginTop: 10 }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", fontSize: 12, color: T.ink, textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}>
@@ -880,9 +886,11 @@ function CandidateFeedbackThread({ messages, onSend }) {
       {open && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
           <MessageFeed messages={messages} emptyLabel="No feedback sent yet." />
-          <div style={{ marginTop: messages.length ? 10 : 0 }}>
-            <MessageComposer onSend={onSend} placeholder="e.g. Great communicator, but light on the specific stack we need." buttonLabel="Send to recruiter" />
-          </div>
+          {!readOnly && (
+            <div style={{ marginTop: messages.length ? 10 : 0 }}>
+              <MessageComposer onSend={onSend} placeholder="e.g. Great communicator, but light on the specific stack we need." buttonLabel="Send to recruiter" />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -890,7 +898,7 @@ function CandidateFeedbackThread({ messages, onSend }) {
 }
 
 // ---------- candidate card ----------
-function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onRequestReject, onPlace, onRestore, feedbackMessages, onSendFeedback }) {
+function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, onRequestReject, onPlace, onRestore, feedbackMessages, onSendFeedback, readOnly }) {
   const rejected = isRejected(candidate);
   const placed = isPlaced(candidate);
 
@@ -913,24 +921,26 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
 
       {candidate.notes && <div style={{ fontSize: 13, color: "#444", marginTop: 8, whiteSpace: "pre-wrap" }}>{candidate.notes}</div>}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        {isActive(candidate) && (
-          <>
-            <GhostButton active onClick={onAdvance}>{nextStageName ? `Advance \u2192 ${nextStageName}` : "Mark placed"}</GhostButton>
-            <GhostButton onClick={onRequestReject} style={{ color: T.red, borderColor: "#e3bab3" }}>Reject</GhostButton>
-            {nextStageName && <GhostButton onClick={onPlace}>Mark placed</GhostButton>}
-          </>
-        )}
-        {!isActive(candidate) && <GhostButton onClick={onRestore}>Restore to active</GhostButton>}
-      </div>
+      {!readOnly && (
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          {isActive(candidate) && (
+            <>
+              <GhostButton active onClick={onAdvance}>{nextStageName ? `Advance \u2192 ${nextStageName}` : "Mark placed"}</GhostButton>
+              <GhostButton onClick={onRequestReject} style={{ color: T.red, borderColor: "#e3bab3" }}>Reject</GhostButton>
+              {nextStageName && <GhostButton onClick={onPlace}>Mark placed</GhostButton>}
+            </>
+          )}
+          {!isActive(candidate) && <GhostButton onClick={onRestore}>Restore to active</GhostButton>}
+        </div>
+      )}
 
-      <CandidateFeedbackThread messages={feedbackMessages} onSend={onSendFeedback} />
+      <CandidateFeedbackThread messages={feedbackMessages} onSend={onSendFeedback} readOnly={readOnly} />
     </div>
   );
 }
 
 // ---------- pipeline (kanban by stage) ----------
-function PipelineView({ role, stages, candidates, recruiterMap, messages, session, refresh, refreshMessages }) {
+function PipelineView({ role, stages, candidates, recruiterMap, messages, session, refresh, refreshMessages, readOnly }) {
   const [rejectingCandidate, setRejectingCandidate] = useState(null);
 
   const stageById = {};
@@ -963,6 +973,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
       candidate={c}
       recruiterLabel={recruiterLabel(recruiterMap[c.recruiter_id])}
       nextStageName={nextStage(c) ? nextStage(c).name : null}
+      readOnly={readOnly}
       onAdvance={() => act(async () => {
         const ns = nextStage(c);
         if (ns) await updateCandidate(c.id, { stage_id: ns.id });
@@ -981,7 +992,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
 
   return (
     <div>
-      <BenchUpdatesPanel messages={messages} onSend={async (body) => { await sendMessage(session, role.id, null, null, body); await refreshMessages(); }} />
+      <BenchUpdatesPanel messages={messages} readOnly={readOnly} onSend={async (body) => { await sendMessage(session, role.id, null, null, body); await refreshMessages(); }} />
 
       <div className="mp-pipeline-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, minmax(220px, 1fr))`, gap: 18, overflowX: "auto", paddingBottom: 8 }}>
         {columns.map((stage) => {
@@ -1030,8 +1041,15 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
 }
 
 // ---------- role status control ----------
-function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit, onViewRecruiters }) {
+function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit, onViewRecruiters, readOnly }) {
   const status = (role.status || "live").toLowerCase();
+  if (readOnly) {
+    return (
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <GhostButton onClick={() => onViewRecruiters(role)}><Icon name="users" size={13} /> Recruiters</GhostButton>
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <GhostButton onClick={() => onViewRecruiters(role)}><Icon name="users" size={13} /> Recruiters</GhostButton>
@@ -1044,7 +1062,7 @@ function RoleStatusActions({ role, onPause, onReopen, onRequestFilled, onEdit, o
 }
 
 // ---------- hero role card ----------
-function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, onEdit, onViewRecruiters, children }) {
+function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReopen, onRequestFilled, onEdit, onViewRecruiters, readOnly, children }) {
   const status = (role.status || "live").toLowerCase();
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 16, overflow: "hidden", background: "#fff", marginBottom: 28 }}>
@@ -1058,7 +1076,7 @@ function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReope
             <div style={{ fontSize: 26, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em", marginBottom: 4 }}>{role.name}</div>
             <div style={{ fontSize: 14.5, color: T.sub }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}{role.hiring_goals ? ` \u00b7 Target: ${role.hiring_goals}` : ""}</div>
           </div>
-          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} onEdit={onEdit} onViewRecruiters={onViewRecruiters} />
+          <RoleStatusActions role={role} onPause={onPause} onReopen={onReopen} onRequestFilled={onRequestFilled} onEdit={onEdit} onViewRecruiters={onViewRecruiters} readOnly={readOnly} />
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
@@ -1099,7 +1117,7 @@ function CompactRoleCard({ role, counts, onFocus }) {
 }
 
 // ---------- messages inbox ----------
-function EmployerInbox({ session, roles }) {
+function EmployerInbox({ session, roles, readOnly }) {
   const [messages, setMessages] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -1196,7 +1214,7 @@ function EmployerInbox({ session, roles }) {
       <div style={{ fontSize: 20, fontWeight: 700, color: T.ink, marginBottom: 4 }}>Messages</div>
       <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 22 }}>Every conversation with recruiters across your roles, updating live.</div>
 
-      {roles.length > 0 && (
+      {!readOnly && roles.length > 0 && (
         <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 24 }}>
           <div style={sectionLabelStyle}>New message</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: newMsgRole && newMsgRecruiter ? 10 : 0 }}>
@@ -1237,9 +1255,11 @@ function EmployerInbox({ session, roles }) {
               {open && (
                 <div style={{ marginTop: 14, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 14 }}>
                   <MessageFeed messages={t.messages} emptyLabel="" />
-                  <div style={{ marginTop: 10 }}>
-                    <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
-                  </div>
+                  {!readOnly && (
+                    <div style={{ marginTop: 10 }}>
+                      <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1277,13 +1297,27 @@ function ClientDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adminViewMode, setAdminViewMode] = useState(false);
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { window.location.href = LOGIN_URL; return; }
       setSession(session);
       try {
-        const c = await getMyCompany(session);
+        const params = new URLSearchParams(window.location.search);
+        const viewCompanyId = params.get("admin_view_company");
+
+        let c = null;
+        if (viewCompanyId) {
+          const { data: adminRow } = await supabaseClient.from("admins").select("id").ilike("email", session.user.email).maybeSingle();
+          if (adminRow) {
+            const { data: viewedCompany, error: viewErr } = await supabaseClient.from("companies").select("*").eq("id", viewCompanyId).maybeSingle();
+            if (viewErr || !viewedCompany) { setError("Could not load that company."); setLoading(false); return; }
+            c = viewedCompany;
+            setAdminViewMode(true);
+          }
+        }
+        if (!c) c = await getMyCompany(session);
         if (!c) { window.location.href = LOGIN_URL; return; }
         setCompany(c);
         const r = await fetchRoles(c.id);
@@ -1502,6 +1536,12 @@ function ClientDashboard() {
 
   return (
     <div style={pageWrap}>
+      {adminViewMode && (
+        <div style={{ background: T.ink, color: "#fff", padding: "10px 20px", fontSize: 13, display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span>Admin view \u2014 viewing as {company.name || "this company"} (read-only)</span>
+          <a href="admin.html" style={{ color: "#fff", textDecoration: "underline" }}>Exit to admin</a>
+        </div>
+      )}
       <TopNav
         tab={tab}
         onTabChange={setTab}
@@ -1527,7 +1567,7 @@ function ClientDashboard() {
                   <Pill tone="placed">{totalPlaced} placed</Pill>
                 </div>
               </div>
-              <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>
+              <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)} style={adminViewMode ? { visibility: "hidden" } : {}}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> Post new role</span>
               </PrimaryButton>
             </div>
@@ -1539,7 +1579,7 @@ function ClientDashboard() {
                 icon="briefcase"
                 title="No roles posted yet"
                 body="Post your first role to start getting candidates from recruiters on MakePlacement."
-                actions={<PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>Post a role</PrimaryButton>}
+                actions={!adminViewMode && <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>Post a role</PrimaryButton>}
               />
             ) : (
               <>
@@ -1554,6 +1594,7 @@ function ClientDashboard() {
                     onRequestFilled={(r) => setConfirmFilledRole(r)}
                     onEdit={(r) => setEditingRole(r)}
                     onViewRecruiters={openRecruitersModal}
+                    readOnly={adminViewMode}
                   >
                     {pipelineLoading ? (
                       <div style={{ fontSize: 13, color: T.sub }}>{"Loading pipeline\u2026"}</div>
@@ -1567,6 +1608,7 @@ function ClientDashboard() {
                         session={session}
                         refresh={refreshPipeline}
                         refreshMessages={refreshMessages}
+                        readOnly={adminViewMode}
                       />
                     )}
                   </HeroRoleCard>
@@ -1589,7 +1631,7 @@ function ClientDashboard() {
           </>
         )}
 
-        {tab === "messages" && <EmployerInbox session={session} roles={roles} />}
+        {tab === "messages" && <EmployerInbox session={session} roles={roles} readOnly={adminViewMode} />}
       </div>
 
       {confirmFilledRole && (
@@ -1618,6 +1660,7 @@ function ClientDashboard() {
           loading={recruitersModalLoading}
           onClose={() => setRecruitersModalRole(null)}
           onMessage={async (recruiterId, body) => { await sendMessage(session, recruitersModalRole.id, null, recruiterId, body); }}
+          readOnly={adminViewMode}
         />
       )}
 
