@@ -381,32 +381,35 @@ function Login({ onSignedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [debug, setDebug] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError("");
+    setDebug(null);
     const { data, error: signInErr } = await supabaseClient.auth.signInWithPassword({ email: email.trim(), password });
     if (signInErr) {
       setError("Incorrect email or password.");
       setSubmitting(false);
       return;
     }
-    const { data: adminRow, error: adminErr } = await supabaseClient.from("admins").select("id").ilike("email", email.trim()).maybeSingle();
-    if (adminErr) {
-      await supabaseClient.auth.signOut();
-      setError("Admin check failed: " + adminErr.message + (adminErr.code ? ` (${adminErr.code})` : ""));
-      setSubmitting(false);
+    const authedEmail = data.session.user.email;
+    const { data: adminRow, error: adminErr } = await supabaseClient.from("admins").select("id, email").ilike("email", authedEmail).maybeSingle();
+    if (!adminErr && adminRow) {
+      onSignedIn(data.session);
       return;
     }
-    if (!adminRow) {
-      await supabaseClient.auth.signOut();
-      setError("This account isn't authorized for admin access.");
-      setSubmitting(false);
-      return;
-    }
-    onSignedIn(data.session);
+    await supabaseClient.auth.signOut();
+    setError("This account isn't authorized for admin access.");
+    setDebug({
+      typedEmail: email.trim(),
+      authenticatedEmail: authedEmail,
+      queryError: adminErr ? { message: adminErr.message, code: adminErr.code, details: adminErr.details, hint: adminErr.hint } : null,
+      queryResult: adminRow,
+    });
+    setSubmitting(false);
   };
 
   return (
@@ -419,6 +422,11 @@ function Login({ onSignedIn }) {
         <input style={{ ...inputStyle, marginBottom: 10 }} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input style={{ ...inputStyle, marginBottom: 14 }} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <div style={{ color: T.red, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
+        {debug && (
+          <pre style={{ fontSize: 10.5, background: "#f7f7f7", padding: 10, borderRadius: 8, overflow: "auto", marginBottom: 12, color: "#333" }}>
+            {JSON.stringify(debug, null, 2)}
+          </pre>
+        )}
         <button type="submit" disabled={submitting} style={{ width: "100%", background: T.ink, color: "#fff", border: "none", borderRadius: 10, padding: "11px 16px", fontSize: 13.5, fontWeight: 600, cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.6 : 1, fontFamily: T.sans }}>
           {submitting ? "Signing in\u2026" : "Sign in"}
         </button>
