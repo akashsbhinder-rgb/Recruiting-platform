@@ -364,7 +364,12 @@ function CompaniesTab({ data, onJump }) {
                     <div style={{ fontSize: 12.5, color: T.sub }}>{fullName(c)}</div>
                   </div>
                 </div>
-                <div style={{ fontSize: 12.5, color: T.sub, marginBottom: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.email || "\u2014"}</div>
+                <div style={{ fontSize: 12.5, color: T.sub, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.email || "\u2014"}</div>
+                {(c.city || c.state || c.employee_count) && (
+                  <div style={{ fontSize: 11.5, color: T.faint, marginBottom: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {[[c.city, c.state].filter(Boolean).join(", "), c.employee_count ? `${c.employee_count} employees` : null].filter(Boolean).join(" \u00b7 ")}
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <Pill tone="live">{roleCountByCompany[c.id] || 0} role{(roleCountByCompany[c.id] || 0) === 1 ? "" : "s"}</Pill>
                   <span style={{ fontSize: 11.5, color: T.faint }}>{shortDate(c.created_at)}</span>

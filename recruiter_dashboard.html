@@ -297,11 +297,16 @@ async function fetchRolesByIds(roleIds) {
 
 async function fetchCompaniesByIds(companyIds) {
   if (companyIds.length === 0) return {};
-  const { data, error } = await supabaseClient.from("companies").select("id, name").in("id", companyIds);
+  const { data, error } = await supabaseClient.from("companies").select("id, name, employee_count, city, state").in("id", companyIds);
   if (error) throw new Error(`Failed loading companies: ${error.message}`);
   const map = {};
-  (data || []).forEach((c) => (map[c.id] = c.name));
+  (data || []).forEach((c) => (map[c.id] = c));
   return map;
+}
+
+function companyLocation(company) {
+  if (!company) return "";
+  return [company.city, company.state].filter(Boolean).join(", ");
 }
 
 async function fetchInterviewingCounts(roleIds) {
@@ -315,17 +320,19 @@ async function fetchInterviewingCounts(roleIds) {
 }
 
 async function fetchRoleDetail(roleId) {
-  const [stagesRes, qualitiesRes, traitsRes, referencesRes] = await Promise.all([
+  const [stagesRes, qualitiesRes, traitsRes, referencesRes, questionsRes] = await Promise.all([
     supabaseClient.from("role_stages").select("*").eq("role_id", roleId).order("position"),
     supabaseClient.from("role_qualities").select("*").eq("role_id", roleId),
     supabaseClient.from("role_traits_to_avoid").select("*").eq("role_id", roleId),
     supabaseClient.from("role_candidate_references").select("*").eq("role_id", roleId),
+    supabaseClient.from("role_questions").select("*").eq("role_id", roleId),
   ]);
   if (stagesRes.error) throw new Error(`Failed loading stages: ${stagesRes.error.message}`);
   if (qualitiesRes.error) throw new Error(`Failed loading qualities: ${qualitiesRes.error.message}`);
   if (traitsRes.error) throw new Error(`Failed loading traits: ${traitsRes.error.message}`);
   if (referencesRes.error) throw new Error(`Failed loading references: ${referencesRes.error.message}`);
-  return { stages: stagesRes.data || [], qualities: qualitiesRes.data || [], traits: traitsRes.data || [], references: referencesRes.data || [] };
+  if (questionsRes.error) throw new Error(`Failed loading questions: ${questionsRes.error.message}`);
+  return { stages: stagesRes.data || [], qualities: qualitiesRes.data || [], traits: traitsRes.data || [], references: referencesRes.data || [], questions: questionsRes.data || [] };
 }
 
 async function fetchMyApplications(recruiterId) {
@@ -598,7 +605,9 @@ function ApplyPanel({ role, onApply }) {
 }
 
 // ---------- role card ----------
-function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, saved, onToggleSave, applied, onApply, readOnly }) {
+function RoleCard({ role, company, expanded, onToggle, interviewingCount, saved, onToggleSave, applied, onApply, readOnly }) {
+  const companyName = company && company.name;
+  const location = companyLocation(company);
   const gradient = gradientFor(companyName || role.name);
   const initial = (companyName || "?").trim().charAt(0).toUpperCase();
   const commissionPct = (COMMISSION_PCT * 100).toFixed(1).replace(/\.0$/, "");
@@ -635,6 +644,11 @@ function RoleCard({ role, companyName, expanded, onToggle, interviewingCount, sa
             <span style={{ color: T.sub, display: "flex" }}><Icon name="shield" size={12} /></span>
           </div>
           <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 8, lineHeight: 1.3 }}>{role.name}</div>
+          {(location || (company && company.employee_count)) && (
+            <div style={{ fontSize: 12, color: T.sub, marginBottom: 8 }}>
+              {[location, company && company.employee_count ? `${company.employee_count} employees` : null].filter(Boolean).join(" · ")}
+            </div>
+          )}
           <div style={{ fontSize: 12.5, color: T.sub, marginBottom: 9 }}>{interviewingCount} interviewing</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px" }}>
             {commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span>
@@ -791,10 +805,10 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
 
   let visible = roles.filter((r) => {
     if (appliedRoleIds.has(r.id)) return false;
-    const company = companyMap[r.company_id] || "";
+    const company = companyMap[r.company_id];
     if (query) {
       const q = query.toLowerCase();
-      const hay = `${r.name} ${company} ${r.description || ""}`.toLowerCase();
+      const hay = `${r.name} ${company ? company.name : ""} ${r.description || ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     if (minSalary && Number(r.max_salary || 0) < Number(minSalary)) return false;
@@ -830,14 +844,14 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
             <RoleCard
               key={role.id}
               role={role}
-              companyName={companyMap[role.company_id]}
+              company={companyMap[role.company_id]}
               expanded={expandedId === role.id}
               onToggle={() => toggle(role.id)}
               interviewingCount={counts[role.id] || 0}
               saved={savedSet.has(role.id)}
               onToggleSave={() => toggleSave(role.id)}
               applied={appliedRoleIds.has(role.id)}
-              onApply={async () => { await applyToRole(recruiterId, role.id); onApplied(role.id); }}
+              onApply={async () => { await applyToRole(recruiterId, role.id); onApplied(role, companyMap[role.company_id]); }}
               readOnly={readOnly}
             />
           ))}
@@ -966,7 +980,7 @@ function KanbanBoard({ candidates, roleMap, companyMap }) {
             {items.length === 0 && <div style={{ fontSize: 12.5, color: T.faint, fontStyle: "italic" }}>None yet</div>}
             {items.map((c) => {
               const role = roleMap[c.role_id];
-              return <MyCandidateCard key={c.id} candidate={c} roleName={role ? `${role.name} \u00b7 ${companyMap[role.company_id] || ""}` : ""} feedbackMessages={[]} />;
+              return <MyCandidateCard key={c.id} candidate={c} roleName={role ? `${role.name} \u00b7 ${(companyMap[role.company_id] && companyMap[role.company_id].name) || ""}` : ""} feedbackMessages={[]} />;
             })}
           </div>
         );
@@ -979,7 +993,7 @@ function KanbanBoard({ candidates, roleMap, companyMap }) {
 // ---------- role info panel (collapsed by default) ----------
 function RoleInfoPanel({ role, detail }) {
   const [open, setOpen] = useState(false);
-  const hasAnything = role.description || detail.qualities.length || detail.traits.length || detail.references.length || role.recruiting_advice || role.hm_intro || detail.stages.length;
+  const hasAnything = role.description || role.hiring_goals || detail.qualities.length || detail.traits.length || detail.references.length || role.recruiting_advice || role.hm_intro || detail.stages.length || detail.questions.length;
   if (!hasAnything) return null;
 
   return (
@@ -1000,6 +1014,18 @@ function RoleInfoPanel({ role, detail }) {
             <div style={{ marginBottom: 20 }}>
               <div style={sectionLabelStyle}>About this role</div>
               <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
+            </div>
+          )}
+          {role.hiring_goals && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Target fill date</div>
+              <div style={{ fontSize: 13.5, color: "#333" }}>{role.hiring_goals}</div>
+            </div>
+          )}
+          {detail.questions.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={sectionLabelStyle}>Questions to ask candidates</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333" }}>{detail.questions.map((q) => <li key={q.id}>{q.question}</li>)}</ul>
             </div>
           )}
           {detail.qualities.length > 0 && (
@@ -1051,7 +1077,10 @@ function RoleInfoPanel({ role, detail }) {
   );
 }
 
-function RoleWorkspace({ role, companyName, recruiterId, session, onBack, readOnly }) {
+function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelcome, readOnly }) {
+  const companyName = company && company.name;
+  const location = companyLocation(company);
+  const earnings = estimateEarnings(role.min_salary, role.max_salary);
   const [detail, setDetail] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -1109,9 +1138,29 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack, readOn
         <Icon name="chevronDown" size={13} style={{ transform: "rotate(90deg)" }} /> All my roles
       </button>
 
-      <div style={{ fontSize: 24, fontWeight: 700, color: T.ink, marginBottom: 4 }}>{role.name}</div>
-      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 4 }}>{companyName}</div>
-      <div style={{ fontSize: 13, color: T.sub, marginBottom: 24 }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: T.ink, marginBottom: 4 }}>{role.name}</div>
+          <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 4 }}>
+            {companyName}
+            {(location || (company && company.employee_count)) && (
+              <span> \u00b7 {[location, company && company.employee_count ? `${company.employee_count} employees` : null].filter(Boolean).join(" \u00b7 ")}</span>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: T.sub, marginBottom: 4 }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}</div>
+          {earnings && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999, marginTop: 4 }}>
+              <Icon name="dollar" size={12} />
+              est. earnings {money(Math.round(earnings.low))} {"\u2013"} {money(Math.round(earnings.high))}
+            </div>
+          )}
+        </div>
+        <GhostButton onClick={() => onOpenWelcome && onOpenWelcome(role, company)}>
+          <Icon name="mail" size={13} /> Welcome message
+        </GhostButton>
+      </div>
+
+      <div style={{ height: 24 }} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 28 }}>
         <div>
@@ -1161,7 +1210,7 @@ function RoleWorkspace({ role, companyName, recruiterId, session, onBack, readOn
 }
 
 // ---------- my roles ----------
-function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, onFocusRole, readOnly }) {
+function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, onFocusRole, onOpenWelcome, readOnly }) {
   const [roles, setRoles] = useState([]);
   const [companyMap, setCompanyMap] = useState({});
   const [candidates, setCandidates] = useState([]);
@@ -1192,7 +1241,7 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, 
 
   const focusedRole = roles.find((r) => r.id === focusRoleId);
   if (focusedRole) {
-    return <RoleWorkspace role={focusedRole} companyName={companyMap[focusedRole.company_id]} recruiterId={recruiterId} session={session} onBack={() => onFocusRole(null)} readOnly={readOnly} />;
+    return <RoleWorkspace role={focusedRole} company={companyMap[focusedRole.company_id]} recruiterId={recruiterId} session={session} onBack={() => onFocusRole(null)} onOpenWelcome={onOpenWelcome} readOnly={readOnly} />;
   }
 
   const candidatesByRole = {};
@@ -1228,7 +1277,7 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, 
                 onClick={() => onFocusRole(role.id)}
                 style={{ textAlign: "left", border: `1px solid ${T.line}`, borderRadius: 14, padding: 16, background: "#fff", cursor: "pointer", fontFamily: T.sans }}
               >
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, marginBottom: 3 }}>{companyMap[role.company_id] || "Company"}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, marginBottom: 3 }}>{(companyMap[role.company_id] && companyMap[role.company_id].name) || "Company"}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{role.name}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                   <Pill>{mine.length} submitted</Pill>
@@ -1341,7 +1390,7 @@ function RecruiterInbox({ session, recruiterId, appliedRoleIds, readOnly }) {
               <div onClick={() => setExpandedKey(open ? null : t.key)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{threadLabel(t)}</div>
-                  <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{role ? `${role.name} \u00b7 ${companyMap[role.company_id] || ""}` : "Role"}</div>
+                  <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{role ? `${role.name} \u00b7 ${(companyMap[role.company_id] && companyMap[role.company_id].name) || ""}` : "Role"}</div>
                   {!open && <div style={{ fontSize: 12.5, color: T.sub, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{last.body}</div>}
                 </div>
                 <div style={{ fontSize: 11, color: T.faint, whiteSpace: "nowrap" }}>{formatWhen(last.created_at)}</div>
@@ -1364,6 +1413,44 @@ function RecruiterInbox({ session, recruiterId, appliedRoleIds, readOnly }) {
   );
 }
 
+// ---------- welcome modal ----------
+function Modal({ onClose, children, width = 480 }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(17,18,20,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 28, width: "100%", maxWidth: width, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function WelcomeModal({ role, company, onClose }) {
+  const companyName = (company && company.name) || "the company";
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, fontSize: 12.5, fontWeight: 700, color: T.blue, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        <Icon name="check" size={14} /> You're approved
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: T.ink, marginBottom: 4 }}>
+        Welcome to {role.name} at {companyName}
+      </div>
+      {role.hiring_goals && (
+        <div style={{ fontSize: 13, color: T.sub, marginBottom: 16 }}>Target fill date: {role.hiring_goals}</div>
+      )}
+      {role.welcome_message ? (
+        <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap", background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+          {role.welcome_message}
+        </div>
+      ) : (
+        <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 20 }}>
+          {companyName} hasn't added a welcome message for this role yet.
+        </div>
+      )}
+      <PrimaryButton onClick={onClose} style={{ width: "100%" }}>Got it</PrimaryButton>
+    </Modal>
+  );
+}
+
 // ---------- main ----------
 function RecruiterDashboard() {
   const [session, setSession] = useState(undefined);
@@ -1371,6 +1458,7 @@ function RecruiterDashboard() {
   const [tab, setTab] = useState("browse");
   const [appliedRoleIds, setAppliedRoleIds] = useState(() => new Set());
   const [focusRoleId, setFocusRoleId] = useState(null);
+  const [welcomeModal, setWelcomeModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [adminViewMode, setAdminViewMode] = useState(false);
@@ -1411,10 +1499,11 @@ function RecruiterDashboard() {
     window.location.href = LOGIN_URL;
   };
 
-  const handleApplied = (roleId) => {
-    setAppliedRoleIds((prev) => new Set([...prev, roleId]));
-    setFocusRoleId(roleId);
+  const handleApplied = (role, company) => {
+    setAppliedRoleIds((prev) => new Set([...prev, role.id]));
+    setFocusRoleId(role.id);
     setTab("myroles");
+    setWelcomeModal({ role, company });
   };
 
   const [notifItems, setNotifItems] = useState([]);
@@ -1546,10 +1635,11 @@ function RecruiterDashboard() {
       />
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
         {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} readOnly={adminViewMode} />}
-        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} readOnly={adminViewMode} />}
+        {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} onOpenWelcome={(role, company) => setWelcomeModal({ role, company })} readOnly={adminViewMode} />}
         {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} readOnly={adminViewMode} />}
       </div>
       <ToastStack toasts={toasts} />
+      {welcomeModal && <WelcomeModal role={welcomeModal.role} company={welcomeModal.company} onClose={() => setWelcomeModal(null)} />}
     </div>
   );
 }

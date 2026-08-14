@@ -1139,7 +1139,7 @@ function HeroRoleCard({ role, counts, expanded, onToggleExpand, onPause, onReope
       <div style={{ padding: "40px 26px 24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 12, color: T.faint, marginBottom: 6 }}>Your most recently posted role</div>
+            <div style={{ fontSize: 12, color: T.faint, marginBottom: 6 }}>Featured role</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em", marginBottom: 4 }}>{role.name}</div>
             <div style={{ fontSize: 14.5, color: T.sub }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}{role.hiring_goals ? ` \u00b7 Target: ${role.hiring_goals}` : ""}</div>
           </div>
@@ -1405,8 +1405,16 @@ function ClientDashboard() {
         const r = await fetchRoles(c.id);
         setRoles(r);
         setCounts(await fetchRoleCandidateCounts(r.map((x) => x.id)));
+        // Keep whatever role the company was last looking at featured as the
+        // hero card -- without this, posting a new role silently swaps the
+        // hero to the new role and buries the one they were working on under
+        // "Other roles", which reads as data loss.
+        const storedFocusId = localStorage.getItem(`mp_focused_role_${c.id}`);
+        const stored = r.find((x) => x.id === storedFocusId);
         const live = r.find((x) => (x.status || "live").toLowerCase() === "live");
-        setFocusedId((live || r[0] || {}).id || null);
+        const nextFocusId = (stored || live || r[0] || {}).id || null;
+        setFocusedId(nextFocusId);
+        if (nextFocusId) localStorage.setItem(`mp_focused_role_${c.id}`, nextFocusId);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1519,6 +1527,7 @@ function ClientDashboard() {
     if (item.kind === "message") { setTab("messages"); return; }
     setTab("roles");
     setFocusedId(item.roleId);
+    if (company) localStorage.setItem(`mp_focused_role_${company.id}`, item.roleId);
     setExpanded(true);
     await loadPipeline(item.roleId);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1573,6 +1582,7 @@ function ClientDashboard() {
   const focusRole = (roleId) => {
     setFocusedId(roleId);
     setExpanded(false);
+    if (company) localStorage.setItem(`mp_focused_role_${company.id}`, roleId);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

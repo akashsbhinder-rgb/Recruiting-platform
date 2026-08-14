@@ -63,6 +63,76 @@ const LOGIN_URL = "index.html";
 
 const REQUIRED_FIRST_STAGE = "Recruiter screen";
 
+const EMPLOYEE_COUNT_OPTIONS = ["1-10", "11-50", "51-200", "201-500", "501-1,000", "1,001-5,000", "5,000+"];
+
+const US_STATES = [
+  ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"], ["CA", "California"],
+  ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"], ["DC", "District of Columbia"], ["FL", "Florida"],
+  ["GA", "Georgia"], ["HI", "Hawaii"], ["ID", "Idaho"], ["IL", "Illinois"], ["IN", "Indiana"],
+  ["IA", "Iowa"], ["KS", "Kansas"], ["KY", "Kentucky"], ["LA", "Louisiana"], ["ME", "Maine"],
+  ["MD", "Maryland"], ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
+  ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"], ["NH", "New Hampshire"],
+  ["NJ", "New Jersey"], ["NM", "New Mexico"], ["NY", "New York"], ["NC", "North Carolina"], ["ND", "North Dakota"],
+  ["OH", "Ohio"], ["OK", "Oklahoma"], ["OR", "Oregon"], ["PA", "Pennsylvania"], ["RI", "Rhode Island"],
+  ["SC", "South Carolina"], ["SD", "South Dakota"], ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
+  ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"], ["WV", "West Virginia"], ["WI", "Wisconsin"],
+  ["WY", "Wyoming"],
+];
+
+const CITIES_BY_STATE = {
+  AL: ["Birmingham", "Montgomery", "Huntsville", "Mobile", "Tuscaloosa"],
+  AK: ["Anchorage", "Fairbanks", "Juneau"],
+  AZ: ["Phoenix", "Tucson", "Mesa", "Chandler", "Scottsdale"],
+  AR: ["Little Rock", "Fayetteville", "Fort Smith"],
+  CA: ["Los Angeles", "San Diego", "San Jose", "San Francisco", "Fresno", "Sacramento", "Oakland", "Long Beach"],
+  CO: ["Denver", "Colorado Springs", "Aurora", "Fort Collins", "Boulder"],
+  CT: ["Bridgeport", "New Haven", "Hartford", "Stamford"],
+  DE: ["Wilmington", "Dover", "Newark"],
+  DC: ["Washington"],
+  FL: ["Jacksonville", "Miami", "Tampa", "Orlando", "St. Petersburg", "Fort Lauderdale"],
+  GA: ["Atlanta", "Augusta", "Columbus", "Savannah"],
+  HI: ["Honolulu", "Hilo", "Kailua"],
+  ID: ["Boise", "Meridian", "Nampa"],
+  IL: ["Chicago", "Aurora", "Naperville", "Springfield"],
+  IN: ["Indianapolis", "Fort Wayne", "Evansville"],
+  IA: ["Des Moines", "Cedar Rapids", "Davenport"],
+  KS: ["Wichita", "Overland Park", "Kansas City"],
+  KY: ["Louisville", "Lexington", "Bowling Green"],
+  LA: ["New Orleans", "Baton Rouge", "Shreveport"],
+  ME: ["Portland", "Lewiston", "Bangor"],
+  MD: ["Baltimore", "Columbia", "Rockville"],
+  MA: ["Boston", "Worcester", "Springfield", "Cambridge"],
+  MI: ["Detroit", "Grand Rapids", "Ann Arbor", "Lansing"],
+  MN: ["Minneapolis", "St. Paul", "Rochester"],
+  MS: ["Jackson", "Gulfport", "Southaven"],
+  MO: ["Kansas City", "St. Louis", "Springfield", "Columbia"],
+  MT: ["Billings", "Missoula", "Bozeman"],
+  NE: ["Omaha", "Lincoln", "Bellevue"],
+  NV: ["Las Vegas", "Henderson", "Reno"],
+  NH: ["Manchester", "Nashua", "Concord"],
+  NJ: ["Newark", "Jersey City", "Trenton", "Princeton"],
+  NM: ["Albuquerque", "Santa Fe", "Las Cruces"],
+  NY: ["New York City", "Buffalo", "Rochester", "Albany", "Syracuse"],
+  NC: ["Charlotte", "Raleigh", "Durham", "Greensboro"],
+  ND: ["Fargo", "Bismarck", "Grand Forks"],
+  OH: ["Columbus", "Cleveland", "Cincinnati", "Toledo"],
+  OK: ["Oklahoma City", "Tulsa", "Norman"],
+  OR: ["Portland", "Salem", "Eugene", "Bend"],
+  PA: ["Philadelphia", "Pittsburgh", "Allentown", "Harrisburg"],
+  RI: ["Providence", "Warwick", "Cranston"],
+  SC: ["Charleston", "Columbia", "Greenville"],
+  SD: ["Sioux Falls", "Rapid City", "Aberdeen"],
+  TN: ["Nashville", "Memphis", "Knoxville", "Chattanooga"],
+  TX: ["Houston", "San Antonio", "Dallas", "Austin", "Fort Worth", "El Paso"],
+  UT: ["Salt Lake City", "Provo", "Ogden"],
+  VT: ["Burlington", "Montpelier", "Rutland"],
+  VA: ["Virginia Beach", "Richmond", "Arlington", "Norfolk"],
+  WA: ["Seattle", "Spokane", "Tacoma", "Bellevue"],
+  WV: ["Charleston", "Huntington", "Morgantown"],
+  WI: ["Milwaukee", "Madison", "Green Bay"],
+  WY: ["Cheyenne", "Casper", "Laramie"],
+};
+
 async function sbInsertRows(table, rows, opts = {}) {
   if (Array.isArray(rows) && rows.length === 0) return [];
   const query = supabaseClient.from(table).insert(rows);
@@ -94,9 +164,14 @@ async function submitRoleToSupabase(data, session) {
 
   const { error: nameErr } = await supabaseClient
     .from("companies")
-    .update({ name: data.companyName })
+    .update({
+      name: data.companyName,
+      employee_count: data.employeeCount || null,
+      city: data.companyCity || null,
+      state: data.companyState || null,
+    })
     .eq("id", company.id);
-  if (nameErr) throw new Error(`Failed saving company name: ${nameErr.message}`);
+  if (nameErr) throw new Error(`Failed saving company info: ${nameErr.message}`);
 
   const [role] = await sbInsertRows(
     "roles",
@@ -153,6 +228,9 @@ function emptyCandidate() {
 
 const initialData = {
   companyName: "",
+  employeeCount: "",
+  companyCity: "",
+  companyState: "",
   roleName: "",
   roleDescription: "",
   minSalary: "",
@@ -252,6 +330,41 @@ function TextArea(props) {
       {...props}
       style={{ ...inputStyle, minHeight: 120, resize: "vertical", ...props.style }}
     />
+  );
+}
+function Select(props) {
+  return <select {...props} style={{ ...inputStyle, ...props.style }} />;
+}
+
+function LocationField({ city, state, onChange }) {
+  const datalistId = `city-options-${state || "none"}`;
+  const cityChoices = CITIES_BY_STATE[state] || [];
+  return (
+    <div style={{ display: "flex", gap: 16 }}>
+      <div style={{ width: 160 }}>
+        <Select
+          value={state}
+          onChange={(e) => onChange({ state: e.target.value, city: "" })}
+        >
+          <option value="">State</option>
+          {US_STATES.map(([code, name]) => (
+            <option key={code} value={code}>{name}</option>
+          ))}
+        </Select>
+      </div>
+      <div style={{ flex: 1 }}>
+        <TextInput
+          value={city}
+          list={datalistId}
+          placeholder={state ? "Start typing your city…" : "Select a state first"}
+          disabled={!state}
+          onChange={(e) => onChange({ city: e.target.value })}
+        />
+        <datalist id={datalistId}>
+          {cityChoices.map((c) => <option key={c} value={c} />)}
+        </datalist>
+      </div>
+    </div>
   );
 }
 
@@ -514,6 +627,9 @@ function validateStep(key, data) {
     case "basics":
       return (
         isFilled(data.companyName) &&
+        isFilled(data.employeeCount) &&
+        isFilled(data.companyCity) &&
+        isFilled(data.companyState) &&
         isFilled(data.roleName) &&
         isFilled(data.roleDescription) &&
         isFilled(data.minSalary) &&
@@ -557,9 +673,14 @@ function Review({ data, goTo }) {
         <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
           {data.roleName || "Untitled role"}
         </div>
-        <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
+        <div style={{ fontSize: 14, color: "#777", marginBottom: 4 }}>
           {money(data.minSalary)} – {money(data.maxSalary)}
           {data.hiringGoals ? ` · Target: ${data.hiringGoals}` : ""}
+        </div>
+        <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
+          {data.companyName || "Untitled company"}
+          {data.employeeCount ? ` · ${data.employeeCount} employees` : ""}
+          {data.companyCity || data.companyState ? ` · ${[data.companyCity, data.companyState].filter(Boolean).join(", ")}` : ""}
         </div>
 
         <ReviewSection label="Role description">
@@ -690,12 +811,17 @@ function EmployerOnboarding() {
 
       const { data: existingCompany } = await supabaseClient
         .from("companies")
-        .select("name")
+        .select("name, employee_count, city, state")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
 
-      if (existingCompany && existingCompany.name) {
-        set({ companyName: existingCompany.name });
+      if (existingCompany) {
+        set({
+          companyName: existingCompany.name || "",
+          employeeCount: existingCompany.employee_count || "",
+          companyCity: existingCompany.city || "",
+          companyState: existingCompany.state || "",
+        });
       }
     });
   }, []);
@@ -790,6 +916,19 @@ function EmployerOnboarding() {
                 value={data.companyName}
                 placeholder="e.g. Acme Manufacturing"
                 onChange={(e) => set({ companyName: e.target.value })}
+              />
+            </Field>
+            <Field label="Employee count" required hint="How many people work at your company?">
+              <Select value={data.employeeCount} onChange={(e) => set({ employeeCount: e.target.value })}>
+                <option value="">Select a range</option>
+                {EMPLOYEE_COUNT_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt} employees</option>)}
+              </Select>
+            </Field>
+            <Field label="Company location" required hint="Where is your company based?">
+              <LocationField
+                city={data.companyCity}
+                state={data.companyState}
+                onChange={(patch) => set(patch)}
               />
             </Field>
             <Field label="Role name" required>
