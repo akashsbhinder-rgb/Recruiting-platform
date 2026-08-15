@@ -335,11 +335,16 @@ function companyLocation(company) {
 
 async function fetchInterviewingCounts(roleIds) {
   if (roleIds.length === 0) return {};
-  const { data, error } = await supabaseClient.from("candidates").select("role_id, status").in("role_id", roleIds);
+  // Uses an RPC rather than a direct table select: a recruiter is only
+  // allowed to see their OWN submitted candidates (by design -- other
+  // recruiters' pipelines are competitive info), but this count needs to
+  // reflect everyone's candidates for the role. The function returns
+  // aggregate counts only, never the underlying candidate rows.
+  const { data, error } = await supabaseClient.rpc("count_interviewing_candidates", { role_ids: roleIds });
   if (error) throw new Error(`Failed loading candidate counts: ${error.message}`);
   const counts = {};
   roleIds.forEach((id) => (counts[id] = 0));
-  (data || []).forEach((c) => { if (isActive(c)) counts[c.role_id] = (counts[c.role_id] || 0) + 1; });
+  (data || []).forEach((row) => { counts[row.role_id] = row.interviewing_count; });
   return counts;
 }
 
