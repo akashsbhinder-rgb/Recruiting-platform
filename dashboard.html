@@ -869,7 +869,7 @@ function RecruiterCard({ recruiter, submittedCount, onOpenMessage, messageOpen, 
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-          <div style={{ fontSize: 12.5, color: T.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{firm || (recruiter && recruiter.email) || "\u2014"}</div>
+          <div style={{ fontSize: 12.5, color: T.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[firm, recruiter && recruiter.email].filter(Boolean).join(" \u00b7 ") || "\u2014"}</div>
         </div>
       </div>
 

@@ -344,7 +344,7 @@ function LocationField({ city, state, onChange }) {
       <div style={{ width: 160 }}>
         <Select
           value={state}
-          onChange={(e) => onChange({ state: e.target.value, city: "" })}
+          onChange={(e) => onChange({ companyState: e.target.value, companyCity: "" })}
         >
           <option value="">State</option>
           {US_STATES.map(([code, name]) => (
@@ -358,7 +358,7 @@ function LocationField({ city, state, onChange }) {
           list={datalistId}
           placeholder={state ? "Start typing your city…" : "Select a state first"}
           disabled={!state}
-          onChange={(e) => onChange({ city: e.target.value })}
+          onChange={(e) => onChange({ companyCity: e.target.value })}
         />
         <datalist id={datalistId}>
           {cityChoices.map((c) => <option key={c} value={c} />)}
