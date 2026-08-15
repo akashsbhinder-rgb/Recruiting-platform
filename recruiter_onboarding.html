@@ -312,9 +312,30 @@
       submitting: false,
       submitError: '',
       submitted: false,
+      draftRestored: false,
     };
 
     const steps = ['firm', 'experience', 'review'];
+
+    function draftKey() {
+      return `mp_recruiter_draft_${state.session.user.id}`;
+    }
+
+    // Mirrors onboarding.html's rule: only a draft with actual progress
+    // in it is worth restoring/flagging -- not a freshly-initialized one.
+    function hasMeaningfulDraft(data, stepIndex) {
+      if (!data) return false;
+      if (stepIndex > 0) return true;
+      if (typeof data.firmName === 'string' && data.firmName.trim().length > 0) return true;
+      if (data.yearsExperience) return true;
+      if (Array.isArray(data.industries) && data.industries.length > 0) return true;
+      return false;
+    }
+
+    function saveDraft() {
+      if (!state.session || !state.recruiterId || state.submitted) return;
+      localStorage.setItem(draftKey(), JSON.stringify({ data: state.data, stepIndex: state.stepIndex }));
+    }
 
     function buildSubmittedScreen() {
       const wrap = el('div', { className: 'wrap' });
@@ -343,7 +364,11 @@
       const root = document.getElementById('root');
       root.innerHTML = '';
       root.appendChild(state.submitted ? buildSubmittedScreen() : buildPage());
+      saveDraft();
     }
+
+    window.addEventListener('pagehide', saveDraft);
+    window.addEventListener('visibilitychange', saveDraft);
 
     function el(tag, props = {}, children = []) {
       const node = document.createElement(tag);
@@ -644,6 +669,7 @@
         if (error) throw new Error(error.message);
         state.submitting = false;
         state.submitted = true;
+        localStorage.removeItem(draftKey());
         render();
       } catch (err) {
         state.submitting = false;
@@ -678,6 +704,11 @@
       wrap.appendChild(progress);
 
       const content = el('div', { className: 'content' });
+      if (state.draftRestored) {
+        content.appendChild(
+          el('div', { style: 'font-size:13px;color:#555;background:#f7f7f5;border:1px solid #eee;border-radius:8px;padding:10px 14px;margin-bottom:20px;' }, 'Picking up where you left off.')
+        );
+      }
       content.appendChild(el('div', { className: 'step-count' }, `${state.stepIndex + 1}/${steps.length}`));
       content.appendChild(buildStepContent());
       wrap.appendChild(content);
@@ -759,6 +790,21 @@
       }
 
       state.recruiterId = recruiter.id;
+
+      const savedDraft = localStorage.getItem(draftKey());
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed && parsed.data && hasMeaningfulDraft(parsed.data, parsed.stepIndex || 0)) {
+            state.data = { ...state.data, ...parsed.data };
+            state.stepIndex = parsed.stepIndex || 0;
+            state.draftRestored = true;
+          }
+        } catch (err) {
+          // corrupt draft -- ignore, start fresh
+        }
+      }
+
       render();
     }
 

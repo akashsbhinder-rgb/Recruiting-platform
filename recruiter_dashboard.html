@@ -39,8 +39,8 @@
 
     @keyframes mpBellPulse { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
     .mp-bell-pulse { animation: mpBellPulse 0.6s ease; }
-    @keyframes mpToastIn { 0% { transform: translateX(24px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
-    .mp-toast { animation: mpToastIn 0.25s ease; }
+    @keyframes mpToastIn { 0% { transform: translateX(40px) scale(0.9); opacity: 0; } 60% { transform: translateX(-4px) scale(1.02); opacity: 1; } 100% { transform: translateX(0) scale(1); opacity: 1; } }
+    .mp-toast { animation: mpToastIn 0.35s cubic-bezier(.34,1.56,.64,1); }
 
     #boot-error {
       display: none;
@@ -267,16 +267,16 @@ function EmptyState({ icon, title, body, actions }) {
 
 function ToastStack({ toasts, onDismiss }) {
   return (
-    <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 10, zIndex: 300 }}>
+    <div style={{ position: "fixed", bottom: 28, right: 28, display: "flex", flexDirection: "column", gap: 12, zIndex: 300 }}>
       {toasts.map((t) => (
-        <div key={t.id} className="mp-toast" style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#fff", color: T.ink, padding: "14px 14px 14px 16px", borderRadius: 12, fontSize: 13.5, fontWeight: 600, boxShadow: "0 14px 40px rgba(0,0,0,0.22)", maxWidth: 360, borderLeft: `4px solid ${T.blue}` }}>
-          <div style={{ width: 22, height: 22, borderRadius: "50%", background: T.blueBg, color: T.blue, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-            <Icon name="bell" size={12} />
+        <div key={t.id} className="mp-toast" style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "#fff", color: T.ink, padding: "16px 16px 16px 18px", borderRadius: 14, fontSize: 14.5, fontWeight: 700, boxShadow: "0 18px 50px rgba(0,0,0,0.3)", width: 380, maxWidth: "calc(100vw - 40px)", borderLeft: `5px solid ${T.red}` }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: T.redBg, color: T.red, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+            <Icon name="bell" size={15} />
           </div>
           <div style={{ flex: 1, lineHeight: 1.4 }}>{t.text}</div>
           {onDismiss && (
-            <button onClick={() => onDismiss(t.id)} style={{ background: "none", border: "none", cursor: "pointer", color: T.faint, padding: 0, display: "flex", flexShrink: 0 }}>
-              <Icon name="x" size={13} />
+            <button onClick={() => onDismiss(t.id)} style={{ background: "none", border: "none", cursor: "pointer", color: T.faint, padding: 0, display: "flex", flexShrink: 0, marginTop: 2 }}>
+              <Icon name="x" size={15} />
             </button>
           )}
         </div>
@@ -405,6 +405,13 @@ async function fetchMessagesForRoles(roleIds) {
   return data || [];
 }
 
+async function fetchStagesForRoles(roleIds) {
+  if (roleIds.length === 0) return [];
+  const { data, error } = await supabaseClient.from("role_stages").select("*").in("role_id", roleIds);
+  if (error) throw new Error(`Failed loading stages: ${error.message}`);
+  return data || [];
+}
+
 async function sendRecruiterMessage(session, recruiterId, roleId, candidateId, recruiterTargetId, body) {
   const { error } = await supabaseClient.from("messages").insert([
     { role_id: roleId, candidate_id: candidateId || null, recruiter_id: recruiterTargetId || recruiterId, sender_id: session.user.id, sender_type: "recruiter", body },
@@ -416,6 +423,7 @@ async function sendRecruiterMessage(session, recruiterId, roleId, candidateId, r
 const NAV_ITEMS = [
   { key: "browse", label: "Browse", live: true },
   { key: "myroles", label: "My roles", live: true },
+  { key: "candidates", label: "Candidates", live: true },
   { key: "messages", label: "Messages", live: true },
 ];
 
@@ -479,7 +487,9 @@ function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnr
             >
               <Icon name="bell" size={18} />
               {notifUnread > 0 && (
-                <span style={{ position: "absolute", top: 1, right: 1, width: 10, height: 10, borderRadius: "50%", background: T.red, border: "2px solid #fff" }} />
+                <span style={{ position: "absolute", top: -4, right: -4, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: T.red, border: "2px solid #fff", color: "#fff", fontSize: 10.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
+                  {notifUnread > 9 ? "9+" : notifUnread}
+                </span>
               )}
             </button>
             {notifOpen && (
@@ -903,18 +913,35 @@ function MessageFeed({ messages, emptyLabel, companyLabel }) {
 function MessageComposer({ onSend, placeholder, buttonLabel = "Send" }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState("");
   const handleSend = async () => {
     if (!text.trim()) return;
     setSending(true);
     setError("");
-    try { await onSend(text.trim()); setText(""); } catch (err) { setError(err.message || "Failed to send."); } finally { setSending(false); }
+    try {
+      await onSend(text.trim());
+      setText("");
+      setJustSent(true);
+      setTimeout(() => setJustSent(false), 2200);
+    } catch (err) {
+      setError(err.message || "Failed to send.");
+    } finally {
+      setSending(false);
+    }
   };
   return (
     <div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
       {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>{error}</div>}
-      <PrimaryButton onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "Sending\u2026" : buttonLabel}</PrimaryButton>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <PrimaryButton onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "Sending\u2026" : buttonLabel}</PrimaryButton>
+        {justSent && (
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12.5, fontWeight: 600, color: T.green }}>
+            <Icon name="check" size={13} /> Sent
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -1317,6 +1344,128 @@ function MyRoles({ recruiterId, session, appliedRoleIds, onBrowse, focusRoleId, 
   );
 }
 
+// ---------- all candidates ----------
+function CandidatesTab({ recruiterId, session, readOnly }) {
+  const [candidates, setCandidates] = useState([]);
+  const [roleMap, setRoleMap] = useState({});
+  const [companyMap, setCompanyMap] = useState({});
+  const [stageMap, setStageMap] = useState({});
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const load = async () => {
+    try {
+      const cands = await fetchMyCandidates(recruiterId);
+      setCandidates(cands);
+      const roleIds = [...new Set(cands.map((c) => c.role_id))];
+      const [roles, msgs, stages] = await Promise.all([
+        fetchRolesByIds(roleIds),
+        fetchMessagesForRoles(roleIds),
+        fetchStagesForRoles(roleIds),
+      ]);
+      const rMap = {}; roles.forEach((r) => (rMap[r.id] = r));
+      setRoleMap(rMap);
+      setCompanyMap(await fetchCompaniesByIds([...new Set(roles.map((r) => r.company_id))]));
+      const sMap = {}; stages.forEach((s) => (sMap[s.id] = s.name));
+      setStageMap(sMap);
+      const myCandidateIds = new Set(cands.map((c) => c.id));
+      setMessages(msgs.filter((m) => m.candidate_id && myCandidateIds.has(m.candidate_id)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [recruiterId]);
+
+  useEffect(() => {
+    const channel = supabaseClient
+      .channel(`all-candidates-${recruiterId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidates", filter: `recruiter_id=eq.${recruiterId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => load())
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [recruiterId]);
+
+  const messagesForCandidate = (candidateId) => messages.filter((m) => m.candidate_id === candidateId);
+
+  const STATUS_FILTERS = [
+    { key: "all", label: "All" },
+    { key: "active", label: "Interviewing", test: isActive },
+    { key: "placed", label: "Placed", test: isPlaced },
+    { key: "rejected", label: "Rejected", test: isRejected },
+  ];
+
+  let visible = candidates;
+  if (statusFilter !== "all") {
+    const f = STATUS_FILTERS.find((s) => s.key === statusFilter);
+    visible = visible.filter(f.test);
+  }
+  if (query) {
+    const q = query.toLowerCase();
+    visible = visible.filter((c) => {
+      const role = roleMap[c.role_id];
+      const company = role ? companyMap[role.company_id] : null;
+      const hay = `${c.name} ${role ? role.name : ""} ${company ? company.name : ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  visible = [...visible].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"Loading your candidates…"}</div>;
+  if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: T.ink }}>Candidates</div>
+        <div style={{ fontSize: 13.5, color: T.sub, marginTop: 2 }}>Every candidate you've submitted, across every role, with all notes and updates in one place.</div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        {STATUS_FILTERS.map((f) => (
+          <Pill key={f.key} active={statusFilter === f.key} style={{ cursor: "pointer" }} onClick={() => setStatusFilter(f.key)}>
+            {f.label}
+          </Pill>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.pillBg, borderRadius: 10, padding: "8px 12px", marginBottom: 20, maxWidth: 360 }}>
+        <Icon name="search" size={14} />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by candidate, role, or company" style={{ border: "none", outline: "none", background: "none", fontSize: 13.5, flex: 1, fontFamily: T.sans, color: T.ink }} />
+      </div>
+
+      {visible.length === 0 ? (
+        <EmptyState
+          icon="briefcase"
+          title={candidates.length === 0 ? "No candidates submitted yet" : "No candidates match"}
+          body={candidates.length === 0 ? "Once you submit candidates to roles, they'll all show up here." : "Try a different search or filter."}
+        />
+      ) : (
+        visible.map((c) => {
+          const role = roleMap[c.role_id];
+          const company = role ? companyMap[role.company_id] : null;
+          return (
+            <MyCandidateCard
+              key={c.id}
+              candidate={c}
+              roleName={role ? `${role.name} · ${(company && company.name) || ""}` : ""}
+              stageName={stageMap[c.stage_id]}
+              feedbackMessages={messagesForCandidate(c.id)}
+              onSendFeedback={readOnly ? null : async (body) => { await sendRecruiterMessage(session, recruiterId, c.role_id, c.id, null, body); await load(); }}
+              companyLabel={companyContactLabel(company)}
+            />
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // ---------- messages inbox ----------
 function RecruiterInbox({ session, recruiterId, appliedRoleIds, readOnly }) {
   const [roles, setRoles] = useState([]);
@@ -1646,13 +1795,13 @@ function RecruiterDashboard() {
     <div style={pageWrap}>
       {adminViewMode && (
         <div style={{ background: T.ink, color: "#fff", padding: "10px 20px", fontSize: 13, display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span>Admin view \u2014 viewing as {recruiter.firm_name || [recruiter.contact_first_name, recruiter.last_name].filter(Boolean).join(" ") || "this recruiter"} (read-only)</span>
+          <span>Admin view — viewing as {recruiter.firm_name || [recruiter.contact_first_name, recruiter.last_name].filter(Boolean).join(" ") || "this recruiter"} (read-only)</span>
           <a href="admin.html" style={{ color: "#fff", textDecoration: "underline" }}>Exit to admin</a>
         </div>
       )}
       {!recruiter.verified && (
         <div style={{ background: "#faf1e0", color: "#a06a1d", padding: "10px 20px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
-          Your profile is pending admin review \u2014 everything below still works, and we'll email you once you're approved.
+          Your profile is pending admin review — everything below still works, and we'll email you once you're approved.
         </div>
       )}
       <TopNav
@@ -1669,6 +1818,7 @@ function RecruiterDashboard() {
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "32px 28px 100px" }}>
         {tab === "browse" && <BrowseRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onApplied={handleApplied} readOnly={adminViewMode} />}
         {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} onOpenWelcome={(role, company) => setWelcomeModal({ role, company })} readOnly={adminViewMode} />}
+        {tab === "candidates" && <CandidatesTab recruiterId={recruiter.id} session={session} readOnly={adminViewMode} />}
         {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} readOnly={adminViewMode} />}
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} />

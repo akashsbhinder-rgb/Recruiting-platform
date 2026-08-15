@@ -459,7 +459,7 @@ function RecruitersTab({ data, onJump, onApprove }) {
                   <Pill tone="live">{candidateCountByRecruiter[r.id] || 0} submitted</Pill>
                   {!r.verified && <Pill style={{ background: "#faf1e0", color: "#a06a1d" }}>Pending review</Pill>}
                 </div>
-                <div style={{ fontSize: 11.5, color: T.faint }}>{r.years_experience || "\u2014"} \u00b7 signed up {shortDate(r.created_at)}</div>
+                <div style={{ fontSize: 11.5, color: T.faint }}>{r.years_experience || "\u2014"} · signed up {shortDate(r.created_at)}</div>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <a

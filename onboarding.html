@@ -797,6 +797,18 @@ function draftKey(session) {
   return `mp_role_draft_${session.user.id}`;
 }
 
+// A freshly-initialized wizard technically has a "draft" from the
+// autosave effect the instant it mounts, but there's nothing in it worth
+// telling the user we "picked up" -- only flag/restore drafts that have
+// actual role-specific progress in them.
+function hasMeaningfulDraft(data, stepIndex) {
+  if (!data) return false;
+  if (stepIndex > 0) return true;
+  return [data.roleName, data.roleDescription, data.minSalary, data.maxSalary]
+    .some((v) => typeof v === "string" && v.trim().length > 0)
+    || (data.idealQualities || []).some((v) => typeof v === "string" && v.trim().length > 0);
+}
+
 function EmployerOnboarding() {
   const [data, setData] = useState(initialData);
   const [stepIndex, setStepIndex] = useState(0);
@@ -829,7 +841,7 @@ function EmployerOnboarding() {
       if (savedDraft) {
         try {
           const parsed = JSON.parse(savedDraft);
-          if (parsed && parsed.data) {
+          if (parsed && parsed.data && hasMeaningfulDraft(parsed.data, parsed.stepIndex || 0)) {
             setData(parsed.data);
             setStepIndex(parsed.stepIndex || 0);
             setDraftRestored(true);
@@ -862,6 +874,20 @@ function EmployerOnboarding() {
   useEffect(() => {
     if (!session || submitted) return;
     localStorage.setItem(draftKey(session), JSON.stringify({ data, stepIndex }));
+  }, [session, data, stepIndex, submitted]);
+
+  // Belt-and-suspenders: also force a save the moment the tab is hidden
+  // or about to close, in case a click triggers navigation before the
+  // effect above has had a chance to run.
+  useEffect(() => {
+    if (!session || submitted) return;
+    const save = () => localStorage.setItem(draftKey(session), JSON.stringify({ data, stepIndex }));
+    window.addEventListener("pagehide", save);
+    window.addEventListener("visibilitychange", save);
+    return () => {
+      window.removeEventListener("pagehide", save);
+      window.removeEventListener("visibilitychange", save);
+    };
   }, [session, data, stepIndex, submitted]);
 
   const handleSubmitRole = async () => {
