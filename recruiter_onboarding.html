@@ -304,20 +304,45 @@
         industries: [],
         phone: '',
         executivePlacements: null,   // true | false
+        executiveLevel: null,        // 'C-suite' | 'VPs/SVPs' | 'Directors/Heads/GM'
         contingencyExperience: null, // true | false
         contingencyAck: false,
       },
       industryDraft: '',
       submitting: false,
       submitError: '',
+      submitted: false,
     };
 
     const steps = ['firm', 'experience', 'review'];
 
+    function buildSubmittedScreen() {
+      const wrap = el('div', { className: 'wrap' });
+      wrap.appendChild(buildTopBar());
+      const box = el('div', { style: 'max-width:480px;margin:120px auto;text-align:center;padding:0 24px;' });
+      box.appendChild(el('div', { style: 'font-size:22px;font-weight:600;margin-bottom:8px;color:#17171a;' }, 'Profile submitted'));
+      box.appendChild(
+        el(
+          'div',
+          { style: 'font-size:14.5px;color:#777;margin-bottom:24px;line-height:1.5;' },
+          "Thanks! Our admin team will review your profile and approve it shortly — keep an eye on your email."
+        )
+      );
+      box.appendChild(
+        el(
+          'a',
+          { href: RECRUITER_DASHBOARD_URL, className: 'next-btn', style: 'display:inline-block;text-decoration:none;' },
+          'Go to dashboard'
+        )
+      );
+      wrap.appendChild(box);
+      return wrap;
+    }
+
     function render() {
       const root = document.getElementById('root');
       root.innerHTML = '';
-      root.appendChild(buildPage());
+      root.appendChild(state.submitted ? buildSubmittedScreen() : buildPage());
     }
 
     function el(tag, props = {}, children = []) {
@@ -341,6 +366,7 @@
       }
       if (stepKey === 'experience') {
         if (d.executivePlacements === null) return false;
+        if (d.executivePlacements === true && !d.executiveLevel) return false;
         if (d.contingencyExperience === null) return false;
         if (d.contingencyExperience === false) return d.contingencyAck === true;
         return true;
@@ -468,6 +494,7 @@
               type: 'button',
               onClick: () => {
                 state.data.executivePlacements = opt === 'Yes';
+                if (opt !== 'Yes') state.data.executiveLevel = null;
                 render();
               },
             },
@@ -475,6 +502,26 @@
           )
         );
       });
+
+      if (state.data.executivePlacements === true) {
+        wrap.appendChild(el('h2', {}, 'Which executive level have you placed the most?'));
+        ['C-suite', 'VPs/SVPs', 'Directors/Heads/GM'].forEach((opt) => {
+          wrap.appendChild(
+            el(
+              'button',
+              {
+                className: 'option' + (state.data.executiveLevel === opt ? ' selected' : ''),
+                type: 'button',
+                onClick: () => {
+                  state.data.executiveLevel = opt;
+                  render();
+                },
+              },
+              opt
+            )
+          );
+        });
+      }
 
       wrap.appendChild(el('h2', {}, 'Have you done contingency hiring before?'));
       wrap.appendChild(
@@ -545,8 +592,13 @@
         ['Industries', d.industries.join(', ')],
         ['Phone', d.phone || '—'],
         ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
-        ['Contingency hiring', d.contingencyExperience ? 'Has done it before' : 'New to contingency, acknowledged terms'],
       ];
+
+      if (d.executivePlacements) {
+        rows.push(['Most placed level', d.executiveLevel || '—']);
+      }
+
+      rows.push(['Contingency hiring', d.contingencyExperience ? 'Has done it before' : 'New to contingency, acknowledged terms']);
 
       rows.forEach(([label, value]) => {
         wrap.appendChild(
@@ -584,14 +636,15 @@
             industries: state.data.industries,
             phone: state.data.phone || null,
             executive_placements: state.data.executivePlacements,
+            executive_level: state.data.executivePlacements ? state.data.executiveLevel : null,
             contingency_experience: state.data.contingencyExperience,
             contingency_ack: state.data.contingencyAck,
           })
           .eq('id', state.recruiterId);
         if (error) throw new Error(error.message);
-        // replace(), not href -- once onboarding is done it shouldn't sit in
-        // history, or the browser Back button lands you right back on it.
-        window.location.replace(RECRUITER_DASHBOARD_URL);
+        state.submitting = false;
+        state.submitted = true;
+        render();
       } catch (err) {
         state.submitting = false;
         state.submitError = err.message || 'Something went wrong saving your profile.';

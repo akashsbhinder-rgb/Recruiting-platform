@@ -447,6 +447,32 @@
     const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
     const isStrongEnoughPassword = v => v.length >= 8;
 
+    // ---- Warm-lead capture ----
+    // Fires as soon as someone has typed a plausible name + email and
+    // moves on -- before they've created an account or finished signup.
+    // If they never click Submit, this is the only record we'd otherwise
+    // have that they were interested at all.
+    const capturedLeadEmails = new Set();
+    async function captureLead(type, firstNameInput, lastNameInput, emailInput) {
+      const email = emailInput.value.trim();
+      const firstName = firstNameInput.value.trim();
+      if (!email || !isEmail(email) || !firstName) return;
+      const key = `${type}:${email.toLowerCase()}`;
+      if (capturedLeadEmails.has(key)) return;
+      capturedLeadEmails.add(key);
+      try {
+        await supabaseClient.from('leads').insert([{
+          type,
+          first_name: firstName,
+          last_name: lastNameInput.value.trim() || null,
+          email,
+        }]);
+      } catch (err) {
+        // Best-effort -- never block or alarm the user over a lead capture failing.
+        capturedLeadEmails.delete(key);
+      }
+    }
+
     const PERSONAL_EMAIL_DOMAINS = new Set([
       'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com', 'hotmail.com',
       'outlook.com', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com',
@@ -500,6 +526,8 @@
 
     [[cFirstName, errCFirstName], [cEmail, errCEmail], [cPassword, errCPassword]]
       .forEach(([input, err]) => clearFieldError(input, err));
+
+    cEmail.addEventListener('blur', () => captureLead('company', cFirstName, cLastName, cEmail));
 
     formCompanies.addEventListener('submit', async e => {
       e.preventDefault();
@@ -564,6 +592,8 @@
 
     [[aFirstName, errAFirstName], [aEmail, errAEmail], [aPassword, errAPassword]]
       .forEach(([input, err]) => clearFieldError(input, err));
+
+    aEmail.addEventListener('blur', () => captureLead('search_firm', aFirstName, aLastName, aEmail));
 
     formAgencies.addEventListener('submit', async e => {
       e.preventDefault();

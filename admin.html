@@ -120,6 +120,7 @@ function Icon({ name, size = 16, style }) {
     case "chevronDown": return <svg {...c}><polyline points="6 9 12 15 18 9" /></svg>;
     case "arrowLeft": return <svg {...c}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>;
     case "send": return <svg {...c}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>;
+    case "check": return <svg {...c}><polyline points="20 6 9 17 4 12" /></svg>;
     default: return null;
   }
 }
@@ -336,8 +337,13 @@ function OverviewTab({ data, onJump }) {
 }
 
 // ---------- companies ----------
-function CompaniesTab({ data, onJump }) {
+function CompaniesTab({ data, onJump, onApprove }) {
   const [q, setQ] = useState("");
+  const [approvingId, setApprovingId] = useState(null);
+  const approve = async (id) => {
+    setApprovingId(id);
+    try { await onApprove(id); } finally { setApprovingId(null); }
+  };
   const roleCountByCompany = {};
   data.roles.forEach((r) => { roleCountByCompany[r.company_id] = (roleCountByCompany[r.company_id] || 0) + 1; });
 
@@ -371,7 +377,10 @@ function CompaniesTab({ data, onJump }) {
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <Pill tone="live">{roleCountByCompany[c.id] || 0} role{(roleCountByCompany[c.id] || 0) === 1 ? "" : "s"}</Pill>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Pill tone="live">{roleCountByCompany[c.id] || 0} role{(roleCountByCompany[c.id] || 0) === 1 ? "" : "s"}</Pill>
+                    {!c.verified && <Pill style={{ background: "#faf1e0", color: "#a06a1d" }}>Pending review</Pill>}
+                  </div>
                   <span style={{ fontSize: 11.5, color: T.faint }}>{shortDate(c.created_at)}</span>
                 </div>
               </div>
@@ -391,6 +400,15 @@ function CompaniesTab({ data, onJump }) {
                   <Icon name="mail" size={12} /> Message
                 </button>
               </div>
+              {!c.verified && (
+                <button
+                  onClick={() => approve(c.id)}
+                  disabled={approvingId === c.id}
+                  style={{ width: "100%", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: T.ink, border: "none", borderRadius: 8, padding: "8px 0", cursor: approvingId === c.id ? "default" : "pointer", opacity: approvingId === c.id ? 0.6 : 1, fontFamily: T.sans }}
+                >
+                  <Icon name="check" size={12} /> {approvingId === c.id ? "Approving\u2026" : "Approve company"}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -400,8 +418,13 @@ function CompaniesTab({ data, onJump }) {
 }
 
 // ---------- recruiters ----------
-function RecruitersTab({ data, onJump }) {
+function RecruitersTab({ data, onJump, onApprove }) {
   const [q, setQ] = useState("");
+  const [approvingId, setApprovingId] = useState(null);
+  const approve = async (id) => {
+    setApprovingId(id);
+    try { await onApprove(id); } finally { setApprovingId(null); }
+  };
   const candidateCountByRecruiter = {};
   data.candidates.forEach((c) => { if (c.recruiter_id) candidateCountByRecruiter[c.recruiter_id] = (candidateCountByRecruiter[c.recruiter_id] || 0) + 1; });
   const appCountByRecruiter = {};
@@ -434,6 +457,7 @@ function RecruitersTab({ data, onJump }) {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   <Pill>{appCountByRecruiter[r.id] || 0} applied</Pill>
                   <Pill tone="live">{candidateCountByRecruiter[r.id] || 0} submitted</Pill>
+                  {!r.verified && <Pill style={{ background: "#faf1e0", color: "#a06a1d" }}>Pending review</Pill>}
                 </div>
                 <div style={{ fontSize: 11.5, color: T.faint }}>{r.years_experience || "\u2014"} \u00b7 signed up {shortDate(r.created_at)}</div>
               </div>
@@ -453,6 +477,15 @@ function RecruitersTab({ data, onJump }) {
                   <Icon name="mail" size={12} /> Message
                 </button>
               </div>
+              {!r.verified && (
+                <button
+                  onClick={() => approve(r.id)}
+                  disabled={approvingId === r.id}
+                  style={{ width: "100%", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: T.ink, border: "none", borderRadius: 8, padding: "8px 0", cursor: approvingId === r.id ? "default" : "pointer", opacity: approvingId === r.id ? 0.6 : 1, fontFamily: T.sans }}
+                >
+                  <Icon name="check" size={12} /> {approvingId === r.id ? "Approving\u2026" : "Approve recruiter"}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -978,6 +1011,18 @@ function AdminApp() {
     }
   };
 
+  const approveCompany = async (id) => {
+    const { error } = await supabaseClient.from("companies").update({ verified: true }).eq("id", id);
+    if (error) throw new Error(error.message);
+    await refreshQuietly();
+  };
+
+  const approveRecruiter = async (id) => {
+    const { error } = await supabaseClient.from("recruiters").update({ verified: true }).eq("id", id);
+    if (error) throw new Error(error.message);
+    await refreshQuietly();
+  };
+
   useEffect(() => { if (authorized) loadAll(); }, [authorized]);
 
   // Live updates so new messages/candidates show up without a manual refresh.
@@ -1077,8 +1122,8 @@ function AdminApp() {
         ) : (
           <>
             {tab === "overview" && <OverviewTab data={data} onJump={jump} />}
-            {tab === "companies" && <CompaniesTab data={data} onJump={jump} />}
-            {tab === "recruiters" && <RecruitersTab data={data} onJump={jump} />}
+            {tab === "companies" && <CompaniesTab data={data} onJump={jump} onApprove={approveCompany} />}
+            {tab === "recruiters" && <RecruitersTab data={data} onJump={jump} onApprove={approveRecruiter} />}
             {tab === "roles" && <RolesTab data={data} filters={filters} onClearFilter={clearFilter} onJump={jump} />}
             {tab === "candidates" && <CandidatesTab data={data} filters={filters} onClearFilter={clearFilter} session={session} onSent={refreshQuietly} />}
             {tab === "messages" && <MessagesTab data={data} filters={filters} onClearFilter={clearFilter} session={session} onSent={refreshQuietly} />}

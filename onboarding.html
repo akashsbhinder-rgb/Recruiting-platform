@@ -793,6 +793,10 @@ function Review({ data, goTo }) {
   );
 }
 
+function draftKey(session) {
+  return `mp_role_draft_${session.user.id}`;
+}
+
 function EmployerOnboarding() {
   const [data, setData] = useState(initialData);
   const [stepIndex, setStepIndex] = useState(0);
@@ -800,6 +804,8 @@ function EmployerOnboarding() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [session, setSession] = useState(undefined);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [companyVerified, setCompanyVerified] = useState(false);
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
@@ -808,6 +814,31 @@ function EmployerOnboarding() {
         return;
       }
       setSession(session);
+
+      const { data: verifyRow } = await supabaseClient
+        .from("companies")
+        .select("verified")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+      setCompanyVerified(!!(verifyRow && verifyRow.verified));
+
+      // If they left mid-way through this wizard before (closed the tab,
+      // browser crash, etc.), pick back up exactly where they left off
+      // instead of starting over.
+      const savedDraft = localStorage.getItem(draftKey(session));
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed && parsed.data) {
+            setData(parsed.data);
+            setStepIndex(parsed.stepIndex || 0);
+            setDraftRestored(true);
+            return;
+          }
+        } catch (err) {
+          // corrupt draft -- fall through to the normal prefill below
+        }
+      }
 
       const { data: existingCompany } = await supabaseClient
         .from("companies")
@@ -826,12 +857,20 @@ function EmployerOnboarding() {
     });
   }, []);
 
+  // Autosave progress locally on every change so an accidental close
+  // doesn't lose anything filled out so far.
+  useEffect(() => {
+    if (!session || submitted) return;
+    localStorage.setItem(draftKey(session), JSON.stringify({ data, stepIndex }));
+  }, [session, data, stepIndex, submitted]);
+
   const handleSubmitRole = async () => {
     setSubmitting(true);
     setSubmitError("");
     try {
       await submitRoleToSupabase(data, session);
       setSubmitted(true);
+      localStorage.removeItem(draftKey(session));
     } catch (err) {
       setSubmitError(err.message || "Something went wrong submitting this role.");
     } finally {
@@ -863,9 +902,14 @@ function EmployerOnboarding() {
         <TopBar />
         <div style={{ maxWidth: 520, margin: "120px auto", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Role submitted</div>
-          <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
+          <div style={{ fontSize: 14, color: "#777", marginBottom: companyVerified ? 20 : 10 }}>
             {data.roleName || "Your role"} at {data.companyName || "your company"} is now live for recruiters to view.
           </div>
+          {!companyVerified && (
+            <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
+              Our admin team will review your company and approve it shortly — keep an eye on your email.
+            </div>
+          )}
           <button
             onClick={() => setSubmitted(false)}
             style={{ ...nextBtnStyle, background: "#fff", color: "#111", border: "1px solid #111" }}
@@ -903,6 +947,11 @@ function EmployerOnboarding() {
       </div>
 
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "48px 24px 120px" }}>
+        {draftRestored && (
+          <div style={{ fontSize: 13, color: "#555", background: "#f7f7f5", border: "1px solid #eee", borderRadius: 8, padding: "10px 14px", marginBottom: 20 }}>
+            Picking up where you left off.
+          </div>
+        )}
         <div style={{ fontSize: 13, color: "#9a9a9a", marginBottom: 8 }}>
           {stepIndex + 1}/{steps.length}
         </div>

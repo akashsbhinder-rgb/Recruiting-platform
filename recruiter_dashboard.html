@@ -39,6 +39,8 @@
 
     @keyframes mpBellPulse { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
     .mp-bell-pulse { animation: mpBellPulse 0.6s ease; }
+    @keyframes mpToastIn { 0% { transform: translateX(24px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+    .mp-toast { animation: mpToastIn 0.25s ease; }
 
     #boot-error {
       display: none;
@@ -263,12 +265,20 @@ function EmptyState({ icon, title, body, actions }) {
   );
 }
 
-function ToastStack({ toasts }) {
+function ToastStack({ toasts, onDismiss }) {
   return (
-    <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 8, zIndex: 300 }}>
+    <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 10, zIndex: 300 }}>
       {toasts.map((t) => (
-        <div key={t.id} style={{ background: T.ink, color: "#fff", padding: "12px 16px", borderRadius: 10, fontSize: 13, boxShadow: "0 10px 30px rgba(0,0,0,0.25)", maxWidth: 320 }}>
-          {t.text}
+        <div key={t.id} className="mp-toast" style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#fff", color: T.ink, padding: "14px 14px 14px 16px", borderRadius: 12, fontSize: 13.5, fontWeight: 600, boxShadow: "0 14px 40px rgba(0,0,0,0.22)", maxWidth: 360, borderLeft: `4px solid ${T.blue}` }}>
+          <div style={{ width: 22, height: 22, borderRadius: "50%", background: T.blueBg, color: T.blue, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+            <Icon name="bell" size={12} />
+          </div>
+          <div style={{ flex: 1, lineHeight: 1.4 }}>{t.text}</div>
+          {onDismiss && (
+            <button onClick={() => onDismiss(t.id)} style={{ background: "none", border: "none", cursor: "pointer", color: T.faint, padding: 0, display: "flex", flexShrink: 0 }}>
+              <Icon name="x" size={13} />
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -297,11 +307,25 @@ async function fetchRolesByIds(roleIds) {
 
 async function fetchCompaniesByIds(companyIds) {
   if (companyIds.length === 0) return {};
-  const { data, error } = await supabaseClient.from("companies").select("id, name, employee_count, city, state").in("id", companyIds);
+  const { data, error } = await supabaseClient.from("companies").select("id, name, employee_count, city, state, contact_first_name, last_name").in("id", companyIds);
   if (error) throw new Error(`Failed loading companies: ${error.message}`);
   const map = {};
   (data || []).forEach((c) => (map[c.id] = c));
   return map;
+}
+
+function companyContactName(company) {
+  if (!company) return "";
+  return [company.contact_first_name, company.last_name].filter(Boolean).join(" ");
+}
+
+// "Jane Smith — Acme Inc" when we have a contact name, falling back to
+// just the company name if no contact was ever collected.
+function companyContactLabel(company) {
+  if (!company) return "the company";
+  const contact = companyContactName(company);
+  if (contact && company.name) return `${contact} — ${company.name}`;
+  return company.name || contact || "the company";
 }
 
 function companyLocation(company) {
@@ -455,7 +479,7 @@ function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnr
             >
               <Icon name="bell" size={18} />
               {notifUnread > 0 && (
-                <span style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, borderRadius: "50%", background: T.red }} />
+                <span style={{ position: "absolute", top: 1, right: 1, width: 10, height: 10, borderRadius: "50%", background: T.red, border: "2px solid #fff" }} />
               )}
             </button>
             {notifOpen && (
@@ -862,14 +886,14 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
 }
 
 // ---------- shared messages ----------
-function MessageFeed({ messages, emptyLabel }) {
+function MessageFeed({ messages, emptyLabel, companyLabel }) {
   if (messages.length === 0) return <div style={{ fontSize: 12, color: T.faint, fontStyle: "italic" }}>{emptyLabel}</div>;
   return (
     <div>
       {messages.map((m) => (
         <div key={m.id} style={{ padding: "7px 0", borderBottom: `1px solid ${T.lineSoft}` }}>
           <div style={{ fontSize: 12.5, color: "#333", whiteSpace: "pre-wrap" }}>{m.body}</div>
-          <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{m.sender_type === "recruiter" ? "you" : m.sender_type === "admin" ? "Akash (admin)" : "company"} {"\u00b7"} {formatWhen(m.created_at)}</div>
+          <div style={{ fontSize: 11, color: T.faint, marginTop: 2 }}>{m.sender_type === "recruiter" ? "you" : m.sender_type === "admin" ? "Akash (admin)" : companyLabel || "company"} {"\u00b7"} {formatWhen(m.created_at)}</div>
         </div>
       ))}
     </div>
@@ -915,7 +939,7 @@ function CandidatePillTone(c) {
   return "live";
 }
 
-function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages, onSendFeedback }) {
+function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages, onSendFeedback, companyLabel }) {
   const showThread = feedbackMessages.length > 0 || !!onSendFeedback;
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 15, marginBottom: 10, background: "#fff" }}>
@@ -929,8 +953,8 @@ function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages, onS
       <div style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
       {showThread && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>Notes from company ({feedbackMessages.length})</div>
-          <MessageFeed messages={feedbackMessages} emptyLabel="No notes yet." />
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>Notes from {companyLabel || "company"} ({feedbackMessages.length})</div>
+          <MessageFeed messages={feedbackMessages} emptyLabel="No notes yet." companyLabel={companyLabel} />
           {onSendFeedback && (
             <div style={{ marginTop: 10 }}>
               <MessageComposer onSend={onSendFeedback} placeholder="Reply to the company\u2026" buttonLabel="Reply" />
@@ -1078,7 +1102,8 @@ function RoleInfoPanel({ role, detail }) {
 }
 
 function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelcome, readOnly }) {
-  const companyName = company && company.name;
+  const companyName = (company && company.name) || "Company";
+  const contactName = companyContactName(company);
   const location = companyLocation(company);
   const earnings = estimateEarnings(role.min_salary, role.max_salary);
   const [detail, setDetail] = useState(null);
@@ -1141,11 +1166,9 @@ function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelc
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 24, fontWeight: 700, color: T.ink, marginBottom: 4 }}>{role.name}</div>
-          <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 4 }}>
-            {companyName}
-            {(location || (company && company.employee_count)) && (
-              <span> \u00b7 {[location, company && company.employee_count ? `${company.employee_count} employees` : null].filter(Boolean).join(" \u00b7 ")}</span>
-            )}
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 2 }}>{companyName}</div>
+          <div style={{ fontSize: 13, color: T.sub, marginBottom: 4 }}>
+            {[contactName, location, company && company.employee_count ? `${company.employee_count} employees` : null].filter(Boolean).join(" \u00b7 ")}
           </div>
           <div style={{ fontSize: 13, color: T.sub, marginBottom: 4 }}>{money(role.min_salary)} {"\u2013"} {money(role.max_salary)}</div>
           {earnings && (
@@ -1162,6 +1185,8 @@ function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelc
 
       <div style={{ height: 24 }} />
 
+      <RoleInfoPanel role={role} detail={detail} />
+
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 28 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 14 }}>Your candidates ({candidates.length})</div>
@@ -1175,11 +1200,10 @@ function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelc
                 stageName={stageMap[c.stage_id]}
                 feedbackMessages={messagesForCandidate(c.id)}
                 onSendFeedback={readOnly ? null : async (body) => { await sendRecruiterMessage(session, recruiterId, role.id, c.id, null, body); await load(); }}
+                companyLabel={companyContactLabel(company)}
               />
             ))
           )}
-
-          <RoleInfoPanel role={role} detail={detail} />
         </div>
 
         <div>
@@ -1191,12 +1215,12 @@ function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelc
 
           <div style={{ border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.blue}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>Updates from {companyName || "the company"}</div>
-            <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." />
+            <MessageFeed messages={broadcasts} emptyLabel="No updates sent yet." companyLabel={companyContactLabel(company)} />
           </div>
 
           <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 16 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>Message {companyName || "the company"} directly</div>
-            <MessageFeed messages={directMessages} emptyLabel="No messages yet." />
+            <MessageFeed messages={directMessages} emptyLabel="No messages yet." companyLabel={companyContactLabel(company)} />
             {!readOnly && (
               <div style={{ marginTop: directMessages.length ? 10 : 0 }}>
                 <MessageComposer onSend={(body) => sendRecruiterMessage(session, recruiterId, role.id, null, null, body).then(load)} placeholder="Write a message\u2026" buttonLabel="Send" />
@@ -1354,12 +1378,14 @@ function RecruiterInbox({ session, recruiterId, appliedRoleIds, readOnly }) {
   const threadList = Object.values(threads).sort((a, b) => new Date(b.messages[b.messages.length - 1].created_at) - new Date(a.messages[a.messages.length - 1].created_at));
 
   const threadLabel = (t) => {
+    const role = roleById[t.role_id];
+    const companyName = (role && companyMap[role.company_id] && companyMap[role.company_id].name) || "the company";
     if (t.candidate_id) {
       const c = candidateById[t.candidate_id];
-      return c ? `${c.name} \u2014 notes from company` : "Candidate notes";
+      return c ? `${c.name} \u2014 notes from ${companyName}` : `Candidate notes from ${companyName}`;
     }
-    if (t.recruiter_id) return "Direct from company";
-    return "Bench update";
+    if (t.recruiter_id) return `Direct from ${companyName}`;
+    return `Bench update from ${companyName}`;
   };
 
   const send = async (roleId, candidateId, recruiterTargetId, body) => {
@@ -1397,7 +1423,7 @@ function RecruiterInbox({ session, recruiterId, appliedRoleIds, readOnly }) {
               </div>
               {open && (
                 <div style={{ marginTop: 14, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 14 }}>
-                  <MessageFeed messages={t.messages} emptyLabel="" />
+                  <MessageFeed messages={t.messages} emptyLabel="" companyLabel={companyContactLabel(role && companyMap[role.company_id])} />
                   {!readOnly && (
                     <div style={{ marginTop: 10 }}>
                       <MessageComposer onSend={(body) => send(t.role_id, t.candidate_id, t.recruiter_id, body)} placeholder="Reply\u2026" buttonLabel="Reply" />
@@ -1512,12 +1538,14 @@ function RecruiterDashboard() {
   const [bellPulse, setBellPulse] = useState(false);
   const notifKey = recruiter ? `mp_notif_seen_recruiter_${recruiter.id}` : null;
 
+  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
   const pushToast = (text) => {
     const id = Math.random().toString(36).slice(2);
     setToasts((prev) => [...prev, { id, text }]);
     setBellPulse(true);
-    setTimeout(() => setBellPulse(false), 650);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+    setTimeout(() => setBellPulse(false), 900);
+    setTimeout(() => dismissToast(id), 8000);
   };
 
   useEffect(() => {
@@ -1622,6 +1650,11 @@ function RecruiterDashboard() {
           <a href="admin.html" style={{ color: "#fff", textDecoration: "underline" }}>Exit to admin</a>
         </div>
       )}
+      {!recruiter.verified && (
+        <div style={{ background: "#faf1e0", color: "#a06a1d", padding: "10px 20px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+          Your profile is pending admin review \u2014 everything below still works, and we'll email you once you're approved.
+        </div>
+      )}
       <TopNav
         tab={tab}
         onTabChange={(t) => { setTab(t); if (t !== "myroles") setFocusRoleId(null); }}
@@ -1638,7 +1671,7 @@ function RecruiterDashboard() {
         {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} onOpenWelcome={(role, company) => setWelcomeModal({ role, company })} readOnly={adminViewMode} />}
         {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} readOnly={adminViewMode} />}
       </div>
-      <ToastStack toasts={toasts} />
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {welcomeModal && <WelcomeModal role={welcomeModal.role} company={welcomeModal.company} onClose={() => setWelcomeModal(null)} />}
     </div>
   );
