@@ -852,6 +852,7 @@ function Logomark() {
 
 const NAV_ITEMS = [
   { key: "roles", label: "Roles", live: true },
+  { key: "recruiters", label: "My Recruiters", live: true },
   { key: "messages", label: "Messages", live: true },
 ];
 
@@ -1384,6 +1385,125 @@ function CompactRoleCard({ role, counts, onFocus }) {
         </div>
       </div>
     </button>
+  );
+}
+
+// ---------- my recruiters ----------
+function MyRecruitersTab({ roles, readOnly }) {
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
+  const [recruitersList, setRecruitersList] = useState([]);
+  const [candidatesByRecruiter, setCandidatesByRecruiter] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+
+  const openRole = async (role) => {
+    setSelectedRoleId(role.id);
+    setLoading(true);
+    setError("");
+    try {
+      const [apps, cands, msgs] = await Promise.all([
+        fetchRoleApplications([role.id]),
+        fetchCandidates(role.id),
+        fetchRoleMessages(role.id),
+      ]);
+      const ids = [...new Set([
+        ...apps.map((a) => a.recruiter_id),
+        ...cands.map((c) => c.recruiter_id).filter(Boolean),
+        ...msgs.filter((m) => m.recruiter_id).map((m) => m.recruiter_id),
+      ])];
+      const map = await fetchRecruiters(ids);
+      const byRecruiter = {};
+      cands.forEach((c) => { if (c.recruiter_id) (byRecruiter[c.recruiter_id] = byRecruiter[c.recruiter_id] || []).push(c); });
+      setRecruitersList(ids.map((id) => ({ id, ...map[id] })));
+      setCandidatesByRecruiter(byRecruiter);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (selectedRoleId && selectedRole) {
+    return (
+      <div>
+        <button onClick={() => setSelectedRoleId(null)} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: T.sub, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 18, fontFamily: T.sans }}>
+          <Icon name="chevronDown" size={13} style={{ transform: "rotate(90deg)" }} /> All roles
+        </button>
+        <div style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 4 }}>{selectedRole.name}</div>
+        <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 22 }}>Recruiters working this role, and who they've submitted.</div>
+
+        {loading ? (
+          <div style={{ fontSize: 13, color: T.sub }}>{"Loading…"}</div>
+        ) : error ? (
+          <div style={{ color: T.red, fontSize: 14 }}>{error}</div>
+        ) : recruitersList.length === 0 ? (
+          <EmptyState icon="users" title="No recruiters yet" body="Once a recruiter applies or submits a candidate for this role, they'll show up here." />
+        ) : (
+          recruitersList.map((r) => {
+            const mine = candidatesByRecruiter[r.id] || [];
+            return (
+              <div key={r.id} style={{ border: `1px solid ${T.line}`, borderRadius: 14, padding: 18, marginBottom: 14, background: "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: mine.length ? 14 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: T.ink, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
+                      {(recruiterName(r) || r.firm_name || "?").trim().charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{recruiterName(r) || "Recruiter"}</div>
+                      <div style={{ fontSize: 12.5, color: T.sub }}>{[r.firm_name, r.email].filter(Boolean).join(" · ") || "—"}</div>
+                    </div>
+                  </div>
+                  <Pill tone="live">{mine.length} submitted</Pill>
+                </div>
+                {mine.length > 0 && (
+                  <div style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {mine.map((c) => (
+                      <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 13.5, color: T.ink, fontWeight: 600 }}>{c.name}</span>
+                        <Pill tone={isPlaced(c) ? "placed" : isRejected(c) ? "rejected" : "live"}>
+                          {isPlaced(c) ? "Placed" : isRejected(c) ? "Rejected" : "Interviewing"}
+                        </Pill>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: T.ink, marginBottom: 4 }}>My Recruiters</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 22 }}>Pick a role to see which recruiters are working it and who they've submitted.</div>
+
+      {roles.length === 0 ? (
+        <EmptyState icon="briefcase" title="No roles posted yet" body="Post a role to start working with recruiters." />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+          {roles.map((role) => (
+            <button
+              key={role.id}
+              onClick={() => openRole(role)}
+              style={{ textAlign: "left", border: `1px solid ${T.line}`, borderRadius: 14, padding: 18, background: "#fff", cursor: "pointer", fontFamily: T.sans }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>{role.name}</div>
+                <Pill tone={(role.status || "live").toLowerCase()}>{role.status || "live"}</Pill>
+              </div>
+              <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                View recruiters <Icon name="chevronRight" size={13} />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1928,6 +2048,8 @@ function ClientDashboard() {
             )}
           </>
         )}
+
+        {tab === "recruiters" && <MyRecruitersTab roles={roles} readOnly={adminViewMode} />}
 
         {tab === "messages" && <EmployerInbox session={session} roles={roles} readOnly={adminViewMode} />}
       </div>
