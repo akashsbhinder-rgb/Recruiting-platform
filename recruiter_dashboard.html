@@ -111,6 +111,57 @@ const T = {
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
+function StripeConnectBanner({ recruiter, session }) {
+  const [hasPlacement, setHasPlacement] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { count } = await supabaseClient
+        .from("placements")
+        .select("id", { count: "exact", head: true })
+        .eq("recruiter_id", recruiter.id);
+      if (!cancelled) setHasPlacement(!!count && count > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [recruiter.id]);
+
+  if (!hasPlacement || recruiter.stripe_onboarding_complete) return null;
+
+  const connect = async () => {
+    setConnecting(true);
+    setError("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/create-stripe-connect-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Something went wrong.");
+      window.location.href = body.url;
+    } catch (err) {
+      setError(err.message);
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <div style={{ background: T.blueBg, color: T.blue, padding: "10px 20px", fontSize: 13, fontWeight: 600, textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <span>You have a placement! Connect Stripe to get paid on your 30/60/90-day payout schedule.</span>
+      <button onClick={connect} disabled={connecting} style={{ background: T.blue, color: "#fff", border: "none", borderRadius: 999, padding: "5px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+        {connecting ? "Connecting…" : "Connect Stripe"}
+      </button>
+      {error && <span style={{ color: T.red }}>{error}</span>}
+    </div>
+  );
+}
+
 const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
 const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
 const isActive = (c) => !isRejected(c) && !isPlaced(c);
@@ -1789,6 +1840,7 @@ function RecruiterDashboard() {
           Your profile is pending admin review — everything below still works, and we'll email you once you're approved.
         </div>
       )}
+      <StripeConnectBanner recruiter={recruiter} session={session} />
       <TopNav
         tab={tab}
         onTabChange={(t) => { setTab(t); if (t !== "myroles") setFocusRoleId(null); }}

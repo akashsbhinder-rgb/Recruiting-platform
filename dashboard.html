@@ -756,6 +756,46 @@ async function updateCandidate(id, patch) {
   if (error) throw new Error(`Failed updating candidate: ${error.message}`);
 }
 
+// Records a placement and schedules the Referrer's 30/60/90-day payout
+// installments -- see recruiting-contract.html Section 3. This only tracks
+// what's owed; actually moving money requires the release-payout-installments
+// Edge Function and a funded MakePlacement Stripe balance.
+async function createPlacement({ candidateId, roleId, recruiterId, companyId, baseSalary, commissionPct, startDate }) {
+  const referrerBonusTotal = Math.round(Number(baseSalary) * (Number(commissionPct) / 100) * 100) / 100;
+
+  const { data: placement, error: placementErr } = await supabaseClient
+    .from("placements")
+    .insert([{
+      candidate_id: candidateId,
+      role_id: roleId,
+      recruiter_id: recruiterId,
+      company_id: companyId,
+      base_salary: Number(baseSalary),
+      referrer_bonus_total: referrerBonusTotal,
+      start_date: startDate,
+    }])
+    .select()
+    .single();
+  if (placementErr) throw new Error(`Failed recording placement: ${placementErr.message}`);
+
+  const start = new Date(startDate + "T00:00:00Z");
+  const addDays = (d) => {
+    const dt = new Date(start);
+    dt.setUTCDate(dt.getUTCDate() + d);
+    return dt.toISOString().slice(0, 10);
+  };
+  const third = Math.round((referrerBonusTotal / 3) * 100) / 100;
+  const installments = [
+    { placement_id: placement.id, installment_number: 1, amount: third, due_date: addDays(30) },
+    { placement_id: placement.id, installment_number: 2, amount: third, due_date: addDays(60) },
+    { placement_id: placement.id, installment_number: 3, amount: Math.round((referrerBonusTotal - third * 2) * 100) / 100, due_date: addDays(90) },
+  ];
+  const { error: installErr } = await supabaseClient.from("payout_installments").insert(installments);
+  if (installErr) throw new Error(`Failed scheduling payout installments: ${installErr.message}`);
+
+  return placement;
+}
+
 async function updateRoleStatus(id, status) {
   const { error } = await supabaseClient.from("roles").update({ status }).eq("id", id);
   if (error) throw new Error(`Failed updating role: ${error.message}`);
@@ -1177,9 +1217,51 @@ function CandidateCard({ candidate, recruiterLabel, nextStageName, onAdvance, on
   );
 }
 
+function PlacementDetailsModal({ candidate, onCancel, onConfirm }) {
+  const [baseSalary, setBaseSalary] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    if (!baseSalary || !startDate) {
+      setError("Final base salary and start date are both required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onConfirm({ baseSalary, startDate });
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onCancel} width={420}>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4, color: T.ink }}>Mark {candidate.name} placed</div>
+      <div style={{ fontSize: 13, color: T.sub, marginBottom: 18 }}>This sets the Referrer&rsquo;s payout schedule &mdash; both fields lock in once confirmed.</div>
+
+      <div style={sectionLabelStyle}>Final base salary</div>
+      <input type="number" style={inputStyle} placeholder="Ex. 300000" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} />
+
+      <div style={sectionLabelStyle}>Start date</div>
+      <input type="date" style={inputStyle} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+
+      {error && <div style={{ color: T.red, fontSize: 12.5, margin: "10px 0" }}>{error}</div>}
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+        <SecondaryButton onClick={onCancel} disabled={saving}>Cancel</SecondaryButton>
+        <PrimaryButton onClick={submit} disabled={saving}>{saving ? "Saving…" : "Confirm placement"}</PrimaryButton>
+      </div>
+    </Modal>
+  );
+}
+
 // ---------- pipeline (kanban by stage) ----------
 function PipelineView({ role, stages, candidates, recruiterMap, messages, session, refresh, refreshMessages, readOnly }) {
   const [rejectingCandidate, setRejectingCandidate] = useState(null);
+  const [placingCandidate, setPlacingCandidate] = useState(null);
 
   const stageById = {};
   stages.forEach((s) => (stageById[s.id] = s));
@@ -1219,14 +1301,10 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
           await updateCandidate(c.id, { stage_id: ns.id });
           await sendMessage(session, role.id, c.id, c.recruiter_id, `${c.name} was moved to "${ns.name}".`);
         } else {
-          await updateCandidate(c.id, { status: "placed" });
-          await sendMessage(session, role.id, c.id, c.recruiter_id, `${c.name} was marked as placed! \u{1F389}`);
+          setPlacingCandidate(c);
         }
       })}
-      onPlace={() => act(async () => {
-        await updateCandidate(c.id, { status: "placed" });
-        await sendMessage(session, role.id, c.id, c.recruiter_id, `${c.name} was marked as placed! \u{1F389}`);
-      })}
+      onPlace={() => setPlacingCandidate(c)}
       onRequestReject={() => setRejectingCandidate(c)}
       onRestore={() => act(async () => updateCandidate(c.id, { status: "active" }))}
       feedbackMessages={messagesForCandidate(c.id)}
@@ -1278,6 +1356,29 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
             await updateCandidate(rejectingCandidate.id, { status: "rejected" });
             await sendMessage(session, role.id, rejectingCandidate.id, rejectingCandidate.recruiter_id, reason);
             setRejectingCandidate(null);
+            await refresh();
+            await refreshMessages();
+          }}
+        />
+      )}
+
+      {placingCandidate && (
+        <PlacementDetailsModal
+          candidate={placingCandidate}
+          onCancel={() => setPlacingCandidate(null)}
+          onConfirm={async ({ baseSalary, startDate }) => {
+            await createPlacement({
+              candidateId: placingCandidate.id,
+              roleId: role.id,
+              recruiterId: placingCandidate.recruiter_id,
+              companyId: role.company_id,
+              baseSalary,
+              commissionPct: role.commission_pct,
+              startDate,
+            });
+            await updateCandidate(placingCandidate.id, { status: "placed" });
+            await sendMessage(session, role.id, placingCandidate.id, placingCandidate.recruiter_id, `${placingCandidate.name} was marked as placed! \u{1F389}`);
+            setPlacingCandidate(null);
             await refresh();
             await refreshMessages();
           }}
