@@ -761,6 +761,13 @@ async function updateCandidate(id, patch) {
 // what's owed; actually moving money requires the release-payout-installments
 // Edge Function and a funded MakePlacement Stripe balance.
 async function createPlacement({ candidateId, roleId, recruiterId, companyId, baseSalary, commissionPct, startDate }) {
+  const { count: existingCount, error: existingErr } = await supabaseClient
+    .from("placements")
+    .select("id", { count: "exact", head: true })
+    .eq("candidate_id", candidateId);
+  if (existingErr) throw new Error(`Failed checking for an existing placement: ${existingErr.message}`);
+  if (existingCount && existingCount > 0) return null;
+
   const referrerBonusTotal = Math.round(Number(baseSalary) * (Number(commissionPct) / 100) * 100) / 100;
 
   const { data: placement, error: placementErr } = await supabaseClient
@@ -1367,6 +1374,7 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
           candidate={placingCandidate}
           onCancel={() => setPlacingCandidate(null)}
           onConfirm={async ({ baseSalary, startDate }) => {
+            await updateCandidate(placingCandidate.id, { status: "placed" });
             await createPlacement({
               candidateId: placingCandidate.id,
               roleId: role.id,
@@ -1376,7 +1384,6 @@ function PipelineView({ role, stages, candidates, recruiterMap, messages, sessio
               commissionPct: role.commission_pct,
               startDate,
             });
-            await updateCandidate(placingCandidate.id, { status: "placed" });
             await sendMessage(session, role.id, placingCandidate.id, placingCandidate.recruiter_id, `${placingCandidate.name} was marked as placed! \u{1F389}`);
             setPlacingCandidate(null);
             await refresh();
