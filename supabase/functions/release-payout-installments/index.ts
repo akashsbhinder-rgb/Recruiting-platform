@@ -2,13 +2,12 @@
 // payout_installments that are due. Transfers the installment amount from
 // MakePlacement's Stripe balance to the Referrer's connected account.
 //
-// BLOCKED on Employer fee collection: this will fail with Stripe
-// insufficient-balance errors until there's a real flow for collecting
-// placement fees from Employers into MakePlacement's Stripe balance. Safe
-// to deploy and schedule now -- it just has nothing to successfully pay out
-// until that side exists. Installments are marked "failed" (not silently
-// dropped) so nothing is lost once funding exists; a manual re-run/retry
-// path against "failed" rows will be needed at that point.
+// Only releases installments for placements where placements.fee_paid is
+// true (set by stripe-webhook on checkout.session.completed) -- otherwise
+// there's no guarantee MakePlacement's Stripe balance actually has the
+// money to transfer out. Installments that fail for other reasons (e.g. a
+// genuine Stripe API error) are marked "failed", not silently dropped, so
+// a manual re-run/retry path against "failed" rows is needed for those.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14?target=deno";
@@ -28,7 +27,7 @@ Deno.serve(async (_req) => {
 
   const { data: due, error } = await supabaseAdmin
     .from("payout_installments")
-    .select("*, placements(recruiter_id)")
+    .select("*, placements(recruiter_id, fee_paid)")
     .eq("status", "pending")
     .lte("due_date", today);
 
@@ -38,6 +37,10 @@ Deno.serve(async (_req) => {
 
   const results = [];
   for (const installment of due || []) {
+    if (!installment.placements.fee_paid) {
+      results.push({ installment: installment.id, skipped: "employer has not paid the placement fee yet" });
+      continue;
+    }
     const recruiterId = installment.placements.recruiter_id;
     const { data: recruiter } = await supabaseAdmin
       .from("recruiters")
