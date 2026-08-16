@@ -182,6 +182,7 @@ async function submitRoleToSupabase(data, session) {
         description: data.roleDescription,
         min_salary: Number(data.minSalary),
         max_salary: Number(data.maxSalary),
+        commission_pct: Number(data.commissionPct),
         hiring_goals: data.hiringGoals || null,
         recruiting_advice: data.recruitingAdvice,
         hm_intro: data.hmIntro,
@@ -235,6 +236,7 @@ const initialData = {
   roleDescription: "",
   minSalary: "",
   maxSalary: "",
+  commissionPct: "17.5",
   stages: [REQUIRED_FIRST_STAGE],
   hiringGoals: "",
   idealQualities: ["", "", ""],
@@ -634,6 +636,7 @@ function validateStep(key, data) {
         isFilled(data.roleDescription) &&
         isFilled(data.minSalary) &&
         isFilled(data.maxSalary) &&
+        isFilled(data.commissionPct) &&
         countFilled(data.stages.slice(1)) >= 1
       );
     case "candidates":
@@ -675,6 +678,7 @@ function Review({ data, goTo }) {
         </div>
         <div style={{ fontSize: 14, color: "#777", marginBottom: 4 }}>
           {money(data.minSalary)} – {money(data.maxSalary)}
+          {data.commissionPct ? ` · ${data.commissionPct}% recruiter bonus` : ""}
           {data.hiringGoals ? ` · Target: ${data.hiringGoals}` : ""}
         </div>
         <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
@@ -1042,6 +1046,18 @@ function EmployerOnboarding() {
                 </Field>
               </div>
             </div>
+            <Field
+              label="Recruiter bonus"
+              required
+              hint="The percentage of first-year salary paid to the recruiter who places a candidate in this role. This is what recruiters see listed on the role — set it per role, like a normal referral bonus."
+            >
+              <TextInput
+                type="number"
+                value={data.commissionPct}
+                placeholder="Ex. 17.5"
+                onChange={(e) => set({ commissionPct: e.target.value })}
+              />
+            </Field>
             <Field
               label="Interview stages"
               required

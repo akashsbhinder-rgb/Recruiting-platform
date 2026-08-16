@@ -486,6 +486,7 @@ function EditRoleModal({ role, onCancel, onSaved }) {
           description: role.description || "",
           minSalary: role.min_salary != null ? String(role.min_salary) : "",
           maxSalary: role.max_salary != null ? String(role.max_salary) : "",
+          commissionPct: role.commission_pct != null ? String(role.commission_pct) : "17.5",
           hiringGoals: role.hiring_goals || "",
           recruitingAdvice: role.recruiting_advice || "",
           hmIntro: role.hm_intro || "",
@@ -506,8 +507,8 @@ function EditRoleModal({ role, onCancel, onSaved }) {
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   const save = async () => {
-    if (!form.name.trim() || !form.description.trim() || !form.minSalary || !form.maxSalary) {
-      setError("Role name, description, and salary range are required.");
+    if (!form.name.trim() || !form.description.trim() || !form.minSalary || !form.maxSalary || !form.commissionPct) {
+      setError("Role name, description, salary range, and recruiter bonus are required.");
       return;
     }
     setSaving(true);
@@ -546,6 +547,9 @@ function EditRoleModal({ role, onCancel, onSaved }) {
               <input type="number" style={inputStyle} value={form.maxSalary} onChange={(e) => set({ maxSalary: e.target.value })} />
             </div>
           </div>
+
+          <div style={sectionLabelStyle}>Recruiter bonus (% of first-year salary)</div>
+          <input type="number" style={inputStyle} value={form.commissionPct} onChange={(e) => set({ commissionPct: e.target.value })} />
 
           <div style={sectionLabelStyle}>Hiring goal</div>
           <input style={inputStyle} value={form.hiringGoals} placeholder="Ex. Within 2 months" onChange={(e) => set({ hiringGoals: e.target.value })} />
@@ -802,6 +806,7 @@ async function saveRoleEdits(roleId, form) {
     description: form.description,
     min_salary: Number(form.minSalary),
     max_salary: Number(form.maxSalary),
+    commission_pct: Number(form.commissionPct),
     hiring_goals: form.hiringGoals || null,
     recruiting_advice: form.recruitingAdvice,
     hm_intro: form.hmIntro,

@@ -111,10 +111,6 @@ const T = {
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-const PLATFORM_FEE_PCT = 0.25;
-const RECRUITER_SHARE_PCT = 0.70;
-const COMMISSION_PCT = PLATFORM_FEE_PCT * RECRUITER_SHARE_PCT; // 0.175
-
 const isRejected = (c) => (c.status || "").toLowerCase() === "rejected";
 const isPlaced = (c) => (c.status || "").toLowerCase() === "placed";
 const isActive = (c) => !isRejected(c) && !isPlaced(c);
@@ -134,10 +130,11 @@ function isRecent(iso, days = 7) {
   return Date.now() - new Date(iso).getTime() < days * 24 * 60 * 60 * 1000;
 }
 
-function estimateEarnings(minSalary, maxSalary) {
-  if (minSalary == null || maxSalary == null) return null;
-  const low = Number(minSalary) * COMMISSION_PCT;
-  const high = Number(maxSalary) * COMMISSION_PCT;
+function estimateEarnings(minSalary, maxSalary, commissionPct) {
+  if (minSalary == null || maxSalary == null || commissionPct == null) return null;
+  const pct = Number(commissionPct) / 100;
+  const low = Number(minSalary) * pct;
+  const high = Number(maxSalary) * pct;
   if (!isFinite(low) || !isFinite(high)) return null;
   return { low, high };
 }
@@ -635,7 +632,7 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
   const location = companyLocation(company);
   const gradient = gradientFor(companyName || role.name);
   const initial = (companyName || role.name || "?").trim().charAt(0).toUpperCase();
-  const commissionPct = (COMMISSION_PCT * 100).toFixed(1).replace(/\.0$/, "");
+  const commissionPct = role.commission_pct != null ? Number(role.commission_pct).toFixed(1).replace(/\.0$/, "") : null;
   const isNew = isRecent(role.created_at);
 
   return (
@@ -679,7 +676,7 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
             </div>
           )}
           <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px" }}>
-            {commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span>
+            {commissionPct ? <>{commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span></> : <span style={{ fontWeight: 500, color: T.sub }}>Bonus not set</span>}
           </div>
         </div>
       </div>
@@ -689,7 +686,7 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
           <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999 }}>
             <Icon name="dollar" size={12} />
             est. earnings {(() => {
-              const e = estimateEarnings(role.min_salary, role.max_salary);
+              const e = estimateEarnings(role.min_salary, role.max_salary, role.commission_pct);
               return e ? `${money(Math.round(e.low))} \u2013 ${money(Math.round(e.high))}` : "\u2014";
             })()}
           </div>
@@ -1120,7 +1117,7 @@ function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelc
   const companyName = (company && company.name) || "Company";
   const contactName = companyContactName(company);
   const location = companyLocation(company);
-  const earnings = estimateEarnings(role.min_salary, role.max_salary);
+  const earnings = estimateEarnings(role.min_salary, role.max_salary, role.commission_pct);
   const [detail, setDetail] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [messages, setMessages] = useState([]);
