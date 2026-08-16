@@ -83,6 +83,12 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer: customerId,
+      // Card + ACH only -- these are B2B placement fees, often five figures.
+      // Leaving this unset lets Stripe show whatever's enabled in the
+      // Dashboard's Payment Methods settings, which can include consumer
+      // options (Klarna, Cash App Pay) that don't belong here and card
+      // limits that a charge this size can hit.
+      payment_method_types: ["card", "us_bank_account"],
       line_items: [{
         price_data: {
           currency: "usd",
