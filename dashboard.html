@@ -757,7 +757,7 @@ async function updateCandidate(id, patch) {
 }
 
 // Records a placement and schedules the Referrer's 30/60/90-day payout
-// installments -- see recruiting-contract.html Section 3. This only tracks
+// installments -- see recruiting-agreement.html Section 3. This only tracks
 // what's owed; actually moving money requires the release-payout-installments
 // Edge Function and a funded MakePlacement Stripe balance.
 async function createPlacement({ candidateId, roleId, recruiterId, companyId, baseSalary, commissionPct, startDate }) {
@@ -2110,6 +2110,20 @@ function ClientDashboard() {
   if (error) {
     return <div style={pageWrap}><div style={{ maxWidth: 520, margin: "160px auto", textAlign: "center", color: T.red }}>{error}</div></div>;
   }
+  if (!company.verified && !adminViewMode) {
+    return (
+      <div style={pageWrap}>
+        <div style={{ maxWidth: 440, margin: "160px auto", textAlign: "center", padding: "0 24px" }}>
+          <div style={{ fontSize: 34, marginBottom: 16 }}>{"⏳"}</div>
+          <div style={{ fontSize: 19, fontWeight: 700, color: T.ink, marginBottom: 10 }}>You'll be reviewed by an admin shortly</div>
+          <div style={{ fontSize: 14, color: T.sub, lineHeight: 1.6, marginBottom: 24 }}>
+            Your account is pending approval. We'll email you the moment you're approved, and you'll be able to access your dashboard then.
+          </div>
+          <GhostButton onClick={handleLogout}>Log out</GhostButton>
+        </div>
+      </div>
+    );
+  }
 
   const focusedRole = roles.find((r) => r.id === focusedId);
   const otherRoles = roles.filter((r) => r.id !== focusedId);
@@ -2128,7 +2142,7 @@ function ClientDashboard() {
       )}
       {!company.verified && (
         <div style={{ background: T.goldBg, color: T.gold, padding: "10px 20px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
-          Your company is pending admin review — everything below still works, and we'll email you once you're approved.
+          This company is pending admin review — the company itself can't access this dashboard until you approve them.
         </div>
       )}
       <TopNav

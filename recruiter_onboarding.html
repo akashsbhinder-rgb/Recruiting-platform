@@ -307,6 +307,7 @@
         executiveLevel: null,        // 'C-suite' | 'VPs/SVPs' | 'Directors/Heads/GM'
         contingencyExperience: null, // true | false
         contingencyAck: false,
+        termsAccepted: false,
       },
       industryDraft: '',
       submitting: false,
@@ -395,6 +396,9 @@
         if (d.contingencyExperience === null) return false;
         if (d.contingencyExperience === false) return d.contingencyAck === true;
         return true;
+      }
+      if (stepKey === 'review') {
+        return d.termsAccepted === true;
       }
       return true;
     }
@@ -634,6 +638,32 @@
         );
       });
 
+      const consentLabel = el(
+        'label',
+        { style: 'display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#444;cursor:pointer;margin-top:24px;padding-top:18px;border-top:1px solid #eee;' },
+        [
+          el('input', {
+            type: 'checkbox',
+            style: 'margin-top:2px;flex-shrink:0;',
+            checked: d.termsAccepted ? 'checked' : undefined,
+            onChange: (e) => {
+              state.data.termsAccepted = e.target.checked;
+              render();
+            },
+          }),
+          el('span', {}, [
+            'By agreeing, you acknowledge that you have read and understood, and agree to MakePlacement’s ',
+            el('a', { href: 'terms.html', target: '_blank', rel: 'noreferrer', style: 'text-decoration:underline;color:inherit;' }, 'Terms of Use'),
+            ', ',
+            el('a', { href: 'privacy.html', target: '_blank', rel: 'noreferrer', style: 'text-decoration:underline;color:inherit;' }, 'Privacy Policy'),
+            ', and ',
+            el('a', { href: 'recruiting-agreement.html', target: '_blank', rel: 'noreferrer', style: 'text-decoration:underline;color:inherit;' }, 'Recruiting Agreement'),
+            '.',
+          ]),
+        ]
+      );
+      wrap.appendChild(consentLabel);
+
       if (state.submitError) {
         wrap.appendChild(el('div', { style: 'color:#b42318;font-size:13px;margin-top:16px;' }, state.submitError));
       }
@@ -664,6 +694,7 @@
             executive_level: state.data.executivePlacements ? state.data.executiveLevel : null,
             contingency_experience: state.data.contingencyExperience,
             contingency_ack: state.data.contingencyAck,
+            terms_accepted_at: new Date().toISOString(),
           })
           .eq('id', state.recruiterId);
         if (error) throw new Error(error.message);
@@ -759,7 +790,7 @@
           },
           state.submitting ? 'Saving…' : 'Finish'
         );
-        submitBtn.disabled = state.submitting;
+        submitBtn.disabled = state.submitting || !canProceed('review');
         footerInner.appendChild(submitBtn);
       }
 

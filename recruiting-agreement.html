@@ -35,9 +35,7 @@
   a { color: var(--link); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  header {
-    border-bottom: 1px solid var(--border);
-  }
+  header { border-bottom: 1px solid var(--border); }
 
   .header-inner {
     max-width: 1320px;
@@ -73,11 +71,7 @@
     padding: 56px 28px 120px;
   }
 
-  .updated {
-    color: var(--faint);
-    font-size: 13px;
-    margin-bottom: 14px;
-  }
+  .updated { color: var(--faint); font-size: 13px; margin-bottom: 14px; }
 
   h1 {
     font-family: 'Newsreader', serif;
@@ -95,23 +89,13 @@
     margin-bottom: 36px;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
+    flex-wrap: wrap;
   }
 
-  .doc-tabs a {
-    color: var(--muted);
-    font-weight: 500;
-  }
+  .doc-tabs a { color: var(--muted); font-weight: 500; }
+  .doc-tabs a.active { color: var(--fg); }
 
-  .doc-tabs a.active {
-    color: var(--fg);
-  }
-
-  .intro {
-    font-size: 15px;
-    line-height: 1.65;
-    color: var(--fg);
-    margin-bottom: 12px;
-  }
+  .intro { font-size: 15px; line-height: 1.65; color: var(--fg); margin-bottom: 12px; }
 
   .notice {
     background: #f7f8fb;
@@ -124,19 +108,10 @@
     margin: 28px 0;
   }
 
-  h2 {
-    font-size: 19px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin: 44px 0 6px;
-  }
+  h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 44px 0 6px; }
+  h3 { font-size: 15.5px; font-weight: 600; margin: 26px 0 10px; }
 
-  p {
-    font-size: 14.5px;
-    line-height: 1.7;
-    color: #2a2a2e;
-    margin: 0 0 14px;
-  }
+  p { font-size: 14.5px; line-height: 1.7; color: #2a2a2e; margin: 0 0 14px; }
 
   ol, ul {
     font-size: 14.5px;
@@ -147,36 +122,7 @@
   }
 
   li { margin-bottom: 8px; }
-
   strong { font-weight: 600; }
-
-  .placeholder {
-    color: var(--faint);
-    font-style: italic;
-  }
-
-  .sig-block {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 20px;
-    margin-top: 8px;
-  }
-
-  .sig-block + .sig-block {
-    margin-top: 14px;
-  }
-
-  .sig-row {
-    display: flex;
-    gap: 6px;
-    font-size: 13.5px;
-    margin-bottom: 6px;
-  }
-
-  .sig-label {
-    color: var(--muted);
-    min-width: 130px;
-  }
 
   footer {
     border-top: 1px solid var(--border);
@@ -207,87 +153,90 @@
   <h1>Recruiting Agreement</h1>
 
   <div class="doc-tabs">
-    <a href="terms.html">&larr; Back to Terms of Use</a>
+    <a href="terms.html">Terms of use</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="recruiting-agreement.html" class="active">Recruiting Agreement</a>
   </div>
+
+  <p class="intro">A contract (a &ldquo;Recruiting Agreement&rdquo;) is formed between MakePlacement and a Referrer when the Referrer (1) creates an account on MakePlacement, and (2) accepts the <a href="terms.html">Terms of Use</a>. No separate signature is required. Only once a Recruiting Agreement is formed can a Referrer submit a Referral.</p>
+
+  <h2>1. Referrals</h2>
+  <p>A &ldquo;Referral&rdquo; is the submission of a Candidate by a Referrer that meets all of the following:</p>
+  <ol>
+    <li>The Referrer has spoken to the Candidate about the specific Role and confirmed the Candidate is interested in that opportunity with the Employer;</li>
+    <li>The Referrer has provided accurate contact information for the Candidate;</li>
+    <li>The Referrer has provided a complete, current resume for the Candidate;</li>
+    <li>The Referrer has explained why the Candidate is a good fit for the Role; and</li>
+    <li>The Candidate is not a Duplicate Referral (below).</li>
+  </ol>
+
+  <h3>Hiring Cycle and payout eligibility</h3>
+  <p>If a Referral is hired by the Employer while the Role remains open on MakePlacement (the &ldquo;Hiring Cycle&rdquo;), MakePlacement will pay the Referrer the bonus listed on the Role, payable after MakePlacement receives payment from the Employer. If a Referral is still in process with an Employer after the Role is closed, the Referrer keeps ownership of that Referral until it is hired or rejected, and is still paid if it results in a hire. If a Candidate was already in the Employer&rsquo;s interview process before the Referrer&rsquo;s submission date, ownership belongs to the Employer, not the Referrer.</p>
+
+  <h3>Duplicate Referrals</h3>
+  <p>A Referrer has the exclusive right to the bonus resulting from a hire they referred during the Hiring Cycle for that Role. Any submission of the same Candidate by another Referrer during the same Hiring Cycle for the same Role is a &ldquo;Duplicate Referral&rdquo; and will be rejected. Priority is determined by the submission timestamps recorded in MakePlacement&rsquo;s database. Appeals can be sent to <a href="mailto:akashmplacement@gmail.com">akashmplacement@gmail.com</a>.</p>
+
+  <h3>Sharing Role information</h3>
+  <p>A Referrer may publicly share an Employer&rsquo;s name or a Role&rsquo;s salary range &mdash; including on professional networking sites, social media, personal websites, or elsewhere &mdash; to source Candidates. However, a Referrer may not repost a MakePlacement Role on another job board (e.g. LinkedIn, Indeed, Glassdoor) disguised as coming directly from the Employer, and may not misrepresent themselves as an employee of the Employer or of MakePlacement. Referrers should identify themselves as a &ldquo;MakePlacement Referrer.&rdquo;</p>
+  <p>Violating any part of this section is grounds for termination of the Recruiting Agreement, including account suspension.</p>
+
+  <h2>2. Non-Solicitation</h2>
+  <p>While a Referrer maintains an active MakePlacement account, they will not maintain or pursue direct recruiting engagements with Employers discovered through MakePlacement &mdash; including submitting candidates, sourcing roles, or entering recruiting agreements with those Employers outside the platform. For twelve (12) months after account termination, the Referrer will not initiate contact with or solicit those Employers for recruiting purposes.</p>
+  <p>While actively recruiting for a given Employer through MakePlacement, and for six (6) months after that engagement ends, a Referrer will not directly or indirectly solicit or recruit that Employer&rsquo;s employees to other companies. This applies across every Employer the Referrer is actively working with. Breach of this section may result in immediate account termination and forfeiture of any unpaid referral bonuses.</p>
+  <p>MakePlacement may notify an Employer of a Referrer&rsquo;s obligations under this section and request that the Employer not engage that Referrer outside the platform during the restricted periods.</p>
+
+  <h2>3. Payment Terms</h2>
+  <ul>
+    <li>Once a Candidate signs the Employer&rsquo;s offer, the Employer must pay MakePlacement all outstanding fees within fourteen (14) days.</li>
+    <li>Once MakePlacement receives that payment, the Referral bonus is credited to the Referrer&rsquo;s MakePlacement account.</li>
+    <li>To protect both Referrer and Employer, payouts follow an installment schedule tied to the 90-day guarantee period described in Section 4: one third released 30 days after the Candidate&rsquo;s start date, one third at 60 days, and the final third at 90 days.</li>
+    <li>Referrers may withdraw available funds at any time via Stripe, our payment processor, using a payout method of their choice.</li>
+    <li>By using the Services, a Referrer authorizes MakePlacement to share their submitted account information with Stripe and relevant financial institutions solely to process payment.</li>
+  </ul>
+  <p>MakePlacement is a third-party settlement organization and may report payments made to a Referrer to the IRS as required by law. Beyond that reporting, MakePlacement does not withhold taxes on a Referrer&rsquo;s behalf; each Referrer is solely responsible for their own tax filings and payments. MakePlacement may request tax documentation from a Referrer to comply with its own reporting obligations.</p>
+  <p>Payment questions can be sent to <a href="mailto:akashmplacement@gmail.com">akashmplacement@gmail.com</a>.</p>
+
+  <h2>4. Replacement Search Policy</h2>
+  <p>This section applies if a placed Candidate leaves within 90 days of their start date, for any reason, including resignation, termination, or failure to start.</p>
+  <p>Within two (2) days of MakePlacement&rsquo;s notice, if the Employer agrees to a replacement search, the Referrer must choose one of the following:</p>
+
+  <h3>Option A &mdash; Conduct a replacement search</h3>
+  <ul>
+    <li>Confirm acceptance and provide a sourcing plan within two (2) days;</li>
+    <li>Submit at least three (3) qualified Candidates within fourteen (14) days;</li>
+    <li>Keep the pipeline active &mdash; no more than five (5) consecutive days without a new submission after day 14;</li>
+    <li>Complete a new placement within sixty (60) days.</li>
+  </ul>
+  <p>A successful placement within 60 days requires no repayment. If unsuccessful or incomplete by day 60, MakePlacement may grant an extension at its sole discretion upon the Referrer&rsquo;s written request.</p>
+
+  <h3>Option B &mdash; Decline the replacement search</h3>
+  <p>The Referrer must immediately repay 100% of any placement fees already paid out for that placement.</p>
+
+  <h3>Repayment</h3>
+  <p>Repayment of 100% of fees already paid is required if the Referrer or the Employer declines a replacement search, the replacement search is unsuccessful or incomplete after 60 days without an approved extension, or the Referrer commits a material breach (including abandonment, bad faith conduct, circumvention, or non-responsiveness).</p>
+  <p>MakePlacement will first deduct any amount owed from pending or future payouts to the Referrer. If no payout is available or it isn&rsquo;t enough, the Referrer must remit the balance within seven (7) days, bearing any transaction fees. If a Referrer fails to repay, MakePlacement may refer the balance to collections, report it to credit bureaus, and pursue legal remedies; the Referrer is responsible for related collection costs and attorneys&rsquo; fees.</p>
+
+  <h2>5. Scope of Relationship</h2>
+  <p>A Referrer is an independent contractor of MakePlacement. This Recruiting Agreement does not create an employment, partnership, or agency relationship. A Referrer has no authority to enter contracts on behalf of MakePlacement or any Employer. MakePlacement does not supervise, direct, or control a Referrer&rsquo;s work, set their hours or location, or provide training or equipment. MakePlacement does not withhold taxes on a Referrer&rsquo;s behalf, as it would for an employee.</p>
+  <p>A Referrer is free to provide recruiting services to others, including MakePlacement&rsquo;s competitors, subject to Section 2 above.</p>
+
+  <h2>6. Miscellaneous</h2>
+  <p>A Referrer will keep records sufficient to document compliance with this Recruiting Agreement, including payment and tax obligations, and provide copies to MakePlacement on request. MakePlacement may audit a Referrer&rsquo;s records for compliance, no more than annually.</p>
+  <p>You acknowledge that:</p>
+  <ul>
+    <li>MakePlacement has no liability or obligations related to Referrals or Roles beyond what&rsquo;s expressly stated in the <a href="terms.html">Terms of Use</a>;</li>
+    <li>MakePlacement makes no representation as to the reliability, capability, or qualifications of any Employer, Referrer, or Candidate;</li>
+    <li>MakePlacement does not verify information submitted by Employers or Referrers and does not perform background checks; and</li>
+    <li>any strength, risk, or verification information MakePlacement may display is based solely on data submitted by users, is provided for convenience only, and is not an endorsement or recommendation by MakePlacement.</li>
+  </ul>
 
   <div class="notice">
-    This page shows the standard terms of the Recruiting Agreement every Employer signs before hiring through MakePlacement. It&rsquo;s published here for transparency &mdash; the actual signed copy is executed separately with each Employer, with the blanks below filled in.
-  </div>
-
-  <p class="intro">This Recruiting Agreement (&ldquo;Agreement&rdquo;) is entered into as of the date signed (the &ldquo;Effective Date&rdquo;) by and between:</p>
-  <p class="intro">MakePlacement, with a principal place of business at <span class="placeholder">[MakePlacement business address]</span>, email <a href="mailto:akashmplacement@gmail.com">akashmplacement@gmail.com</a> (&ldquo;MakePlacement&rdquo;),</p>
-  <p class="intro">and</p>
-  <p class="intro"><span class="placeholder">[Employer legal name]</span>, with a principal place of business at <span class="placeholder">[Employer address]</span> (&ldquo;Employer&rdquo;).</p>
-  <p class="intro">MakePlacement and Employer may be referred to individually as a &ldquo;Party&rdquo; and collectively as the &ldquo;Parties.&rdquo;</p>
-
-  <h2>1. Agreement</h2>
-  <p>Employer engages MakePlacement to identify and present candidates for employment (&ldquo;Candidates&rdquo;). Employer will provide MakePlacement with information about the role, including title, responsibilities, and proposed compensation. MakePlacement facilitates the presentment of Candidates through independent Recruiters using the MakePlacement platform; MakePlacement is not itself responsible for sourcing or pre-screening Candidates beyond what the platform&rsquo;s Terms of Use describe.</p>
-
-  <h2>2. Fees</h2>
-  <p>Employer agrees to pay MakePlacement a fee of <strong>25% of the Candidate&rsquo;s first-year base salary</strong> for each Candidate successfully placed into a role with Employer through the platform. &ldquo;First-year base salary&rdquo; means the employee&rsquo;s base salary, excluding discretionary bonus or equity.</p>
-  <p>Fees are due within <strong>fourteen (14) days</strong> after the Candidate signs an employment offer. Invoices unpaid after that period accrue a late fee of <strong>3% per month</strong>. If an invoice remains overdue for more than two (2) months, MakePlacement may pause Employer&rsquo;s access to the Services until the balance is paid in full.</p>
-
-  <h2>3. Free Replacement Policy</h2>
-  <p>If a placed Candidate leaves or is terminated within the first <strong>90 days</strong> of employment, Employer will receive the full placement fee back as platform credit, to be applied toward a future placement fee. If a placed Candidate leaves or is terminated after 90 days, MakePlacement has no further obligation or liability with respect to that placement.</p>
-
-  <h2>4. Candidate Ownership</h2>
-  <p>If a Candidate is presented to Employer and Employer has already independently interviewed that Candidate within the 12 months before the presentation, Employer must notify MakePlacement of this within 10 business days of the presentation. If Employer does not notify MakePlacement within that window, the Candidate will be treated as sourced by MakePlacement if a hire later occurs.</p>
-  <p>If Employer declines or does not act on a Candidate presented through the platform, but hires that Candidate within 12 months of the presentation, Employer must notify MakePlacement promptly after signing the hire, and the fee described in Section 2 applies.</p>
-
-  <h2>5. Confidentiality</h2>
-  <p>MakePlacement acknowledges that Employer may share non-public information about its business, employees, hiring plans, and compensation (&ldquo;Confidential Information&rdquo;) in the course of this Agreement. MakePlacement will not disclose Confidential Information to unauthorized third parties or use it for any purpose outside providing the Services. This obligation does not apply to information that is public, already known to MakePlacement, independently developed, or rightfully received from a third party without restriction.</p>
-
-  <h2>6. Relationship of the Parties</h2>
-  <p>MakePlacement is an independent contractor, not an employee, agent, or legal representative of Employer, except for the limited purpose of presenting and pre-screening Candidates. Nothing in this Agreement creates a partnership, joint venture, or employment relationship between the Parties.</p>
-
-  <h2>7. Indemnity</h2>
-  <p>Each Party agrees to indemnify and hold the other harmless from damages, liability, and reasonable legal costs arising from that Party&rsquo;s own fault in connection with the services under this Agreement, except where a court finds the other Party&rsquo;s own bad faith, gross negligence, or willful misconduct caused the damage.</p>
-
-  <h2>8. No Poaching</h2>
-  <p>Employer agrees not to solicit or hire any current employee of MakePlacement, or any Recruiter first introduced to Employer by MakePlacement, during this Agreement or for twelve (12) months after it ends. If Employer breaches this section by hiring such a person, Employer agrees to pay MakePlacement 30% of that person&rsquo;s first-year salary.</p>
-
-  <h2>9. Off-Platform Engagement</h2>
-  <p>Employer agrees that any Recruiter introduced, matched, or otherwise connected to Employer through the MakePlacement platform will only be engaged for recruiting services through the platform. Employer will not directly or indirectly solicit, engage, or contract with such a Recruiter outside the platform for twelve (12) months after Employer&rsquo;s most recent active use of the platform.</p>
-
-  <h2>10. Termination</h2>
-  <p>Either Party may terminate this Agreement in writing (a) if the other Party materially breaches this Agreement and fails to cure within 14 days of written notice, (b) if the other Party is unable to perform its obligations, including payment, or (c) with 14 days&rsquo; written notice for any reason. Sections 2&ndash;5 and 8&ndash;9 survive termination.</p>
-
-  <h2>11. Non-Solicitation</h2>
-  <p>MakePlacement will not solicit any Candidate who has been employed by Employer, during this Agreement and for one year after.</p>
-
-  <h2>12. No Discrimination</h2>
-  <p>MakePlacement will not discriminate against any Candidate on the basis of race, national origin, religion, age, sex, sexual orientation, marital status, ancestry, pregnancy or parental status, disability, or veteran status.</p>
-
-  <h2>13. General Provisions</h2>
-  <p><strong>Governing law and venue.</strong> This Agreement is governed by the laws of the State of California and applicable federal law. Both Parties consent to the exclusive jurisdiction of state and federal courts located in California.</p>
-  <p><strong>Assignment.</strong> Neither Party may assign this Agreement without the other&rsquo;s written consent.</p>
-  <p><strong>Amendments; waiver.</strong> This Agreement may only be amended in writing signed by both Parties. Failure to enforce any provision is not a waiver of that or any other provision.</p>
-  <p><strong>Severability.</strong> If any provision of this Agreement is found unenforceable, the rest of the Agreement remains in effect.</p>
-  <p><strong>Entire agreement.</strong> This Agreement, together with MakePlacement&rsquo;s <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a>, is the entire agreement between the Parties regarding the Services.</p>
-  <p><strong>Force majeure.</strong> MakePlacement is not liable for failure to perform due to causes beyond its reasonable control, including acts of God, civil or military authority, riots, or natural disasters.</p>
-  <p><strong>Notices.</strong> Notices under this Agreement must be in writing and sent by mail or email to the addresses above.</p>
-
-  <h2>Execution</h2>
-  <p>This Agreement is executed by authorized representatives of both Parties at the time an Employer completes onboarding with MakePlacement.</p>
-
-  <div class="sig-block">
-    <div class="sig-row"><span class="sig-label">Party:</span> MakePlacement</div>
-    <div class="sig-row"><span class="sig-label">Representative:</span> <span class="placeholder">[Name, Title]</span></div>
-    <div class="sig-row"><span class="sig-label">Signature / Date:</span> <span class="placeholder">[On file]</span></div>
-  </div>
-  <div class="sig-block">
-    <div class="sig-row"><span class="sig-label">Party:</span> <span class="placeholder">[Employer legal name]</span></div>
-    <div class="sig-row"><span class="sig-label">Representative:</span> <span class="placeholder">[Name, Title]</span></div>
-    <div class="sig-row"><span class="sig-label">Signature / Date:</span> <span class="placeholder">[On file]</span></div>
-  </div>
-
-  <div class="notice" style="margin-top:32px;">
-    Questions about this Agreement? Contact us at <a href="mailto:akashmplacement@gmail.com">akashmplacement@gmail.com</a>.
+    Questions about this Recruiting Agreement? Contact us at <a href="mailto:akashmplacement@gmail.com">akashmplacement@gmail.com</a>.
   </div>
 </main>
 
 <footer>
-  &copy; 2026 MakePlacement &middot; <a href="terms.html">Terms of Use</a> &middot; <a href="privacy.html">Privacy Policy</a>
+  &copy; 2026 MakePlacement &middot; <a href="terms.html">Terms of Use</a> &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="recruiting-agreement.html">Recruiting Agreement</a>
 </footer>
 
 </body>

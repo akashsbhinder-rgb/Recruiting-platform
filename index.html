@@ -460,17 +460,27 @@
       const key = `${type}:${email.toLowerCase()}`;
       if (capturedLeadEmails.has(key)) return;
       capturedLeadEmails.add(key);
+      const lastName = lastNameInput.value.trim() || null;
       try {
         await supabaseClient.from('leads').insert([{
           type,
           first_name: firstName,
-          last_name: lastNameInput.value.trim() || null,
+          last_name: lastName,
           email,
         }]);
       } catch (err) {
         // Best-effort -- never block or alarm the user over a lead capture failing.
         capturedLeadEmails.delete(key);
+        return;
       }
+      // Fire-and-forget notification -- never awaited beyond this call, and
+      // failures here must never affect the lead capture above (it already
+      // succeeded) or the user's signup flow.
+      fetch(`${SUPABASE_URL}/functions/v1/notify-new-lead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+        body: JSON.stringify({ type, firstName, lastName, email }),
+      }).catch(() => {});
     }
 
     const PERSONAL_EMAIL_DOMAINS = new Set([
@@ -757,14 +767,16 @@
         }
 
         if (pending.type === 'search_firm') {
-          // "verified" is NOT NULL with no DB default, so it must be
-          // set explicitly on every insert or this throws too.
+          // "verified" is intentionally NOT set here -- it now has a DB
+          // default of false, applied only on true inserts. Setting it
+          // explicitly would risk insertOrUpdate's UPDATE fallback
+          // silently re-setting an already-approved recruiter back to
+          // unverified if this ever runs twice for the same account.
           await insertOrUpdate('recruiters', 'auth_user_id', session.user.id, {
             auth_user_id: session.user.id,
             contact_first_name: pending.firstName,
             last_name: pending.lastName,
-            email: pending.email,
-            verified: false
+            email: pending.email
           });
 
           localStorage.removeItem(PENDING_KEY);
