@@ -256,6 +256,7 @@ function Pill({ children, active, muted, tone, style, ...rest }) {
     live: { bg: T.blueBg, fg: T.blue },
     rejected: { bg: T.redBg, fg: T.red },
     placed: { bg: T.greenBg, fg: T.green },
+    gold: { bg: "#faf1e0", fg: "#a06a1d" },
   };
   const t = tones[tone] || tones.default;
   return (
@@ -430,11 +431,28 @@ async function uploadResume(recruiterId, file) {
   return data.publicUrl;
 }
 
-async function submitCandidate(roleId, recruiterId, firstStageId, form) {
-  const { error } = await supabaseClient.from("candidates").insert([
-    { role_id: roleId, recruiter_id: recruiterId, name: form.name, email: form.email, linkedin: form.linkedin || null, resume_url: form.resumeUrl, notes: form.notes, stage_id: firstStageId || null, status: "active" },
-  ]);
+async function submitCandidate(roleId, recruiterId, firstStageId, form, session) {
+  const { data, error } = await supabaseClient.from("candidates").insert([
+    { role_id: roleId, recruiter_id: recruiterId, name: form.name, email: form.email, linkedin: form.linkedin || null, resume_url: form.resumeUrl, notes: form.notes, stage_id: firstStageId || null, status: "pending_confirmation" },
+  ]).select().single();
   if (error) throw new Error(`Failed submitting candidate: ${error.message}`);
+
+  // The submission still exists even if this fails -- surface the error so
+  // the recruiter knows to follow up rather than assuming the candidate
+  // was emailed when they weren't.
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-candidate-confirmation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ candidateId: data.id }),
+  });
+  const body = await res.json();
+  if (!res.ok || !body.ok) {
+    throw new Error(`Candidate was submitted, but the confirmation email failed to send: ${body.error || "unknown error"}. Contact support.`);
+  }
 }
 
 async function fetchMyCandidates(recruiterId) {
@@ -774,7 +792,7 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
 }
 
 // ---------- submit candidate form ----------
-function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
+function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted, session }) {
   const [form, setForm] = useState({ name: "", email: "", linkedin: "", notes: "" });
   const [resumeFile, setResumeFile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -801,7 +819,7 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
     setError("");
     try {
       const resumeUrl = await uploadResume(recruiterId, resumeFile);
-      await submitCandidate(role.id, recruiterId, firstStageId, { ...form, resumeUrl });
+      await submitCandidate(role.id, recruiterId, firstStageId, { ...form, resumeUrl }, session);
       setDone(true);
       onSubmitted && onSubmitted();
     } catch (err) {
@@ -816,8 +834,8 @@ function SubmitCandidateForm({ role, firstStageId, recruiterId, onSubmitted }) {
   if (done) {
     return (
       <div style={{ padding: "4px 0" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Candidate submitted</div>
-        <div style={{ fontSize: 13, color: T.sub, marginBottom: 12 }}>{form.name} has been added to {role.name}'s pipeline.</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Confirmation email sent</div>
+        <div style={{ fontSize: 13, color: T.sub, marginBottom: 12 }}>We emailed {form.name} to confirm they're interested in {role.name}. Once they confirm, they'll be added to the pipeline.</div>
         <button onClick={() => { setForm({ name: "", email: "", linkedin: "", notes: "" }); setResumeFile(null); setErrors({}); setDone(false); }} style={{ fontSize: 13, color: T.ink, background: "none", border: "none", textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: T.sans }}>
           Submit another candidate
         </button>
@@ -1009,9 +1027,12 @@ function RoleUpdatesBanner({ messages }) {
   );
 }
 
+const isPendingConfirmation = (c) => (c.status || "").toLowerCase() === "pending_confirmation";
+
 function CandidatePillTone(c) {
   if (isPlaced(c)) return "placed";
   if (isRejected(c)) return "rejected";
+  if (isPendingConfirmation(c)) return "gold";
   return "live";
 }
 
@@ -1024,7 +1045,7 @@ function MyCandidateCard({ candidate, roleName, stageName, feedbackMessages, onS
           <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{candidate.name}</div>
           {roleName && <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{roleName}</div>}
         </div>
-        <Pill tone={CandidatePillTone(candidate)}>{isPlaced(candidate) ? "Placed" : isRejected(candidate) ? "Rejected" : stageName || "In review"}</Pill>
+        <Pill tone={CandidatePillTone(candidate)}>{isPlaced(candidate) ? "Placed" : isRejected(candidate) ? "Rejected" : isPendingConfirmation(candidate) ? "Awaiting confirmation" : stageName || "In review"}</Pill>
       </div>
       <div style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>submitted {new Date(candidate.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
       {showThread && (
@@ -1285,7 +1306,7 @@ function RoleWorkspace({ role, company, recruiterId, session, onBack, onOpenWelc
         <div>
           {!readOnly && (
             <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
-              <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} onSubmitted={load} />
+              <SubmitCandidateForm role={role} firstStageId={detail.stages[0] ? detail.stages[0].id : null} recruiterId={recruiterId} onSubmitted={load} session={session} />
             </div>
           )}
 
