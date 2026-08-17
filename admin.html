@@ -268,6 +268,51 @@ async function fetchTable(table, opts = {}) {
   return data || [];
 }
 
+async function fetchRoleFullDetails(roleIds) {
+  if (roleIds.length === 0) return { qualitiesByRole: {}, traitsByRole: {}, referencesByRole: {}, questionsByRole: {}, stagesByRole: {} };
+  const [qualities, traits, references, questions, stages] = await Promise.all([
+    supabaseClient.from("role_qualities").select("*").in("role_id", roleIds),
+    supabaseClient.from("role_traits_to_avoid").select("*").in("role_id", roleIds),
+    supabaseClient.from("role_candidate_references").select("*").in("role_id", roleIds),
+    supabaseClient.from("role_questions").select("*").in("role_id", roleIds),
+    supabaseClient.from("role_stages").select("*").in("role_id", roleIds).order("position"),
+  ]);
+  const groupBy = (rows) => {
+    const map = {};
+    (rows || []).forEach((row) => {
+      if (!map[row.role_id]) map[row.role_id] = [];
+      map[row.role_id].push(row);
+    });
+    return map;
+  };
+  return {
+    qualitiesByRole: groupBy(qualities.data),
+    traitsByRole: groupBy(traits.data),
+    referencesByRole: groupBy(references.data),
+    questionsByRole: groupBy(questions.data),
+    stagesByRole: groupBy(stages.data),
+  };
+}
+
+function Modal({ onClose, children, width = 620 }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(17,18,20,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 26, width: "100%", maxWidth: width, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({ label, children }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: T.faint, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.55 }}>{children}</div>
+    </div>
+  );
+}
+
 async function sendAdminMessage(session, roleId, candidateId, recruiterId, body) {
   const { error } = await supabaseClient.from("messages").insert([
     { role_id: roleId, candidate_id: candidateId || null, recruiter_id: recruiterId || null, sender_id: session.user.id, sender_type: "admin", body },
@@ -337,9 +382,129 @@ function OverviewTab({ data, onJump }) {
 }
 
 // ---------- companies ----------
+function CompanyDetailModal({ company, roles, onClose, onApprove }) {
+  const [loading, setLoading] = useState(true);
+  const [details, setDetails] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchRoleFullDetails(roles.map((r) => r.id))
+      .then(setDetails)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [company.id]);
+
+  const approve = async () => {
+    setApproving(true);
+    try {
+      await onApprove(company.id);
+    } catch (err) {
+      alert(err.message || "Something went wrong approving this company.");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+        <div>
+          <div style={{ fontSize: 19, fontWeight: 700, color: T.ink }}>{company.name || "Unnamed company"}</div>
+          <div style={{ fontSize: 13, color: T.sub, marginTop: 2 }}>{fullName(company)} &middot; {company.email || "—"}</div>
+        </div>
+        {!company.verified && (
+          <button
+            onClick={approve}
+            disabled={approving}
+            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: T.ink, border: "none", borderRadius: 8, padding: "9px 14px", cursor: approving ? "default" : "pointer", opacity: approving ? 0.6 : 1, fontFamily: T.sans, flexShrink: 0 }}
+          >
+            <Icon name="check" size={12} /> {approving ? "Approving…" : "Approve company"}
+          </button>
+        )}
+      </div>
+
+      <DetailSection label="Company">
+        {[
+          company.employee_count ? `${company.employee_count} employees` : null,
+          [company.city, company.state].filter(Boolean).join(", ") || null,
+          `Signed up ${shortDate(company.created_at)}`,
+        ].filter(Boolean).join(" · ")}
+      </DetailSection>
+
+      {loading ? (
+        <div style={{ fontSize: 13, color: T.sub }}>{"Loading role details…"}</div>
+      ) : error ? (
+        <div style={{ fontSize: 13, color: T.red }}>{error}</div>
+      ) : roles.length === 0 ? (
+        <div style={{ fontSize: 13, color: T.sub }}>No roles posted yet.</div>
+      ) : (
+        roles.map((role) => (
+          <div key={role.id} style={{ borderTop: `1px solid ${T.line}`, marginTop: 18, paddingTop: 18 }}>
+            <div style={{ fontSize: 15.5, fontWeight: 700, color: T.ink, marginBottom: 12 }}>{role.name || "Untitled role"}</div>
+
+            <DetailSection label="Salary range">{money(role.min_salary)} &ndash; {money(role.max_salary)}</DetailSection>
+
+            {role.description && <DetailSection label="Description"><div style={{ whiteSpace: "pre-wrap" }}>{role.description}</div></DetailSection>}
+            {role.hiring_goals && <DetailSection label="Hiring goal">{role.hiring_goals}</DetailSection>}
+
+            {(details.stagesByRole[role.id] || []).length > 0 && (
+              <DetailSection label="Interview stages">
+                {details.stagesByRole[role.id].map((s) => s.name).join(" → ")}
+              </DetailSection>
+            )}
+
+            {(details.qualitiesByRole[role.id] || []).length > 0 && (
+              <DetailSection label="Ideal candidate qualities">
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {details.qualitiesByRole[role.id].map((q, i) => <li key={i}>{q.quality}</li>)}
+                </ul>
+              </DetailSection>
+            )}
+
+            {(details.traitsByRole[role.id] || []).length > 0 && (
+              <DetailSection label="Traits to avoid">
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {details.traitsByRole[role.id].map((t, i) => <li key={i}>{t.trait}</li>)}
+                </ul>
+              </DetailSection>
+            )}
+
+            {(details.referencesByRole[role.id] || []).length > 0 && (
+              <DetailSection label="Example candidate profiles">
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {details.referencesByRole[role.id].map((r, i) => (
+                    <li key={i}>
+                      {r.note || "—"}
+                      {r.linkedin && <> &middot; <a href={externalUrl(r.linkedin)} target="_blank" rel="noreferrer" style={{ color: T.blue }}>LinkedIn</a></>}
+                    </li>
+                  ))}
+                </ul>
+              </DetailSection>
+            )}
+
+            {(details.questionsByRole[role.id] || []).length > 0 && (
+              <DetailSection label="Candidate questions">
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {details.questionsByRole[role.id].map((q, i) => <li key={i}>{q.question}</li>)}
+                </ul>
+              </DetailSection>
+            )}
+
+            {role.recruiting_advice && <DetailSection label="Recruiting advice"><div style={{ whiteSpace: "pre-wrap" }}>{role.recruiting_advice}</div></DetailSection>}
+            {role.hm_intro && <DetailSection label="Hiring manager intro"><div style={{ whiteSpace: "pre-wrap" }}>{role.hm_intro}</div></DetailSection>}
+            {role.welcome_message && <DetailSection label="Welcome message"><div style={{ whiteSpace: "pre-wrap" }}>{role.welcome_message}</div></DetailSection>}
+          </div>
+        ))
+      )}
+    </Modal>
+  );
+}
+
 function CompaniesTab({ data, onJump, onApprove }) {
   const [q, setQ] = useState("");
   const [approvingId, setApprovingId] = useState(null);
+  const [viewingCompany, setViewingCompany] = useState(null);
   const approve = async (id) => {
     setApprovingId(id);
     try {
@@ -368,7 +533,7 @@ function CompaniesTab({ data, onJump, onApprove }) {
         <div className="mp-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
           {rows.map((c) => (
             <div key={c.id} style={{ border: `1px solid ${T.line}`, borderRadius: 14, padding: 18, background: "#fff", fontFamily: T.sans }}>
-              <div onClick={() => onJump("roles", { companyId: c.id })} style={{ cursor: "pointer" }}>
+              <div onClick={() => setViewingCompany(c)} style={{ cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                   <Avatar label={c.name || "C"} />
                   <div style={{ minWidth: 0 }}>
@@ -418,6 +583,17 @@ function CompaniesTab({ data, onJump, onApprove }) {
             </div>
           ))}
         </div>
+      )}
+      {viewingCompany && (
+        <CompanyDetailModal
+          company={viewingCompany}
+          roles={data.roles.filter((r) => r.company_id === viewingCompany.id)}
+          onClose={() => setViewingCompany(null)}
+          onApprove={async (id) => {
+            await onApprove(id);
+            setViewingCompany((prev) => (prev ? { ...prev, verified: true } : prev));
+          }}
+        />
       )}
     </div>
   );
