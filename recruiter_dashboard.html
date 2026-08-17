@@ -343,7 +343,20 @@ async function getMyRecruiter(session) {
 async function fetchLiveRoles() {
   const { data, error } = await supabaseClient.from("roles").select("*").eq("status", "live").order("created_at", { ascending: false });
   if (error) throw new Error(`Failed loading roles: ${error.message}`);
-  return data || [];
+  const roles = data || [];
+  if (roles.length === 0) return roles;
+
+  // A role isn't shown to Recruiters until its Employer has been
+  // admin-approved -- otherwise an unverified/unvetted company could
+  // start collecting candidates before anyone's checked them out.
+  const companyIds = [...new Set(roles.map((r) => r.company_id))];
+  const { data: companies, error: companyErr } = await supabaseClient
+    .from("companies")
+    .select("id, verified")
+    .in("id", companyIds);
+  if (companyErr) throw new Error(`Failed loading companies: ${companyErr.message}`);
+  const verifiedIds = new Set((companies || []).filter((c) => c.verified).map((c) => c.id));
+  return roles.filter((r) => verifiedIds.has(r.company_id));
 }
 
 async function fetchRolesByIds(roleIds) {

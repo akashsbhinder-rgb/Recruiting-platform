@@ -814,7 +814,7 @@
       const lookupRecruiter = () =>
         supabaseClient
           .from('recruiters')
-          .select('id, verified')
+          .select('id, verified, years_experience')
           .eq('auth_user_id', session.user.id)
           .maybeSingle();
 
@@ -837,6 +837,21 @@
 
       state.recruiterId = recruiter.id;
       state.recruiterVerified = recruiter.verified;
+
+      // Already completed this wizard before (years_experience is only
+      // set once it's submitted) -- nothing left to do here. A verified
+      // recruiter has no reason to be on this page; an unverified one
+      // should see the same pending screen they saw right after
+      // submitting, not be made to redo the whole wizard on a reload.
+      if (recruiter.years_experience) {
+        if (recruiter.verified) {
+          window.location.replace(RECRUITER_DASHBOARD_URL);
+          return;
+        }
+        state.submitted = true;
+        render();
+        return;
+      }
 
       const savedDraft = localStorage.getItem(draftKey());
       if (savedDraft) {

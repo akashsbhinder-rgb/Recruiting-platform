@@ -182,7 +182,6 @@ async function submitRoleToSupabase(data, session) {
         description: data.roleDescription,
         min_salary: Number(data.minSalary),
         max_salary: Number(data.maxSalary),
-        commission_pct: Number(data.commissionPct),
         hiring_goals: data.hiringGoals || null,
         recruiting_advice: data.recruitingAdvice,
         hm_intro: data.hmIntro,
@@ -236,7 +235,6 @@ const initialData = {
   roleDescription: "",
   minSalary: "",
   maxSalary: "",
-  commissionPct: "17.5",
   stages: [REQUIRED_FIRST_STAGE],
   hiringGoals: "",
   idealQualities: ["", "", ""],
@@ -636,7 +634,6 @@ function validateStep(key, data) {
         isFilled(data.roleDescription) &&
         isFilled(data.minSalary) &&
         isFilled(data.maxSalary) &&
-        isFilled(data.commissionPct) &&
         countFilled(data.stages.slice(1)) >= 1
       );
     case "candidates":
@@ -678,7 +675,6 @@ function Review({ data, goTo }) {
         </div>
         <div style={{ fontSize: 14, color: "#777", marginBottom: 4 }}>
           {money(data.minSalary)} – {money(data.maxSalary)}
-          {data.commissionPct ? ` · ${data.commissionPct}% recruiter bonus` : ""}
           {data.hiringGoals ? ` · Target: ${data.hiringGoals}` : ""}
         </div>
         <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
@@ -831,12 +827,41 @@ function EmployerOnboarding() {
       }
       setSession(session);
 
-      const { data: verifyRow } = await supabaseClient
+      const { data: existingCompany } = await supabaseClient
         .from("companies")
-        .select("verified")
+        .select("id, verified, name, employee_count, city, state")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
-      setCompanyVerified(!!(verifyRow && verifyRow.verified));
+      const verified = !!(existingCompany && existingCompany.verified);
+      setCompanyVerified(verified);
+
+      // Already submitted a role before -- this wizard has nothing left to
+      // do. A verified company has no reason to be here at all; an
+      // unverified one should see the same "pending review" screen they
+      // saw right after submitting, not be made to redo the whole wizard
+      // just because they reloaded the page.
+      if (existingCompany) {
+        const { data: existingRole } = await supabaseClient
+          .from("roles")
+          .select("id, name")
+          .eq("company_id", existingCompany.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingRole) {
+          if (verified) {
+            window.location.replace("dashboard.html");
+            return;
+          }
+          set({
+            companyName: existingCompany.name || "",
+            roleName: existingRole.name || "",
+          });
+          setSubmitted(true);
+          return;
+        }
+      }
 
       // If they left mid-way through this wizard before (closed the tab,
       // browser crash, etc.), pick back up exactly where they left off
@@ -855,12 +880,6 @@ function EmployerOnboarding() {
           // corrupt draft -- fall through to the normal prefill below
         }
       }
-
-      const { data: existingCompany } = await supabaseClient
-        .from("companies")
-        .select("name, employee_count, city, state")
-        .eq("auth_user_id", session.user.id)
-        .maybeSingle();
 
       if (existingCompany) {
         set({
@@ -933,7 +952,7 @@ function EmployerOnboarding() {
         <div style={{ maxWidth: 520, margin: "120px auto", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Role submitted</div>
           <div style={{ fontSize: 14, color: "#777", marginBottom: companyVerified ? 20 : 10 }}>
-            {data.roleName || "Your role"} at {data.companyName || "your company"} is now live for recruiters to view.
+            {data.roleName || "Your role"} at {data.companyName || "your company"} has been submitted.
           </div>
           {!companyVerified && (
             <div style={{ fontSize: 14, color: "#777", marginBottom: 20 }}>
@@ -1048,18 +1067,6 @@ function EmployerOnboarding() {
                 </Field>
               </div>
             </div>
-            <Field
-              label="Recruiter bonus"
-              required
-              hint="The percentage of first-year salary paid to the recruiter who places a candidate in this role. This is what recruiters see listed on the role — set it per role, like a normal referral bonus."
-            >
-              <TextInput
-                type="number"
-                value={data.commissionPct}
-                placeholder="Ex. 17.5"
-                onChange={(e) => set({ commissionPct: e.target.value })}
-              />
-            </Field>
             <Field
               label="Interview stages"
               required
