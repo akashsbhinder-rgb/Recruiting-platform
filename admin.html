@@ -342,7 +342,13 @@ function CompaniesTab({ data, onJump, onApprove }) {
   const [approvingId, setApprovingId] = useState(null);
   const approve = async (id) => {
     setApprovingId(id);
-    try { await onApprove(id); } finally { setApprovingId(null); }
+    try {
+      await onApprove(id);
+    } catch (err) {
+      alert(err.message || "Something went wrong approving this company.");
+    } finally {
+      setApprovingId(null);
+    }
   };
   const roleCountByCompany = {};
   data.roles.forEach((r) => { roleCountByCompany[r.company_id] = (roleCountByCompany[r.company_id] || 0) + 1; });
@@ -423,7 +429,13 @@ function RecruitersTab({ data, onJump, onApprove }) {
   const [approvingId, setApprovingId] = useState(null);
   const approve = async (id) => {
     setApprovingId(id);
-    try { await onApprove(id); } finally { setApprovingId(null); }
+    try {
+      await onApprove(id);
+    } catch (err) {
+      alert(err.message || "Something went wrong approving this recruiter.");
+    } finally {
+      setApprovingId(null);
+    }
   };
   const candidateCountByRecruiter = {};
   data.candidates.forEach((c) => { if (c.recruiter_id) candidateCountByRecruiter[c.recruiter_id] = (candidateCountByRecruiter[c.recruiter_id] || 0) + 1; });
