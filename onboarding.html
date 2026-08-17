@@ -946,17 +946,19 @@ function EmployerOnboarding() {
           >
             Back to review
           </button>
-          <a
-            href="dashboard.html"
-            style={{
-              ...nextBtnStyle,
-              display: "inline-block",
-              marginLeft: 10,
-              textDecoration: "none",
-            }}
-          >
-            Go to dashboard
-          </a>
+          {companyVerified && (
+            <a
+              href="dashboard.html"
+              style={{
+                ...nextBtnStyle,
+                display: "inline-block",
+                marginLeft: 10,
+                textDecoration: "none",
+              }}
+            >
+              Go to dashboard
+            </a>
+          )}
         </div>
       </div>
     );

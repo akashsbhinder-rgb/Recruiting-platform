@@ -297,6 +297,7 @@
     const state = {
       session: null,
       recruiterId: null,
+      recruiterVerified: null,
       stepIndex: 0,
       data: {
         firmName: '',
@@ -350,13 +351,15 @@
           "Thanks! Our admin team will review your profile and approve it shortly — keep an eye on your email."
         )
       );
-      box.appendChild(
-        el(
-          'a',
-          { href: RECRUITER_DASHBOARD_URL, className: 'next-btn', style: 'display:inline-block;text-decoration:none;' },
-          'Go to dashboard'
-        )
-      );
+      if (state.recruiterVerified) {
+        box.appendChild(
+          el(
+            'a',
+            { href: RECRUITER_DASHBOARD_URL, className: 'next-btn', style: 'display:inline-block;text-decoration:none;' },
+            'Go to dashboard'
+          )
+        );
+      }
       wrap.appendChild(box);
       return wrap;
     }
@@ -810,7 +813,7 @@
 
       const { data: recruiter, error } = await supabaseClient
         .from('recruiters')
-        .select('id')
+        .select('id, verified')
         .eq('auth_user_id', session.user.id)
         .maybeSingle();
 
@@ -821,6 +824,7 @@
       }
 
       state.recruiterId = recruiter.id;
+      state.recruiterVerified = recruiter.verified;
 
       const savedDraft = localStorage.getItem(draftKey());
       if (savedDraft) {
