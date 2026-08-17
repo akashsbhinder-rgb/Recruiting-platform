@@ -504,11 +504,18 @@
 
     // Tries to create the account; if that email is already registered,
     // transparently logs in with the same password instead of erroring.
-    async function signUpOrLogIn(email, password) {
+    async function signUpOrLogIn(email, password, pending) {
+      // Metadata rides along on the Supabase Auth user itself, not just
+      // localStorage -- if someone confirms the magic link on a different
+      // device/browser than they signed up on (e.g. desktop signup, phone
+      // mail app), localStorage won't be there, but this will be.
       const signUpResult = await supabaseClient.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname,
+          data: { pending_signup: pending },
+        }
       });
 
       if (!signUpResult.error) return { kind: 'signed_up', ...signUpResult };
@@ -561,7 +568,7 @@
         email
       };
 
-      const result = await signUpOrLogIn(email, cPassword.value);
+      const result = await signUpOrLogIn(email, cPassword.value, pending);
 
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
@@ -627,7 +634,7 @@
         email
       };
 
-      const result = await signUpOrLogIn(email, aPassword.value);
+      const result = await signUpOrLogIn(email, aPassword.value, pending);
 
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
@@ -798,6 +805,17 @@
       if (pendingRaw) {
         pillsWrap.classList.add('hidden');
         await completeSignup(session, JSON.parse(pendingRaw));
+        return;
+      }
+
+      // Same signup, no local record of it -- most likely the magic link
+      // was confirmed on a different device/browser than the one used to
+      // sign up. Fall back to the metadata stored on the auth user itself
+      // rather than leaving them stuck with no companies/recruiters row.
+      const metaPending = session.user.user_metadata && session.user.user_metadata.pending_signup;
+      if (metaPending) {
+        pillsWrap.classList.add('hidden');
+        await completeSignup(session, metaPending);
         return;
       }
 
