@@ -1011,16 +1011,32 @@ function AdminApp() {
     }
   };
 
+  const notifyApproved = async (email, type) => {
+    if (!email) return;
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/notify-approved`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+        body: JSON.stringify({ email, type }),
+      });
+    } catch (err) {
+      // Best-effort -- the approval itself already succeeded, don't let a
+      // failed notification email surface as an error to the admin.
+    }
+  };
+
   const approveCompany = async (id) => {
     const { error } = await supabaseClient.from("companies").update({ verified: true }).eq("id", id);
     if (error) throw new Error(error.message);
     await refreshQuietly();
+    notifyApproved(data.companyById[id] && data.companyById[id].email, "company");
   };
 
   const approveRecruiter = async (id) => {
     const { error } = await supabaseClient.from("recruiters").update({ verified: true }).eq("id", id);
     if (error) throw new Error(error.message);
     await refreshQuietly();
+    notifyApproved(data.recruiterById[id] && data.recruiterById[id].email, "recruiter");
   };
 
   useEffect(() => { if (authorized) loadAll(); }, [authorized]);
