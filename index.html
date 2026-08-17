@@ -708,22 +708,44 @@
     //   - a recruiter who hasn't -> the recruiter onboarding wizard
     // Uses replace() rather than href so the onboarding page doesn't linger
     // in browser history -- pressing Back shouldn't land you back on it.
-    async function routeSignedInUser(session) {
+    async function findCompanyOrRecruiter(userId) {
       const { data: company } = await supabaseClient
-        .from("companies").select("id").eq("auth_user_id", session.user.id).maybeSingle();
-      if (company) {
+        .from("companies").select("id").eq("auth_user_id", userId).maybeSingle();
+      if (company) return { kind: "company", company };
+
+      const { data: recruiter } = await supabaseClient
+        .from("recruiters").select("id, years_experience").eq("auth_user_id", userId).maybeSingle();
+      if (recruiter) return { kind: "recruiter", recruiter };
+
+      return null;
+    }
+
+    async function routeSignedInUser(session) {
+      let found = await findCompanyOrRecruiter(session.user.id);
+
+      // A freshly-loaded session can occasionally not have its auth token
+      // fully attached to outgoing requests yet, which makes RLS-gated
+      // lookups come back empty even for a real, existing account -- not
+      // an error, just nothing found. Retry once before concluding this
+      // is actually a brand-new user and sending them to company
+      // onboarding by default, which is wrong for an existing recruiter
+      // or an already-set-up company.
+      if (!found) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        found = await findCompanyOrRecruiter(session.user.id);
+      }
+
+      if (found && found.kind === "company") {
         const { data: existingRole } = await supabaseClient
-          .from("roles").select("id").eq("company_id", company.id).limit(1).maybeSingle();
+          .from("roles").select("id").eq("company_id", found.company.id).limit(1).maybeSingle();
         window.location.replace(existingRole ? DASHBOARD_URL : ONBOARDING_URL);
         return;
       }
 
-      const { data: recruiter } = await supabaseClient
-        .from("recruiters").select("id, years_experience").eq("auth_user_id", session.user.id).maybeSingle();
-      if (recruiter) {
+      if (found && found.kind === "recruiter") {
         // years_experience is only set once the onboarding steps are
         // completed and submitted -- use it as the "profile finished" signal.
-        window.location.replace(recruiter.years_experience ? RECRUITER_DASHBOARD_URL : RECRUITER_ONBOARDING_URL);
+        window.location.replace(found.recruiter.years_experience ? RECRUITER_DASHBOARD_URL : RECRUITER_ONBOARDING_URL);
         return;
       }
 

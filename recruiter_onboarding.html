@@ -811,11 +811,23 @@
       }
       state.session = session;
 
-      const { data: recruiter, error } = await supabaseClient
-        .from('recruiters')
-        .select('id, verified')
-        .eq('auth_user_id', session.user.id)
-        .maybeSingle();
+      const lookupRecruiter = () =>
+        supabaseClient
+          .from('recruiters')
+          .select('id, verified')
+          .eq('auth_user_id', session.user.id)
+          .maybeSingle();
+
+      let { data: recruiter, error } = await lookupRecruiter();
+
+      // A freshly-loaded session can occasionally not have its auth token
+      // fully attached to outgoing requests yet, making this come back
+      // empty even though the row genuinely exists. Retry once before
+      // showing an error that tells a real recruiter to sign up again.
+      if (!error && !recruiter) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        ({ data: recruiter, error } = await lookupRecruiter());
+      }
 
       if (error || !recruiter) {
         document.getElementById('root').innerHTML =
