@@ -14,7 +14,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const NOTIFY_TO_EMAIL = "akashmplacement@gmail.com";
+const NOTIFY_TO_EMAILS = ["akashmplacement@gmail.com", "akash@makeplacement.com"];
 // Resend requires the "from" address to be on a domain you've verified in
 // your Resend account. Until you verify a domain, Resend's own sandbox
 // address works for testing: onboarding@resend.dev
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         from: NOTIFY_FROM_EMAIL,
-        to: [NOTIFY_TO_EMAIL],
+        to: NOTIFY_TO_EMAILS,
         subject: `New lead: ${name} (${typeLabel})`,
         text: `New lead captured on MakePlacement.\n\nType: ${typeLabel}\nName: ${name}\nEmail: ${email}\n\nThey haven't necessarily finished signing up yet -- this fires as soon as they fill in their name and work email.`,
       }),

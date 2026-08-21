@@ -1696,6 +1696,44 @@ function WelcomeModal({ role, company, onClose }) {
   );
 }
 
+function SetPasswordModal({ onCancel, onSaved }) {
+  const [value, setValue] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    if (value.length < 8) { setError("Must be at least 8 characters."); return; }
+    if (value !== confirm) { setError("Passwords don't match."); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const { error: err } = await supabaseClient.auth.updateUser({ password: value, data: { password_set: true } });
+      if (err) throw err;
+      onSaved();
+    } catch (err) {
+      setError(err.message || "Something went wrong saving your password.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onCancel} width={420}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: T.ink }}>Set a password</div>
+      <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 18, lineHeight: 1.5 }}>
+        You're signed in with an email link. Add a password so you can log in that way too — your saved profile and data stay exactly as they are either way.
+      </div>
+      <input type="password" autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="New password" style={{ ...inputStyle, marginBottom: 10 }} />
+      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Confirm password" style={inputStyle} />
+      {error && <div style={{ color: T.red, fontSize: 12.5, marginTop: 10 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
+        <SecondaryButton onClick={onCancel} disabled={saving}>Not now</SecondaryButton>
+        <PrimaryButton onClick={submit} disabled={saving}>{saving ? "Saving…" : "Save password"}</PrimaryButton>
+      </div>
+    </Modal>
+  );
+}
+
 // ---------- main ----------
 function RecruiterDashboard() {
   const [session, setSession] = useState(undefined);
@@ -1707,11 +1745,16 @@ function RecruiterDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [adminViewMode, setAdminViewMode] = useState(false);
+  const [hasPassword, setHasPassword] = useState(true);
+  const [pwBannerDismissed, setPwBannerDismissed] = useState(true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { window.location.href = LOGIN_URL; return; }
       setSession(session);
+      setHasPassword(!!(session.user.user_metadata && session.user.user_metadata.password_set));
+      setPwBannerDismissed(localStorage.getItem(`mp_pw_banner_dismissed_${session.user.id}`) === "1");
       try {
         const params = new URLSearchParams(window.location.search);
         const viewRecruiterId = params.get("admin_view_recruiter");
@@ -1742,6 +1785,11 @@ function RecruiterDashboard() {
   const handleLogout = async () => {
     await supabaseClient.auth.signOut();
     window.location.href = LOGIN_URL;
+  };
+
+  const dismissPwBanner = () => {
+    if (session) localStorage.setItem(`mp_pw_banner_dismissed_${session.user.id}`, "1");
+    setPwBannerDismissed(true);
   };
 
   const handleApplied = (role, company) => {
@@ -1888,6 +1936,13 @@ function RecruiterDashboard() {
           This profile is pending admin review — the recruiter themselves can't access this dashboard until you approve them.
         </div>
       )}
+      {!hasPassword && !pwBannerDismissed && (
+        <div style={{ background: "#faf1e0", color: T.ink, padding: "10px 20px", fontSize: 13, display: "flex", justifyContent: "center", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <span>You're signed in with an email link and don't have a password yet.</span>
+          <a onClick={() => setShowPasswordModal(true)} style={{ cursor: "pointer", textDecoration: "underline", fontWeight: 600, color: "inherit" }}>Set a password</a>
+          <a onClick={dismissPwBanner} style={{ cursor: "pointer", textDecoration: "underline", color: "inherit" }}>Dismiss</a>
+        </div>
+      )}
       <StripeConnectBanner recruiter={recruiter} session={session} />
       <TopNav
         tab={tab}
@@ -1908,6 +1963,12 @@ function RecruiterDashboard() {
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {welcomeModal && <WelcomeModal role={welcomeModal.role} company={welcomeModal.company} onClose={() => setWelcomeModal(null)} />}
+      {showPasswordModal && (
+        <SetPasswordModal
+          onCancel={() => setShowPasswordModal(false)}
+          onSaved={() => { setHasPassword(true); setShowPasswordModal(false); }}
+        />
+      )}
     </div>
   );
 }

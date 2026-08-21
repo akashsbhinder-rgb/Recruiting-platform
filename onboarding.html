@@ -169,6 +169,7 @@ async function submitRoleToSupabase(data, session) {
       employee_count: data.employeeCount || null,
       city: data.companyCity || null,
       state: data.companyState || null,
+      phone: data.companyPhone || null,
     })
     .eq("id", company.id);
   if (nameErr) throw new Error(`Failed saving company info: ${nameErr.message}`);
@@ -231,6 +232,7 @@ const initialData = {
   employeeCount: "",
   companyCity: "",
   companyState: "",
+  companyPhone: "",
   roleName: "",
   roleDescription: "",
   minSalary: "",
@@ -630,6 +632,7 @@ function validateStep(key, data) {
         isFilled(data.employeeCount) &&
         isFilled(data.companyCity) &&
         isFilled(data.companyState) &&
+        isFilled(data.companyPhone) &&
         isFilled(data.roleName) &&
         isFilled(data.roleDescription) &&
         isFilled(data.minSalary) &&
@@ -804,9 +807,73 @@ function draftKey(session) {
 function hasMeaningfulDraft(data, stepIndex) {
   if (!data) return false;
   if (stepIndex > 0) return true;
-  return [data.roleName, data.roleDescription, data.minSalary, data.maxSalary]
-    .some((v) => typeof v === "string" && v.trim().length > 0)
+  return [
+    data.companyName, data.employeeCount, data.companyCity, data.companyState, data.companyPhone,
+    data.roleName, data.roleDescription, data.minSalary, data.maxSalary,
+  ].some((v) => typeof v === "string" && v.trim().length > 0)
     || (data.idealQualities || []).some((v) => typeof v === "string" && v.trim().length > 0);
+}
+
+// A user who signed in through a magic link has no password yet --
+// user_metadata.password_set is only ever set once they add one (see
+// handleSavePassword below). Offered, never required, so a slow or
+// broken password save can never be the thing standing between someone
+// and their already-saved onboarding data.
+function SetPasswordPrompt({ onSave, onSkip, saving, error }) {
+  const [value, setValue] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const tooShort = value.length > 0 && value.length < 8;
+  const mismatch = confirm.length > 0 && value !== confirm;
+  const canSave = value.length >= 8 && value === confirm;
+
+  return (
+    <div style={{ textAlign: "left", border: "1px solid #eee", borderRadius: 12, padding: 20, marginTop: 24, background: "#fafaf9" }}>
+      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Add a password (optional)</div>
+      <div style={{ fontSize: 13, color: "#777", marginBottom: 16 }}>
+        You signed in with an email link. Add a password if you'd rather log in that way next time — or skip and keep using email links.
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <TextInput
+          type={showPw ? "text" : "password"}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="New password"
+          style={{ flex: 1 }}
+        />
+        <button type="button" onClick={() => setShowPw((s) => !s)} style={{ ...removeBtnStyle, width: 64 }}>
+          {showPw ? "Hide" : "Show"}
+        </button>
+      </div>
+      <TextInput
+        type={showPw ? "text" : "password"}
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        placeholder="Confirm password"
+        style={{ marginBottom: 8 }}
+      />
+      {tooShort && <div style={{ fontSize: 12.5, color: "#b42318", marginBottom: 8 }}>Must be at least 8 characters.</div>}
+      {mismatch && <div style={{ fontSize: 12.5, color: "#b42318", marginBottom: 8 }}>Passwords don't match.</div>}
+      {error && <div style={{ fontSize: 12.5, color: "#b42318", marginBottom: 8 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 8 }}>
+        <button
+          type="button"
+          onClick={() => onSave(value)}
+          disabled={!canSave || saving}
+          style={{ ...nextBtnStyle, opacity: !canSave || saving ? 0.5 : 1, cursor: !canSave || saving ? "default" : "pointer" }}
+        >
+          {saving ? "Saving…" : "Save password"}
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          style={{ background: "none", border: "none", color: "#777", fontSize: 13, textDecoration: "underline", cursor: "pointer" }}
+        >
+          Skip for now
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function EmployerOnboarding() {
@@ -818,6 +885,12 @@ function EmployerOnboarding() {
   const [session, setSession] = useState(undefined);
   const [draftRestored, setDraftRestored] = useState(false);
   const [companyVerified, setCompanyVerified] = useState(false);
+  const [contactFirstName, setContactFirstName] = useState("");
+  const [hasPassword, setHasPassword] = useState(false);
+  const [pwSkipped, setPwSkipped] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState("");
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
@@ -826,14 +899,20 @@ function EmployerOnboarding() {
         return;
       }
       setSession(session);
+      setHasPassword(!!(session.user.user_metadata && session.user.user_metadata.password_set));
 
       const { data: existingCompany } = await supabaseClient
         .from("companies")
-        .select("id, verified, name, employee_count, city, state")
+        .select("id, verified, name, employee_count, city, state, phone, contact_first_name")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
       const verified = !!(existingCompany && existingCompany.verified);
       setCompanyVerified(verified);
+      setContactFirstName(
+        (existingCompany && existingCompany.contact_first_name) ||
+        (session.user.user_metadata && session.user.user_metadata.pending_signup && session.user.user_metadata.pending_signup.firstName) ||
+        ""
+      );
 
       // Already submitted a role before -- this wizard has nothing left to
       // do. A verified company has no reason to be here at all; an
@@ -887,6 +966,7 @@ function EmployerOnboarding() {
           employeeCount: existingCompany.employee_count || "",
           companyCity: existingCompany.city || "",
           companyState: existingCompany.state || "",
+          companyPhone: existingCompany.phone || "",
         });
       }
     });
@@ -912,6 +992,24 @@ function EmployerOnboarding() {
       window.removeEventListener("visibilitychange", save);
     };
   }, [session, data, stepIndex, submitted]);
+
+  const handleSavePassword = async (value) => {
+    setPwSaving(true);
+    setPwError("");
+    try {
+      const { error } = await supabaseClient.auth.updateUser({
+        password: value,
+        data: { password_set: true },
+      });
+      if (error) throw error;
+      setPwSaved(true);
+      setHasPassword(true);
+    } catch (err) {
+      setPwError(err.message || "Something went wrong saving your password.");
+    } finally {
+      setPwSaving(false);
+    }
+  };
 
   const handleSubmitRole = async () => {
     setSubmitting(true);
@@ -978,6 +1076,19 @@ function EmployerOnboarding() {
               Go to dashboard
             </a>
           )}
+          {!hasPassword && !pwSkipped && !pwSaved && (
+            <SetPasswordPrompt
+              onSave={handleSavePassword}
+              onSkip={() => setPwSkipped(true)}
+              saving={pwSaving}
+              error={pwError}
+            />
+          )}
+          {pwSaved && (
+            <div style={{ fontSize: 13, color: "#2a7a3b", marginTop: 20 }}>
+              Password saved — you can log in with your email and password next time.
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1006,6 +1117,11 @@ function EmployerOnboarding() {
         <div style={{ fontSize: 13, color: "#9a9a9a", marginBottom: 8 }}>
           {stepIndex + 1}/{steps.length}
         </div>
+        {stepIndex === 0 && contactFirstName && (
+          <div style={{ fontSize: 14.5, color: "#777", marginBottom: 4 }}>
+            Hi {contactFirstName},
+          </div>
+        )}
         <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 6 }}>{step.title}</div>
         <div style={{ fontSize: 14.5, color: "#777", marginBottom: 32 }}>{step.subtitle}</div>
 
@@ -1029,6 +1145,14 @@ function EmployerOnboarding() {
                 city={data.companyCity}
                 state={data.companyState}
                 onChange={(patch) => set(patch)}
+              />
+            </Field>
+            <Field label="Phone number" required hint="A number recruiters and candidates can use to reach you">
+              <TextInput
+                type="tel"
+                value={data.companyPhone}
+                placeholder="e.g. (555) 123-4567"
+                onChange={(e) => set({ companyPhone: e.target.value })}
               />
             </Field>
             <Field label="Role name" required>

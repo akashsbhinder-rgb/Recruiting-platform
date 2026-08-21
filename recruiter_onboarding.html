@@ -298,6 +298,7 @@
       session: null,
       recruiterId: null,
       recruiterVerified: null,
+      contactFirstName: '',
       stepIndex: 0,
       data: {
         firmName: '',
@@ -315,6 +316,14 @@
       submitError: '',
       submitted: false,
       draftRestored: false,
+      hasPassword: false,
+      pwValue: '',
+      pwConfirm: '',
+      pwShow: false,
+      pwSkipped: false,
+      pwSaving: false,
+      pwSaved: false,
+      pwError: '',
     };
 
     const steps = ['firm', 'experience', 'review'];
@@ -331,12 +340,107 @@
       if (typeof data.firmName === 'string' && data.firmName.trim().length > 0) return true;
       if (data.yearsExperience) return true;
       if (Array.isArray(data.industries) && data.industries.length > 0) return true;
+      if (typeof data.phone === 'string' && data.phone.trim().length > 0) return true;
       return false;
     }
 
     function saveDraft() {
       if (!state.session || !state.recruiterId || state.submitted) return;
       localStorage.setItem(draftKey(), JSON.stringify({ data: state.data, stepIndex: state.stepIndex }));
+    }
+
+    // A recruiter who signed in through a magic link has no password yet --
+    // state.hasPassword mirrors user_metadata.password_set, which is only
+    // ever set once they add one. Offered, never required, so a slow or
+    // broken password save can never stand between someone and their
+    // already-saved profile.
+    function buildSetPasswordPrompt() {
+      const wrap = el('div', { style: 'text-align:left;border:1px solid #eee;border-radius:12px;padding:20px;margin-top:24px;background:#f7f7f5;' });
+      wrap.appendChild(el('div', { style: 'font-size:15px;font-weight:600;margin-bottom:4px;color:#17171a;' }, 'Add a password (optional)'));
+      wrap.appendChild(
+        el(
+          'div',
+          { style: 'font-size:13px;color:#777;margin-bottom:16px;' },
+          "You signed in with an email link. Add a password if you'd rather log in that way next time — or skip and keep using email links."
+        )
+      );
+
+      const row = el('div', { style: 'display:flex;gap:8px;margin-bottom:8px;' });
+      const pwInput = el('input', { type: state.pwShow ? 'text' : 'password', placeholder: 'New password', style: 'flex:1;margin-bottom:0;' });
+      pwInput.value = state.pwValue;
+      pwInput.addEventListener('input', (e) => { state.pwValue = e.target.value; });
+      row.appendChild(pwInput);
+      row.appendChild(
+        el(
+          'button',
+          {
+            type: 'button',
+            style: 'border:1px solid #eee;background:#fff;color:#555;border-radius:8px;padding:0 14px;cursor:pointer;font-size:13px;',
+            onClick: () => { state.pwShow = !state.pwShow; render(); },
+          },
+          state.pwShow ? 'Hide' : 'Show'
+        )
+      );
+      wrap.appendChild(row);
+
+      const confirmInput = el('input', { type: state.pwShow ? 'text' : 'password', placeholder: 'Confirm password', style: 'margin-bottom:8px;' });
+      confirmInput.value = state.pwConfirm;
+      confirmInput.addEventListener('input', (e) => { state.pwConfirm = e.target.value; });
+      wrap.appendChild(confirmInput);
+
+      if (state.pwError) {
+        wrap.appendChild(el('div', { style: 'font-size:12.5px;color:#b42318;margin-bottom:8px;' }, state.pwError));
+      }
+
+      const actions = el('div', { style: 'display:flex;gap:16px;align-items:center;margin-top:8px;' });
+      const saveBtn = el('button', { type: 'button', className: 'next-btn', onClick: savePassword }, state.pwSaving ? 'Saving…' : 'Save password');
+      saveBtn.disabled = state.pwSaving;
+      actions.appendChild(saveBtn);
+      actions.appendChild(
+        el(
+          'button',
+          {
+            type: 'button',
+            style: 'background:none;border:none;color:#777;font-size:13px;text-decoration:underline;cursor:pointer;',
+            onClick: () => { state.pwSkipped = true; render(); },
+          },
+          'Skip for now'
+        )
+      );
+      wrap.appendChild(actions);
+
+      return wrap;
+    }
+
+    async function savePassword() {
+      if (state.pwValue.length < 8) {
+        state.pwError = 'Must be at least 8 characters.';
+        render();
+        return;
+      }
+      if (state.pwValue !== state.pwConfirm) {
+        state.pwError = "Passwords don't match.";
+        render();
+        return;
+      }
+      state.pwSaving = true;
+      state.pwError = '';
+      render();
+      try {
+        const { error } = await supabaseClient.auth.updateUser({
+          password: state.pwValue,
+          data: { password_set: true },
+        });
+        if (error) throw error;
+        state.pwSaving = false;
+        state.pwSaved = true;
+        state.hasPassword = true;
+        render();
+      } catch (err) {
+        state.pwSaving = false;
+        state.pwError = err.message || 'Something went wrong saving your password.';
+        render();
+      }
     }
 
     function buildSubmittedScreen() {
@@ -358,6 +462,14 @@
             { href: RECRUITER_DASHBOARD_URL, className: 'next-btn', style: 'display:inline-block;text-decoration:none;' },
             'Go to dashboard'
           )
+        );
+      }
+      if (!state.hasPassword && !state.pwSkipped && !state.pwSaved) {
+        box.appendChild(buildSetPasswordPrompt());
+      }
+      if (state.pwSaved) {
+        box.appendChild(
+          el('div', { style: 'font-size:13px;color:#2a7a3b;margin-top:20px;' }, 'Password saved — you can log in with your email and password next time.')
         );
       }
       wrap.appendChild(box);
@@ -391,7 +503,7 @@
     function canProceed(stepKey) {
       const d = state.data;
       if (stepKey === 'firm') {
-        return d.firmName.trim().length > 0 && d.yearsExperience !== null && d.industries.length > 0;
+        return d.firmName.trim().length > 0 && d.yearsExperience !== null && d.industries.length > 0 && d.phone.trim().length > 0;
       }
       if (stepKey === 'experience') {
         if (d.executivePlacements === null) return false;
@@ -409,6 +521,9 @@
     // ---- Page 1: firm name, years experience, industries (tag input), phone ----
     function buildFirmStep() {
       const wrap = el('div');
+      if (state.contactFirstName) {
+        wrap.appendChild(el('div', { className: 'subtitle', style: 'margin-bottom:4px;' }, `Hi ${state.contactFirstName},`));
+      }
       wrap.appendChild(el('h1', {}, 'Tell us about your firm'));
       wrap.appendChild(el('div', { className: 'subtitle' }, "This is how clients will get to know you before your first submission."));
 
@@ -441,12 +556,7 @@
       wrap.appendChild(el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, 'Type an industry and press Enter to add it.'));
       wrap.appendChild(buildIndustryTagInput());
 
-      wrap.appendChild(
-        el('div', { className: 'field-label' }, [
-          'Phone number ',
-          el('span', { className: 'opt' }, '(optional)'),
-        ])
-      );
+      wrap.appendChild(el('div', { className: 'field-label' }, 'Phone number'));
       const phoneInput = el('input', { type: 'text', placeholder: 'e.g. (555) 123-4567' });
       phoneInput.value = state.data.phone;
       phoneInput.addEventListener('input', (e) => { state.data.phone = e.target.value; });
@@ -810,11 +920,12 @@
         return;
       }
       state.session = session;
+      state.hasPassword = !!(session.user.user_metadata && session.user.user_metadata.password_set);
 
       const lookupRecruiter = () =>
         supabaseClient
           .from('recruiters')
-          .select('id, verified, years_experience')
+          .select('id, verified, years_experience, contact_first_name')
           .eq('auth_user_id', session.user.id)
           .maybeSingle();
 
@@ -837,6 +948,10 @@
 
       state.recruiterId = recruiter.id;
       state.recruiterVerified = recruiter.verified;
+      state.contactFirstName =
+        recruiter.contact_first_name ||
+        (session.user.user_metadata && session.user.user_metadata.pending_signup && session.user.user_metadata.pending_signup.firstName) ||
+        '';
 
       // Already completed this wizard before (years_experience is only
       // set once it's submitted) -- nothing left to do here. A verified

@@ -54,12 +54,15 @@
     background: var(--bg);
     color: var(--fg);
     font-family: 'Inter', -apple-system, sans-serif;
+    transition: background 0.35s ease, color 0.35s ease;
+  }
+
+  .hero {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
     padding: 24px;
-    transition: background 0.35s ease, color 0.35s ease;
   }
 
   .card {
@@ -166,16 +169,31 @@
 
   .toggle-password {
     position: absolute;
-    right: 6px;
-    top: 6px;
-    bottom: 6px;
-    width: 34px;
+    right: 4px;
+    top: 4px;
+    bottom: 4px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
+    border-radius: 8px;
     cursor: pointer;
     color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
+    padding: 0;
+    transition: color 0.2s ease, background 0.15s ease;
+  }
+
+  .toggle-password:hover {
+    color: var(--fg);
+    background: var(--pill-bg);
+  }
+
+  .toggle-password svg {
+    width: 18px;
+    height: 18px;
+    display: block;
   }
 
   button.submit {
@@ -209,6 +227,363 @@
     font-weight: 500;
     cursor: pointer;
     text-decoration: underline;
+  }
+
+  .wordmark {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+    margin-bottom: 24px;
+    opacity: 0.85;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  /* ---- How it works (full showcase section, always dark like the
+     screenshot reference -- independent of the companies/recruiters
+     theme toggle above, so it doesn't recolor a section the visitor
+     isn't looking at) ---- */
+  .hiw-section {
+    background: #121214;
+    color: #f5f5f6;
+    padding: 88px 24px;
+  }
+
+  .hiw-inner {
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  .hiw-eyebrow {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8a8a92;
+    margin-bottom: 16px;
+  }
+
+  .hiw-headline {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 32px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    max-width: 560px;
+    margin: 0 0 56px;
+  }
+
+  .hiw-grid {
+    display: grid;
+    grid-template-columns: 160px minmax(240px, 360px) 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  .hiw-nav {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hiw-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #2a2a2e;
+    padding: 16px 0;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: #7a7a80;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.15s ease;
+  }
+
+  .hiw-nav-item:first-child {
+    padding-top: 0;
+  }
+
+  .hiw-nav-item.active {
+    color: #f5f5f6;
+  }
+
+  .hiw-nav-num {
+    font-size: 12px;
+    color: #55555a;
+  }
+
+  .hiw-nav-item.active .hiw-nav-num {
+    color: #8a8a92;
+  }
+
+  .hiw-mock {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 4px;
+  }
+
+  .mock-card {
+    background: #ffffff;
+    color: #17171a;
+    border-radius: 14px;
+    padding: 20px;
+    width: 100%;
+    max-width: 300px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
+
+  .mock-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: #9a9a9a;
+    margin-bottom: 14px;
+  }
+
+  .mock-field {
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    padding: 9px 12px;
+    margin-bottom: 8px;
+  }
+
+  .mock-field-label {
+    font-size: 11px;
+    color: #9a9a9a;
+    margin-bottom: 2px;
+  }
+
+  .mock-field-value {
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .mock-btn {
+    background: #17171a;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+  }
+
+  .mock-candidate {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .mock-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #f0f0f2;
+    color: #55555a;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .mock-candidate-name {
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .mock-candidate-note {
+    font-size: 12px;
+    color: #8a8a92;
+    margin-top: 1px;
+  }
+
+  .mock-pill {
+    display: inline-block;
+    background: #f0f0f2;
+    color: #55555a;
+    font-size: 11.5px;
+    font-weight: 500;
+    border-radius: 999px;
+    padding: 5px 10px;
+  }
+
+  .mock-stage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: #b5b5ba;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: #f7f7f5;
+    color: #55555a;
+  }
+
+  .mock-stage::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #c8c8cc;
+    flex-shrink: 0;
+  }
+
+  .mock-stage.done::before {
+    background: #2e9e5b;
+  }
+
+  .mock-stage.active {
+    background: #17171a;
+    color: #fff;
+  }
+
+  .mock-stage.active::before {
+    background: #fff;
+  }
+
+  .mock-note {
+    font-size: 11.5px;
+    color: #9a9a9a;
+    margin-top: 8px;
+  }
+
+  .mock-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .mock-tag {
+    background: #f0f0f2;
+    color: #55555a;
+    font-size: 11.5px;
+    font-weight: 500;
+    border-radius: 999px;
+    padding: 5px 10px;
+  }
+
+  .hiw-detail-num {
+    font-family: 'Newsreader', serif;
+    font-size: 13px;
+    color: #7a7a80;
+    margin-bottom: 10px;
+  }
+
+  .hiw-detail-title {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 25px;
+    line-height: 1.3;
+    margin: 0 0 12px;
+  }
+
+  .hiw-detail-desc {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: #b5b5ba;
+    max-width: 380px;
+  }
+
+  @media (max-width: 860px) {
+    .hiw-grid {
+      grid-template-columns: 1fr;
+      gap: 28px;
+    }
+    .hiw-nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+    }
+    .hiw-nav-item {
+      border-bottom: none;
+      padding: 0;
+    }
+  }
+
+  /* ---- FAQ (always light, independent of the theme toggle) ---- */
+  .faq-section {
+    background: #f7f7f5;
+    color: #17171a;
+    padding: 88px 24px;
+  }
+
+  .faq-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .faq-headline {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 34px;
+    letter-spacing: -0.01em;
+    text-align: center;
+    margin: 0 0 48px;
+  }
+
+  .faq-list {
+    border-top: 1px solid #e4e4e2;
+  }
+
+  .faq-item {
+    border-bottom: 1px solid #e4e4e2;
+  }
+
+  .faq-item summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 2px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-item summary::after {
+    content: '+';
+    flex-shrink: 0;
+    font-size: 20px;
+    font-weight: 400;
+    color: #9a9a9a;
+    transition: transform 0.2s ease;
+  }
+
+  .faq-item[open] summary::after {
+    content: '\2212';
+  }
+
+  .faq-answer {
+    padding: 0 26px 24px 2px;
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: #55555a;
+  }
+
+  .faq-answer a {
+    color: inherit;
+    font-weight: 600;
   }
 
   .fields {
@@ -246,17 +621,20 @@
 </head>
 
 <body data-mode="companies">
+  <div class="hero">
   <div class="card">
+    <div class="wordmark">MakePlacement</div>
     <h1 id="heading">Make your next hire</h1>
 
     <div class="pills" role="tablist" id="pills">
       <button class="pill active" id="btn-companies" role="tab" aria-selected="true">Companies</button>
-      <button class="pill" id="btn-agencies" role="tab" aria-selected="false">Search firms</button>
+      <button class="pill" id="btn-agencies" role="tab" aria-selected="false">Recruiters</button>
     </div>
 
     <div class="fields">
 
-      <!-- Companies: first/last name, work email, password -->
+      <!-- Companies: first/last name, work email -- no password. We email a -->
+      <!-- sign-in link instead; a password can be added later, after onboarding. -->
       <form id="form-companies" novalidate>
         <div class="row">
           <div class="field">
@@ -264,7 +642,7 @@
             <div class="error-msg" id="err-c-first-name">Please enter your first name</div>
           </div>
           <div class="field">
-            <input type="text" id="c-last-name" placeholder="Last name (optional)">
+            <input type="text" id="c-last-name" placeholder="Last name">
           </div>
         </div>
 
@@ -273,20 +651,12 @@
           <div class="error-msg" id="err-c-email">Please enter your work email (not a personal address)</div>
         </div>
 
-        <div class="field">
-          <div class="password-wrap">
-            <input type="password" id="c-password" placeholder="Create a password" required>
-            <button type="button" class="toggle-password" data-target="c-password">Show</button>
-          </div>
-          <div class="error-msg" id="err-c-password">Password must be at least 8 characters</div>
-        </div>
-
-        <button type="submit" class="submit">Submit</button>
+        <button type="submit" class="submit">Continue with email</button>
 
         <div class="link-row">Already have an account? <a id="link-login-from-companies">Log in</a></div>
       </form>
 
-      <!-- Search firms: first/last name, work email, password -->
+      <!-- Search firms: first/last name, work email -- no password, see above -->
       <form id="form-agencies" class="hidden" novalidate>
         <div class="row">
           <div class="field">
@@ -294,7 +664,7 @@
             <div class="error-msg" id="err-a-first-name">Please enter your first name</div>
           </div>
           <div class="field">
-            <input type="text" id="a-last-name" placeholder="Last name (optional)">
+            <input type="text" id="a-last-name" placeholder="Last name">
           </div>
         </div>
 
@@ -303,20 +673,12 @@
           <div class="error-msg" id="err-a-email">Please enter a valid email</div>
         </div>
 
-        <div class="field">
-          <div class="password-wrap">
-            <input type="password" id="a-password" placeholder="Create a password" required>
-            <button type="button" class="toggle-password" data-target="a-password">Show</button>
-          </div>
-          <div class="error-msg" id="err-a-password">Password must be at least 8 characters</div>
-        </div>
-
-        <button type="submit" class="submit">Submit</button>
+        <button type="submit" class="submit">Continue with email</button>
 
         <div class="link-row">Already have an account? <a id="link-login-from-agencies">Log in</a></div>
       </form>
 
-      <!-- Manual login (fallback -- the signup forms above also auto-detect an existing account) -->
+      <!-- Manual login: password if they've set one, or a magic link if not -->
       <form id="form-login" class="hidden" novalidate>
         <div class="field">
           <input type="email" id="l-email" placeholder="Work email" required>
@@ -326,13 +688,16 @@
         <div class="field">
           <div class="password-wrap">
             <input type="password" id="l-password" placeholder="Password" required>
-            <button type="button" class="toggle-password" data-target="l-password">Show</button>
+            <button type="button" class="toggle-password" data-target="l-password" aria-label="Show password"></button>
           </div>
           <div class="error-msg" id="err-l-password">Please enter your password</div>
         </div>
 
         <button type="submit" class="submit">Log in</button>
 
+        <div class="link-row">
+          Don&rsquo;t have a password yet? <a id="link-magic-login">Email me a login link</a>
+        </div>
         <div class="link-row">New here? <a id="link-back-to-signup">Sign up</a></div>
       </form>
 
@@ -340,6 +705,7 @@
       <div id="check-email" class="hidden status-box">
         <div id="check-email-text">Check your email to confirm your account.</div>
         <div class="muted">Click the link on this device or any device — once you do, we'll finish setting up your account here.</div>
+        <div class="muted">Didn&rsquo;t get it? <a id="link-resend" style="cursor:pointer; text-decoration:underline; color:inherit;">Resend the link</a></div>
       </div>
 
       <div id="finishing" class="hidden status-box">
@@ -353,6 +719,51 @@
 
     </div>
   </div>
+  </div>
+
+  <section class="hiw-section" id="hiw-section">
+    <div class="hiw-inner">
+      <div class="hiw-eyebrow">How it works</div>
+      <h2 class="hiw-headline" id="hiw-headline">The simplest way to fill your next role.</h2>
+      <div class="hiw-grid">
+        <div class="hiw-nav" id="hiw-nav"></div>
+        <div class="hiw-mock" id="hiw-mock"></div>
+        <div class="hiw-detail" id="hiw-detail"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-section">
+    <div class="faq-inner">
+      <h2 class="faq-headline">Frequently asked questions</h2>
+      <div class="faq-list">
+        <details class="faq-item" open>
+          <summary>What is MakePlacement?</summary>
+          <div class="faq-answer">MakePlacement connects companies hiring for a role with independent recruiters who work candidates in that space. Companies post what they need, recruiters submit candidates who match, and you only pay when you hire someone.</div>
+        </details>
+        <details class="faq-item">
+          <summary>Is there a cost for recruiters to use MakePlacement?</summary>
+          <div class="faq-answer">No. It's free for recruiters to use. Companies pay a placement fee only when they hire a candidate who was submitted through MakePlacement.</div>
+        </details>
+        <details class="faq-item">
+          <summary>What happens if a hire doesn't work out?</summary>
+          <div class="faq-answer">Every hire is covered by a 90-day replacement guarantee. If it doesn't work out within that window, MakePlacement runs a replacement search at no additional cost. Full terms are in the <a href="recruitment-agreement.html">Recruitment Agreement</a>.</div>
+        </details>
+        <details class="faq-item">
+          <summary>How is this different from a staffing agency?</summary>
+          <div class="faq-answer">Instead of working with one agency, you get submissions from many independent recruiters at once, each competing to bring you the best fit. You review candidates and only pay for the one you actually hire.</div>
+        </details>
+        <details class="faq-item">
+          <summary>Do recruiters have to work exclusively with MakePlacement?</summary>
+          <div class="faq-answer">No — recruiters can work with other clients too. Once you're introduced to a company through MakePlacement, though, you keep working with that company through the platform rather than moving the relationship off it.</div>
+        </details>
+        <details class="faq-item">
+          <summary>Can I use MakePlacement alongside my own hiring process?</summary>
+          <div class="faq-answer">Yes. Posting a role on MakePlacement doesn't require you to route all of your hiring through us — it just adds another source of vetted candidates.</div>
+        </details>
+      </div>
+    </div>
+  </section>
 
   <script>
     // If the browser restores this page from bfcache (e.g. pressing Back),
@@ -376,12 +787,16 @@
     const PENDING_KEY = 'mp_pending_signup';
 
     // ---- Show/hide password toggles ----
+    const EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10.5 7 10.5 7a17.7 17.7 0 0 1-3.1 3.9M6.3 6.3C3.4 8.2 1.5 12 1.5 12S5.5 19 12 19c1.5 0 2.9-.3 4.1-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
     document.querySelectorAll('.toggle-password').forEach(btn => {
+      btn.innerHTML = EYE_ICON;
       btn.addEventListener('click', () => {
         const input = document.getElementById(btn.dataset.target);
         const showing = input.type === 'text';
         input.type = showing ? 'password' : 'text';
-        btn.textContent = showing ? 'Show' : 'Hide';
+        btn.innerHTML = showing ? EYE_ICON : EYE_OFF_ICON;
+        btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
       });
     });
 
@@ -414,6 +829,8 @@
       btnAgencies.setAttribute('aria-selected', !isCompanies);
       pillsWrap.classList.remove('hidden');
       heading.textContent = isCompanies ? 'Make your next hire' : 'Grow your recruiting business';
+      hiwFullStep = 0;
+      renderHiwSection();
       showOnly(isCompanies ? formCompanies : formAgencies);
     }
 
@@ -424,11 +841,121 @@
       allViews.forEach(node => node.classList.toggle('hidden', node !== el));
     }
 
+    // ---- How it works showcase (below the auth card) ----
+    const hiwHeadline = document.getElementById('hiw-headline');
+    const hiwNav = document.getElementById('hiw-nav');
+    const hiwMock = document.getElementById('hiw-mock');
+    const hiwDetail = document.getElementById('hiw-detail');
+
+    const HIW_FULL = {
+      companies: [
+        {
+          label: 'Post',
+          title: 'Tell us what you need',
+          desc: 'Post the role: what it pays, what you need done, and what a great candidate looks like.',
+          mock: '<div class="mock-card">'
+            + '<div class="mock-card-title">Post a role</div>'
+            + '<div class="mock-field"><div class="mock-field-label">Role name</div><div class="mock-field-value">VP of Operations</div></div>'
+            + '<div class="mock-field"><div class="mock-field-label">Salary range</div><div class="mock-field-value">$180,000 &ndash; $230,000</div></div>'
+            + '<div class="mock-btn">Post role</div>'
+            + '</div>',
+        },
+        {
+          label: 'Match',
+          title: 'Recruiters take it from there',
+          desc: 'Independent recruiters who work in your space start submitting candidates who match.',
+          mock: '<div class="mock-card">'
+            + '<div class="mock-card-title">New candidate</div>'
+            + '<div class="mock-candidate"><div class="mock-avatar">JR</div><div><div class="mock-candidate-name">Jordan R.</div><div class="mock-candidate-note">8+ years running plant operations</div></div></div>'
+            + '<div class="mock-pill">Submitted by a recruiter</div>'
+            + '</div>',
+        },
+        {
+          label: 'Hire',
+          title: 'Interview and hire',
+          desc: "Talk to the candidates you like. You only pay a fee when you actually hire someone.",
+          mock: '<div class="mock-card">'
+            + '<div class="mock-card-title">Pipeline</div>'
+            + '<div class="mock-stage done">Recruiter screen</div>'
+            + '<div class="mock-stage done">Hiring manager call</div>'
+            + '<div class="mock-stage active">Offer</div>'
+            + '<div class="mock-note">You only pay once someone’s hired.</div>'
+            + '</div>',
+        },
+      ],
+      agencies: [
+        {
+          label: 'Profile',
+          title: 'Set up your firm',
+          desc: 'Tell us about your firm, your experience, and the industries you recruit in.',
+          mock: '<div class="mock-card">'
+            + '<div class="mock-card-title">Tell us about your firm</div>'
+            + '<div class="mock-field"><div class="mock-field-label">Firm name</div><div class="mock-field-value">Rivera Search Partners</div></div>'
+            + '<div class="mock-tags"><span class="mock-tag">Manufacturing</span><span class="mock-tag">Healthcare</span></div>'
+            + '</div>',
+        },
+        {
+          label: 'Browse',
+          title: 'Find roles that fit',
+          desc: 'Browse open roles and submit the candidates you think are a match.',
+          mock: '<div class="mock-card">'
+            + '<div class="mock-card-title">Open role</div>'
+            + '<div class="mock-field-value" style="font-weight:600;">VP of Operations</div>'
+            + '<div class="mock-candidate-note">$180,000 &ndash; $230,000 &middot; Manufacturing</div>'
+            + '<div class="mock-btn">Submit a candidate</div>'
+            + '</div>',
+        },
+        {
+          label: 'Earn',
+          title: 'Get paid when you place',
+          desc: "Earn a fee when your candidate gets hired. It's free to use MakePlacement.",
+          mock: '<div class="mock-card">'
+            + '<div class="mock-card-title">Payout</div>'
+            + '<div class="mock-stage done">30 days after start &mdash; 1/3 released</div>'
+            + '<div class="mock-stage done">60 days after start &mdash; 1/3 released</div>'
+            + '<div class="mock-stage active">90 days after start &mdash; final 1/3</div>'
+            + '</div>',
+        },
+      ],
+    };
+
+    let hiwFullStep = 0;
+
+    function renderHiwSection() {
+      const key = mode === 'companies' ? 'companies' : 'agencies';
+      const steps = HIW_FULL[key];
+
+      hiwHeadline.textContent = key === 'companies'
+        ? 'The simplest way to fill your next role.'
+        : 'The simplest way to grow your desk.';
+
+      hiwNav.innerHTML = '';
+      steps.forEach((step, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'hiw-nav-item' + (i === hiwFullStep ? ' active' : '');
+        btn.innerHTML = `<span>${step.label}</span><span class="hiw-nav-num">0${i + 1}</span>`;
+        btn.addEventListener('click', () => {
+          hiwFullStep = i;
+          renderHiwSection();
+        });
+        hiwNav.appendChild(btn);
+      });
+
+      const current = steps[hiwFullStep];
+      hiwMock.innerHTML = current.mock;
+      hiwDetail.innerHTML = `<div class="hiw-detail-num">0${hiwFullStep + 1}</div>`
+        + `<div class="hiw-detail-title">${current.title}</div>`
+        + `<div class="hiw-detail-desc">${current.desc}</div>`;
+    }
+
     function showLogin() {
       pillsWrap.classList.add('hidden');
       heading.textContent = 'Log in';
       showOnly(formLogin);
     }
+
+    setMode('companies');
 
     document.getElementById('link-login-from-companies').addEventListener('click', showLogin);
     document.getElementById('link-login-from-agencies').addEventListener('click', showLogin);
@@ -445,7 +972,6 @@
     }
 
     const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-    const isStrongEnoughPassword = v => v.length >= 8;
 
     // ---- Warm-lead capture ----
     // Fires as soon as someone has typed a plausible name + email and
@@ -502,46 +1028,37 @@
       });
     }
 
-    // Tries to create the account; if that email is already registered,
-    // transparently logs in with the same password instead of erroring.
-    async function signUpOrLogIn(email, password, pending) {
-      // Metadata rides along on the Supabase Auth user itself, not just
-      // localStorage -- if someone confirms the magic link on a different
-      // device/browser than they signed up on (e.g. desktop signup, phone
-      // mail app), localStorage won't be there, but this will be.
-      const signUpResult = await supabaseClient.auth.signUp({
+    // Sends a passwordless "magic link" email. For new signups (pending is
+    // set) this also creates the auth user right away (unconfirmed) with
+    // `pending` stashed in its metadata -- if the link gets clicked on a
+    // different device/browser than the one used to sign up (e.g. desktop
+    // signup, phone mail app), localStorage won't be there, but this will
+    // be, via init()'s metaPending fallback below.
+    async function sendMagicLink(email, pending) {
+      const { error } = await supabaseClient.auth.signInWithOtp({
         email,
-        password,
         options: {
           emailRedirectTo: window.location.origin + window.location.pathname,
-          data: { pending_signup: pending },
-        }
+          shouldCreateUser: !!pending,
+          data: pending ? { pending_signup: pending } : undefined,
+        },
       });
-
-      if (!signUpResult.error) return { kind: 'signed_up', ...signUpResult };
-
-      if (signUpResult.error.message.toLowerCase().includes('already registered')) {
-        const signInResult = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (signInResult.error) {
-          return { kind: 'existing_wrong_password', error: signInResult.error };
-        }
-        return { kind: 'logged_in', ...signInResult };
-      }
-
-      return { kind: 'error', error: signUpResult.error };
+      return { error };
     }
+
+    // Remembered so the "Resend the link" action on the check-email screen
+    // doesn't need the original form to still be visible/filled in.
+    let lastMagicLinkRequest = null;
 
     // ---- Companies form ----
     const cFirstName = document.getElementById('c-first-name');
     const cLastName = document.getElementById('c-last-name');
     const cEmail = document.getElementById('c-email');
-    const cPassword = document.getElementById('c-password');
 
     const errCFirstName = document.getElementById('err-c-first-name');
     const errCEmail = document.getElementById('err-c-email');
-    const errCPassword = document.getElementById('err-c-password');
 
-    [[cFirstName, errCFirstName], [cEmail, errCEmail], [cPassword, errCPassword]]
+    [[cFirstName, errCFirstName], [cEmail, errCEmail]]
       .forEach(([input, err]) => clearFieldError(input, err));
 
     cEmail.addEventListener('blur', () => captureLead('company', cFirstName, cLastName, cEmail));
@@ -551,14 +1068,12 @@
 
       const validFirstName = validateField(cFirstName, errCFirstName);
       const validEmail = validateField(cEmail, errCEmail, isWorkEmail);
-      const validPassword = validateField(cPassword, errCPassword, isStrongEnoughPassword);
-
-      if (!(validFirstName && validEmail && validPassword)) return;
+      if (!(validFirstName && validEmail)) return;
 
       const submitBtn = formCompanies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Setting up your account…';
+      submitBtn.textContent = 'Sending…';
 
       const email = cEmail.value.trim();
       const pending = {
@@ -568,31 +1083,20 @@
         email
       };
 
-      const result = await signUpOrLogIn(email, cPassword.value, pending);
+      const { error } = await sendMagicLink(email, pending);
 
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
 
-      if (result.kind === 'existing_wrong_password') {
-        alert("An account with this email already exists, and that password doesn't match it. Double check for typos.");
-        return;
-      }
-      if (result.kind === 'error') {
-        console.error('signUp error:', result.error);
-        alert('Something went wrong creating your account: ' + result.error.message);
+      if (error) {
+        console.error('signInWithOtp error:', error);
+        alert('Something went wrong sending your login link: ' + error.message);
         return;
       }
 
       localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-
-      if (result.data.session) {
-        pillsWrap.classList.add('hidden');
-        await completeSignup(result.data.session, pending);
-        return;
-      }
-
-      // Confirm email is still on -- wait for the confirmation click.
-      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
+      lastMagicLinkRequest = { email, pending };
+      checkEmailText.textContent = `We sent a login link to ${email} — click it to finish signing up.`;
       pillsWrap.classList.add('hidden');
       showOnly(checkEmailBox);
     });
@@ -601,13 +1105,11 @@
     const aFirstName = document.getElementById('a-first-name');
     const aLastName = document.getElementById('a-last-name');
     const aEmail = document.getElementById('a-email');
-    const aPassword = document.getElementById('a-password');
 
     const errAFirstName = document.getElementById('err-a-first-name');
     const errAEmail = document.getElementById('err-a-email');
-    const errAPassword = document.getElementById('err-a-password');
 
-    [[aFirstName, errAFirstName], [aEmail, errAEmail], [aPassword, errAPassword]]
+    [[aFirstName, errAFirstName], [aEmail, errAEmail]]
       .forEach(([input, err]) => clearFieldError(input, err));
 
     aEmail.addEventListener('blur', () => captureLead('search_firm', aFirstName, aLastName, aEmail));
@@ -617,14 +1119,12 @@
 
       const validFirstName = validateField(aFirstName, errAFirstName);
       const validEmail = validateField(aEmail, errAEmail, isEmail);
-      const validPassword = validateField(aPassword, errAPassword, isStrongEnoughPassword);
-
-      if (!(validFirstName && validEmail && validPassword)) return;
+      if (!(validFirstName && validEmail)) return;
 
       const submitBtn = formAgencies.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Setting up your account…';
+      submitBtn.textContent = 'Sending…';
 
       const email = aEmail.value.trim();
       const pending = {
@@ -634,32 +1134,33 @@
         email
       };
 
-      const result = await signUpOrLogIn(email, aPassword.value, pending);
+      const { error } = await sendMagicLink(email, pending);
 
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
 
-      if (result.kind === 'existing_wrong_password') {
-        alert("An account with this email already exists, and that password doesn't match it. Double check for typos.");
-        return;
-      }
-      if (result.kind === 'error') {
-        console.error('signUp error:', result.error);
-        alert('Something went wrong creating your account: ' + result.error.message);
+      if (error) {
+        console.error('signInWithOtp error:', error);
+        alert('Something went wrong sending your login link: ' + error.message);
         return;
       }
 
       localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-
-      if (result.data.session) {
-        pillsWrap.classList.add('hidden');
-        await completeSignup(result.data.session, pending);
-        return;
-      }
-
-      checkEmailText.textContent = `Check ${email} to confirm your account and finish signing up.`;
+      lastMagicLinkRequest = { email, pending };
+      checkEmailText.textContent = `We sent a login link to ${email} — click it to finish signing up.`;
       pillsWrap.classList.add('hidden');
       showOnly(checkEmailBox);
+    });
+
+    document.getElementById('link-resend').addEventListener('click', async e => {
+      e.preventDefault();
+      if (!lastMagicLinkRequest) return;
+      const link = e.target;
+      const original = link.textContent;
+      link.textContent = 'Sending…';
+      await sendMagicLink(lastMagicLinkRequest.email, lastMagicLinkRequest.pending);
+      link.textContent = 'Sent!';
+      setTimeout(() => { link.textContent = original; }, 4000);
     });
 
     // ---- Manual login form ----
@@ -699,6 +1200,35 @@
       showOnly(finishingBox);
       finishingBox.querySelector('div').textContent = 'Logging you in…';
       await routeSignedInUser(data.session);
+    });
+
+    // ---- Passwordless login (for accounts that haven't set one yet) ----
+    document.getElementById('link-magic-login').addEventListener('click', async () => {
+      const email = lEmail.value.trim();
+      if (!isEmail(email)) {
+        validateField(lEmail, errLEmail, isEmail);
+        lEmail.focus();
+        return;
+      }
+
+      const link = document.getElementById('link-magic-login');
+      const original = link.textContent;
+      link.textContent = 'Sending…';
+
+      const { error } = await sendMagicLink(email, null);
+
+      link.textContent = original;
+
+      if (error) {
+        console.error('signInWithOtp error:', error);
+        alert('Something went wrong sending your login link: ' + error.message);
+        return;
+      }
+
+      lastMagicLinkRequest = { email, pending: null };
+      checkEmailText.textContent = `We sent a login link to ${email}.`;
+      pillsWrap.classList.add('hidden');
+      showOnly(checkEmailBox);
     });
 
     // Sends a returning, already-signed-in user to the right place:
@@ -773,6 +1303,25 @@
       throw insertErr;
     }
 
+    // Best-effort cleanup: once completeSignup has actually run for this
+    // account, `pending_signup` in its metadata has done its job and must
+    // be cleared. It's the only signal init() has for "this account still
+    // needs to finish signing up" -- if it's never cleared, EVERY future
+    // visit to this page while logged in (from any device/browser) finds
+    // it still truthy and force-redirects back into onboarding again,
+    // forever, even for a fully set-up, verified user who just wanted the
+    // main page. A failure here shouldn't block the redirect that matters
+    // (getting them into onboarding right now) -- worst case it just
+    // fires once more next visit, which is recoverable; getting stuck
+    // mid-signup is not.
+    async function clearPendingSignupMetadata() {
+      try {
+        await supabaseClient.auth.updateUser({ data: { pending_signup: null } });
+      } catch (err) {
+        console.error('failed clearing pending_signup metadata:', err);
+      }
+    }
+
     // Company name is intentionally left blank here -- it's collected as
     // its own field on the first page of onboarding, not assumed from the
     // contact's name. "name" here is the contact's full name (first +
@@ -791,6 +1340,7 @@
           });
 
           localStorage.removeItem(PENDING_KEY);
+          await clearPendingSignupMetadata();
           window.location.href = ONBOARDING_URL;
           return;
         }
@@ -809,6 +1359,7 @@
           });
 
           localStorage.removeItem(PENDING_KEY);
+          await clearPendingSignupMetadata();
           window.location.href = RECRUITER_ONBOARDING_URL;
           return;
         }
@@ -825,15 +1376,32 @@
 
       const pendingRaw = localStorage.getItem(PENDING_KEY);
       if (pendingRaw) {
-        pillsWrap.classList.add('hidden');
-        await completeSignup(session, JSON.parse(pendingRaw));
-        return;
+        let pending = null;
+        try { pending = JSON.parse(pendingRaw); } catch (err) { pending = null; }
+
+        // Only trust this if it's actually for the account that's signed
+        // in right now. A leftover from an abandoned or unrelated signup
+        // attempt (different account, a magic link that was never
+        // clicked, testing, etc.) would otherwise silently overwrite this
+        // real, already-set-up account's profile and shove them into
+        // onboarding for no reason.
+        const matchesCurrentUser = pending && pending.email && session.user.email
+          && pending.email.toLowerCase() === session.user.email.toLowerCase();
+
+        if (matchesCurrentUser) {
+          pillsWrap.classList.add('hidden');
+          await completeSignup(session, pending);
+          return;
+        }
+        localStorage.removeItem(PENDING_KEY);
       }
 
       // Same signup, no local record of it -- most likely the magic link
       // was confirmed on a different device/browser than the one used to
       // sign up. Fall back to the metadata stored on the auth user itself
       // rather than leaving them stuck with no companies/recruiters row.
+      // (Cleared by clearPendingSignupMetadata() once acted on, so this
+      // only ever fires for an account that genuinely hasn't finished yet.)
       const metaPending = session.user.user_metadata && session.user.user_metadata.pending_signup;
       if (metaPending) {
         pillsWrap.classList.add('hidden');
