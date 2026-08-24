@@ -489,7 +489,6 @@ function EditRoleModal({ role, onCancel, onSaved }) {
           hiringGoals: role.hiring_goals || "",
           recruitingAdvice: role.recruiting_advice || "",
           hmIntro: role.hm_intro || "",
-          welcomeMessage: role.welcome_message || "",
           qualities: detail.qualities.length ? detail.qualities : [""],
           traits: detail.traits.length ? detail.traits : [""],
           questions: detail.questions.length ? detail.questions : [""],
@@ -564,9 +563,6 @@ function EditRoleModal({ role, onCancel, onSaved }) {
 
           <div style={sectionLabelStyle}>Hiring manager intro</div>
           <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.hmIntro} onChange={(e) => set({ hmIntro: e.target.value })} />
-
-          <div style={sectionLabelStyle}>Welcome message</div>
-          <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.welcomeMessage} onChange={(e) => set({ welcomeMessage: e.target.value })} />
         </div>
       )}
 
@@ -916,7 +912,6 @@ async function saveRoleEdits(roleId, form) {
     hiring_goals: form.hiringGoals || null,
     recruiting_advice: form.recruitingAdvice,
     hm_intro: form.hmIntro,
-    welcome_message: form.welcomeMessage || null,
   });
   await Promise.all([
     replaceRoleList("role_qualities", roleId, form.qualities.filter(isFilledStr).map((quality) => ({ role_id: roleId, quality }))),

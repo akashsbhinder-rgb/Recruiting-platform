@@ -324,7 +324,25 @@
       pwSaving: false,
       pwSaved: false,
       pwError: '',
+      attemptedNext: false,
     };
+
+    function reqMark() {
+      return el('span', { style: 'color:#d64545;' }, ' *');
+    }
+
+    // Wraps a field's content in a container with `id` (used to scroll to
+    // it) and, once the user has tried to advance past this step with it
+    // unfilled, shows `message` underneath instead of silently blocking
+    // the Next/Finish button.
+    function fieldWrap(id, ok, message, contentEls) {
+      const wrap = el('div', { id });
+      (Array.isArray(contentEls) ? contentEls : [contentEls]).forEach((c) => wrap.appendChild(c));
+      if (state.attemptedNext && !ok) {
+        wrap.appendChild(el('div', { style: 'font-size:12.5px;color:#b42318;margin:-18px 0 20px;' }, message));
+      }
+      return wrap;
+    }
 
     const steps = ['firm', 'experience', 'review'];
 
@@ -355,13 +373,13 @@
     // broken password save can never stand between someone and their
     // already-saved profile.
     function buildSetPasswordPrompt() {
-      const wrap = el('div', { style: 'text-align:left;border:1px solid #eee;border-radius:12px;padding:20px;margin-top:24px;background:#f7f7f5;' });
+      const wrap = el('div', { style: 'text-align:left;border:1px solid #ececec;border-radius:16px;padding:22px;margin-top:24px;background:#f7f7f5;box-shadow:0 4px 16px rgba(20,20,25,0.04);' });
       wrap.appendChild(el('div', { style: 'font-size:15px;font-weight:600;margin-bottom:4px;color:#17171a;' }, 'Add a password (optional)'));
       wrap.appendChild(
         el(
           'div',
           { style: 'font-size:13px;color:#777;margin-bottom:16px;' },
-          "You signed in with an email link. Add a password if you'd rather log in that way next time — or skip and keep using email links."
+          "You signed in with an email link. Add a password if you'd rather log in that way next time, or skip and keep using email links."
         )
       );
 
@@ -452,7 +470,7 @@
         el(
           'div',
           { style: 'font-size:14.5px;color:#777;margin-bottom:24px;line-height:1.5;' },
-          "Thanks! Our admin team will review your profile and approve it shortly — keep an eye on your email."
+          "Thanks! Our admin team will review your profile and approve it shortly. Keep an eye on your email."
         )
       );
       if (state.recruiterVerified) {
@@ -469,7 +487,7 @@
       }
       if (state.pwSaved) {
         box.appendChild(
-          el('div', { style: 'font-size:13px;color:#2a7a3b;margin-top:20px;' }, 'Password saved — you can log in with your email and password next time.')
+          el('div', { style: 'font-size:13px;color:#2a7a3b;margin-top:20px;' }, 'Password saved. You can log in with your email and password next time.')
         );
       }
       wrap.appendChild(box);
@@ -518,6 +536,32 @@
       return true;
     }
 
+    // Mirrors canProceed's checks in order, but returns the id of the
+    // first unmet one instead of a plain bool -- used to scroll a user
+    // straight to whatever they missed when they try to advance anyway.
+    function firstInvalidFieldId(stepKey) {
+      const d = state.data;
+      if (stepKey === 'firm') {
+        if (!(d.firmName.trim().length > 0)) return 'field-firm-name';
+        if (d.yearsExperience === null) return 'field-years';
+        if (!(d.industries.length > 0)) return 'field-industries';
+        if (!(d.phone.trim().length > 0)) return 'field-phone';
+        return null;
+      }
+      if (stepKey === 'experience') {
+        if (d.executivePlacements === null) return 'field-exec-placements';
+        if (d.executivePlacements === true && !d.executiveLevel) return 'field-exec-level';
+        if (d.contingencyExperience === null) return 'field-contingency';
+        if (d.contingencyExperience === false && d.contingencyAck !== true) return 'field-contingency-ack';
+        return null;
+      }
+      if (stepKey === 'review') {
+        if (d.termsAccepted !== true) return 'field-terms';
+        return null;
+      }
+      return null;
+    }
+
     // ---- Page 1: firm name, years experience, industries (tag input), phone ----
     function buildFirmStep() {
       const wrap = el('div');
@@ -527,40 +571,39 @@
       wrap.appendChild(el('h1', {}, 'Tell us about your firm'));
       wrap.appendChild(el('div', { className: 'subtitle' }, "This is how clients will get to know you before your first submission."));
 
-      wrap.appendChild(el('div', { className: 'field-label' }, 'Search firm name'));
+      const firmLabel = el('div', { className: 'field-label' }, ['Search firm name', reqMark()]);
       const firmInput = el('input', { type: 'text', placeholder: 'e.g. Rivera Search Partners' });
       firmInput.value = state.data.firmName;
       firmInput.addEventListener('input', (e) => { state.data.firmName = e.target.value; });
       firmInput.addEventListener('blur', render);
-      wrap.appendChild(firmInput);
+      wrap.appendChild(fieldWrap('field-firm-name', state.data.firmName.trim().length > 0, 'Please fill this in.', [firmLabel, firmInput]));
 
-      wrap.appendChild(el('h2', {}, 'How long have you been recruiting?'));
-      YEARS_OPTIONS.forEach((opt) => {
-        wrap.appendChild(
-          el(
-            'button',
-            {
-              className: 'option' + (state.data.yearsExperience === opt ? ' selected' : ''),
-              type: 'button',
-              onClick: () => {
-                state.data.yearsExperience = opt;
-                render();
-              },
+      const yearsHeading = el('h2', {}, ['How long have you been recruiting?', reqMark()]);
+      const yearsOptions = YEARS_OPTIONS.map((opt) =>
+        el(
+          'button',
+          {
+            className: 'option' + (state.data.yearsExperience === opt ? ' selected' : ''),
+            type: 'button',
+            onClick: () => {
+              state.data.yearsExperience = opt;
+              render();
             },
-            opt
-          )
-        );
-      });
+          },
+          opt
+        )
+      );
+      wrap.appendChild(fieldWrap('field-years', state.data.yearsExperience !== null, 'Please select one.', [yearsHeading, ...yearsOptions]));
 
-      wrap.appendChild(el('h2', {}, 'What industries do you recruit in the most?'));
-      wrap.appendChild(el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, 'Type an industry and press Enter to add it.'));
-      wrap.appendChild(buildIndustryTagInput());
+      const industriesHeading = el('h2', {}, ['What industries do you recruit in the most?', reqMark()]);
+      const industriesSubtitle = el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, 'Type an industry and press Enter to add it. One is enough to get started.');
+      wrap.appendChild(fieldWrap('field-industries', state.data.industries.length > 0, 'Please add at least one industry.', [industriesHeading, industriesSubtitle, buildIndustryTagInput()]));
 
-      wrap.appendChild(el('div', { className: 'field-label' }, 'Phone number'));
+      const phoneLabel = el('div', { className: 'field-label' }, ['Phone number', reqMark()]);
       const phoneInput = el('input', { type: 'text', placeholder: 'e.g. (555) 123-4567' });
       phoneInput.value = state.data.phone;
       phoneInput.addEventListener('input', (e) => { state.data.phone = e.target.value; });
-      wrap.appendChild(phoneInput);
+      wrap.appendChild(fieldWrap('field-phone', state.data.phone.trim().length > 0, 'Please fill this in.', [phoneLabel, phoneInput]));
 
       return wrap;
     }
@@ -615,100 +658,91 @@
       const wrap = el('div');
       wrap.appendChild(el('h1', {}, 'Your placement experience'));
 
-      wrap.appendChild(el('h2', {}, 'Have you made an executive placement before?'));
-      wrap.appendChild(
-        el(
-          'div',
-          { className: 'subtitle' },
-          'This helps us match you to the right level of roles on the platform.'
-        )
+      const execHeading = el('h2', {}, ['Have you made an executive placement before?', reqMark()]);
+      const execSubtitle = el(
+        'div',
+        { className: 'subtitle' },
+        'This helps us match you to the right level of roles on the platform.'
       );
-      ['Yes', 'No'].forEach((opt) => {
+      const execOptions = ['Yes', 'No'].map((opt) => {
         const isSelected =
           state.data.executivePlacements === null
             ? false
             : (state.data.executivePlacements ? 'Yes' : 'No') === opt;
-        wrap.appendChild(
+        return el(
+          'button',
+          {
+            className: 'option' + (isSelected ? ' selected' : ''),
+            type: 'button',
+            onClick: () => {
+              state.data.executivePlacements = opt === 'Yes';
+              if (opt !== 'Yes') state.data.executiveLevel = null;
+              render();
+            },
+          },
+          opt
+        );
+      });
+      wrap.appendChild(fieldWrap('field-exec-placements', state.data.executivePlacements !== null, 'Please select one.', [execHeading, execSubtitle, ...execOptions]));
+
+      if (state.data.executivePlacements === true) {
+        const levelHeading = el('h2', {}, ['Which executive level have you placed the most?', reqMark()]);
+        const levelOptions = ['C-suite', 'VPs/SVPs', 'Directors/Heads/GM'].map((opt) =>
           el(
             'button',
             {
-              className: 'option' + (isSelected ? ' selected' : ''),
+              className: 'option' + (state.data.executiveLevel === opt ? ' selected' : ''),
               type: 'button',
               onClick: () => {
-                state.data.executivePlacements = opt === 'Yes';
-                if (opt !== 'Yes') state.data.executiveLevel = null;
+                state.data.executiveLevel = opt;
                 render();
               },
             },
             opt
           )
         );
-      });
-
-      if (state.data.executivePlacements === true) {
-        wrap.appendChild(el('h2', {}, 'Which executive level have you placed the most?'));
-        ['C-suite', 'VPs/SVPs', 'Directors/Heads/GM'].forEach((opt) => {
-          wrap.appendChild(
-            el(
-              'button',
-              {
-                className: 'option' + (state.data.executiveLevel === opt ? ' selected' : ''),
-                type: 'button',
-                onClick: () => {
-                  state.data.executiveLevel = opt;
-                  render();
-                },
-              },
-              opt
-            )
-          );
-        });
+        wrap.appendChild(fieldWrap('field-exec-level', !!state.data.executiveLevel, 'Please select one.', [levelHeading, ...levelOptions]));
       }
 
-      wrap.appendChild(el('h2', {}, 'Have you done contingency hiring before?'));
-      wrap.appendChild(
-        el(
-          'div',
-          { className: 'subtitle' },
-          'Contingency means you\u2019re only paid if your candidate gets placed \u2014 no retainer, no guarantee.'
-        )
+      const contingencyHeading = el('h2', {}, ['Have you done contingency hiring before?', reqMark()]);
+      const contingencySubtitle = el(
+        'div',
+        { className: 'subtitle' },
+        'Contingency means you\u2019re only paid if your candidate gets placed. No retainer, no guarantee.'
       );
-
-      ['Yes', 'No'].forEach((opt) => {
+      const contingencyOptions = ['Yes', 'No'].map((opt) => {
         const isSelected =
           state.data.contingencyExperience === null
             ? false
             : (state.data.contingencyExperience ? 'Yes' : 'No') === opt;
-        wrap.appendChild(
-          el(
-            'button',
-            {
-              className: 'option' + (isSelected ? ' selected' : ''),
-              type: 'button',
-              onClick: () => {
-                state.data.contingencyExperience = opt === 'Yes';
-                if (opt === 'Yes') state.data.contingencyAck = true;
-                else state.data.contingencyAck = false;
-                render();
-              },
+        return el(
+          'button',
+          {
+            className: 'option' + (isSelected ? ' selected' : ''),
+            type: 'button',
+            onClick: () => {
+              state.data.contingencyExperience = opt === 'Yes';
+              if (opt === 'Yes') state.data.contingencyAck = true;
+              else state.data.contingencyAck = false;
+              render();
             },
-            opt
-          )
+          },
+          opt
         );
       });
+      wrap.appendChild(fieldWrap('field-contingency', state.data.contingencyExperience !== null, 'Please select one.', [contingencyHeading, contingencySubtitle, ...contingencyOptions]));
 
       if (state.data.contingencyExperience === false) {
         const explainer = el('div', { className: 'explainer' }, [
           el('div', {}, [
             el('b', {}, 'How contingency hiring works here: '),
             document.createTextNode(
-              'You only get paid when a candidate you submit is hired for the role. There\u2019s no upfront fee and no guaranteed payout \u2014 you\u2019re competing with other recruiters working the same role, and only a successful placement earns a fee.'
+              'You only get paid when a candidate you submit is hired for the role. There\u2019s no upfront fee and no guaranteed payout. You\u2019re competing with other recruiters working the same role, and only a successful placement earns a fee.'
             ),
           ]),
         ]);
-        wrap.appendChild(explainer);
 
-        const ackLabel = el('label', { className: 'ack' });
+        const ackLabel = el('label', { className: 'ack', style: 'margin-bottom:0;' });
         const checkbox = el('input', { type: 'checkbox' });
         checkbox.checked = state.data.contingencyAck;
         checkbox.addEventListener('change', (e) => {
@@ -716,8 +750,9 @@
           render();
         });
         ackLabel.appendChild(checkbox);
-        ackLabel.appendChild(document.createTextNode('I understand and want to proceed on this basis.'));
-        wrap.appendChild(ackLabel);
+        ackLabel.appendChild(document.createTextNode('I understand and want to proceed on this basis.' ));
+        ackLabel.appendChild(reqMark());
+        wrap.appendChild(fieldWrap('field-contingency-ack', state.data.contingencyAck === true, 'You must check this box to continue.', [explainer, ackLabel]));
       }
 
       return wrap;
@@ -732,12 +767,12 @@
         ['Search firm', d.firmName],
         ['Years of experience', d.yearsExperience],
         ['Industries', d.industries.join(', ')],
-        ['Phone', d.phone || '—'],
+        ['Phone', d.phone || 'N/A'],
         ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
       ];
 
       if (d.executivePlacements) {
-        rows.push(['Most placed level', d.executiveLevel || '—']);
+        rows.push(['Most placed level', d.executiveLevel || 'N/A']);
       }
 
       rows.push(['Contingency hiring', d.contingencyExperience ? 'Has done it before' : 'New to contingency, acknowledged terms']);
@@ -775,7 +810,7 @@
           ]),
         ]
       );
-      wrap.appendChild(consentLabel);
+      wrap.appendChild(fieldWrap('field-terms', d.termsAccepted === true, 'You must agree to continue.', [consentLabel]));
 
       if (state.submitError) {
         wrap.appendChild(el('div', { style: 'color:#b42318;font-size:13px;margin-top:16px;' }, state.submitError));
@@ -868,6 +903,7 @@
           onClick: () => {
             if (state.stepIndex > 0) {
               state.stepIndex -= 1;
+              state.attemptedNext = false;
               render();
             }
           },
@@ -876,22 +912,41 @@
       );
       footerInner.appendChild(backBtn);
 
+      // Clicking Next/Finish while something's missing doesn't just sit
+      // there disabled -- it scrolls straight to the first thing that
+      // needs attention and explains why, rather than leaving the user to
+      // hunt for it themselves.
+      function scrollToFirstInvalid(stepKey) {
+        const targetId = firstInvalidFieldId(stepKey);
+        if (!targetId) return;
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
       if (!isLast) {
         const nextBtn = el(
           'button',
           {
             className: 'next-btn',
             type: 'button',
-            disabled: !canProceed(key) ? 'true' : undefined,
             onClick: () => {
-              if (!canProceed(key)) return;
-              state.stepIndex += 1;
+              if (canProceed(key)) {
+                state.stepIndex += 1;
+                state.attemptedNext = false;
+                render();
+                return;
+              }
+              state.attemptedNext = true;
               render();
+              scrollToFirstInvalid(key);
             },
           },
           'Next'
         );
-        if (!canProceed(key)) nextBtn.disabled = true;
+        if (!canProceed(key)) {
+          nextBtn.style.background = '#e5e5e5';
+          nextBtn.style.color = '#aaa';
+        }
         footerInner.appendChild(nextBtn);
       } else {
         const submitBtn = el(
@@ -899,11 +954,23 @@
           {
             className: 'next-btn',
             type: 'button',
-            onClick: submitProfile,
+            onClick: () => {
+              if (state.submitting) return;
+              if (canProceed('review')) {
+                submitProfile();
+                return;
+              }
+              state.attemptedNext = true;
+              render();
+              scrollToFirstInvalid('review');
+            },
           },
           state.submitting ? 'Saving…' : 'Finish'
         );
-        submitBtn.disabled = state.submitting || !canProceed('review');
+        if (!canProceed('review')) {
+          submitBtn.style.background = '#e5e5e5';
+          submitBtn.style.color = '#aaa';
+        }
         footerInner.appendChild(submitBtn);
       }
 
@@ -933,16 +1000,18 @@
 
       // A freshly-loaded session can occasionally not have its auth token
       // fully attached to outgoing requests yet, making this come back
-      // empty even though the row genuinely exists. Retry once before
-      // showing an error that tells a real recruiter to sign up again.
-      if (!error && !recruiter) {
-        await new Promise((resolve) => setTimeout(resolve, 700));
+      // empty even though the row genuinely exists. A single 700ms retry
+      // wasn't always enough margin, so this backs off across a few tries
+      // before concluding anything's actually wrong.
+      for (const delay of [600, 1200, 1800]) {
+        if (error || recruiter) break;
+        await new Promise((resolve) => setTimeout(resolve, delay));
         ({ data: recruiter, error } = await lookupRecruiter());
       }
 
       if (error || !recruiter) {
         document.getElementById('root').innerHTML =
-          '<div class="center-msg">We couldn\'t find your recruiter profile. Please sign up again.</div>';
+          '<div class="center-msg">We\'re having trouble loading your profile. Please refresh the page. If this keeps happening, log out and log back in.</div>';
         return;
       }
 

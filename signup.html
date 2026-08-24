@@ -857,7 +857,7 @@
       <!-- Shown only if Confirm email hasn't been turned off yet -->
       <div id="check-email" class="hidden status-box">
         <div id="check-email-text">Check your email to confirm your account.</div>
-        <div class="muted">Click the link on this device or any device — once you do, we'll finish setting up your account here.</div>
+        <div class="muted">Click the link in that email to finish signing up.</div>
         <div class="muted">Didn&rsquo;t get it? <a id="link-resend" style="cursor:pointer; text-decoration:underline; color:inherit;">Resend the link</a></div>
       </div>
 
@@ -1449,12 +1449,13 @@
       // A freshly-loaded session can occasionally not have its auth token
       // fully attached to outgoing requests yet, which makes RLS-gated
       // lookups come back empty even for a real, existing account -- not
-      // an error, just nothing found. Retry once before concluding this
-      // is actually a brand-new user and sending them to company
-      // onboarding by default, which is wrong for an existing recruiter
-      // or an already-set-up company.
-      if (!found) {
-        await new Promise((resolve) => setTimeout(resolve, 700));
+      // an error, just nothing found yet. Back off across a few tries
+      // before concluding anything's actually wrong -- a single retry
+      // wasn't always enough margin, and getting this wrong sends an
+      // existing recruiter or company into the wrong onboarding wizard.
+      for (const delay of [600, 1200, 1800]) {
+        if (found) break;
+        await new Promise((resolve) => setTimeout(resolve, delay));
         found = await findCompanyOrRecruiter(session.user.id);
       }
 
@@ -1472,7 +1473,14 @@
         return;
       }
 
-      window.location.replace(ONBOARDING_URL);
+      // Genuinely nothing found for this account after retrying. This is
+      // expected for a brand-new signup (handled separately, before this
+      // ever runs) -- but for an existing, already-logged-in user it means
+      // the lookup is still failing rather than that they're new. Sending
+      // them into company onboarding by default would misfile a real
+      // recruiter, so this surfaces an error to retry instead of guessing.
+      postAuthErrorText.textContent = "We couldn't load your account. Please refresh the page.";
+      showOnly(postAuthErrorBox);
     }
 
     // Tries a plain insert; if a row already exists for this account
