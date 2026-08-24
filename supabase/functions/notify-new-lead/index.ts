@@ -16,9 +16,9 @@ const corsHeaders = {
 
 const NOTIFY_TO_EMAILS = ["akashmplacement@gmail.com", "akash@makeplacement.com"];
 // Resend requires the "from" address to be on a domain you've verified in
-// your Resend account. Until you verify a domain, Resend's own sandbox
-// address works for testing: onboarding@resend.dev
-const NOTIFY_FROM_EMAIL = "MakePlacement Leads <onboarding@resend.dev>";
+// your Resend account -- makeplacement.com is verified, so this sends as
+// the same mailbox used for other outgoing mail.
+const NOTIFY_FROM_EMAIL = "MakePlacement Leads <akash@makeplacement.com>";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

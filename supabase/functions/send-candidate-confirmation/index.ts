@@ -14,7 +14,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const NOTIFY_FROM_EMAIL = "MakePlacement <onboarding@resend.dev>";
+const NOTIFY_FROM_EMAIL = "MakePlacement <akash@makeplacement.com>";
 
 const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_URL")!,
