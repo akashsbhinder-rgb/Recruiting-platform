@@ -254,44 +254,6 @@
     margin: 0 auto 36px;
   }
 
-  .hero-form {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #ffffff;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 6px;
-    max-width: 420px;
-    margin: 0 auto;
-    box-shadow: 0 10px 30px rgba(20, 20, 25, 0.06);
-  }
-
-  .hero-form input {
-    flex: 1;
-    border: none;
-    background: none;
-    outline: none;
-    font-family: inherit;
-    font-size: 14.5px;
-    padding: 10px 14px;
-    color: var(--fg);
-    min-width: 0;
-  }
-
-  .hero-form input::placeholder { color: var(--muted); }
-
-  .hero-form .btn-pill {
-    flex-shrink: 0;
-  }
-
-  .form-error {
-    font-size: 12.5px;
-    color: #d13c3c;
-    margin-top: 10px;
-    min-height: 16px;
-  }
-
   /* ---- Trust strip ---- */
   .trust-strip {
     border-top: 1px solid var(--border);
@@ -654,7 +616,6 @@
       <nav class="main-nav">
         <a href="#for-companies">For companies</a>
         <a href="#for-recruiters">For recruiters</a>
-        <a href="#faq">FAQ</a>
       </nav>
       <div class="header-actions">
         <a class="link" href="signup.html">Log in</a>
@@ -694,38 +655,22 @@
       </div>
     </div>
     <div class="hero-inner">
-      <h1 class="hero-headline">Hire the future.<br>Hire with conviction.</h1>
-      <p class="hero-sub">Independent recruiters and the companies hiring them, working off one shared pipeline — so every role gets filled faster, and every hire is one you can stand behind.</p>
-      <form id="hero-form" novalidate>
-        <div class="hero-form">
-          <input type="email" id="hero-email" placeholder="What's your work email?" required>
-          <button type="submit" class="btn-pill">Get started</button>
-        </div>
-        <div class="form-error" id="hero-error"></div>
-      </form>
+      <p class="hero-sub">Get automatically matched with recruiters experienced in the industry and role you're trying to fill.</p>
+      <a class="btn-pill" href="signup.html">Get started</a>
     </div>
   </section>
-
-  <div class="trust-strip">
-    <div class="trust-row">
-      <div class="trust-item"><span class="dot"></span>Free for recruiters</div>
-      <div class="trust-item"><span class="dot"></span>Pay only when you hire</div>
-      <div class="trust-item"><span class="dot"></span>90-day replacement guarantee</div>
-      <div class="trust-item"><span class="dot"></span>Every candidate double opt-in confirmed</div>
-    </div>
-  </div>
 
   <section class="audience-section" id="for-companies">
     <div class="audience-inner">
       <div class="eyebrow">Companies</div>
-      <h2 class="section-headline">A hiring partner that understands exactly what you're looking for</h2>
-      <p class="section-sub">Post your most important roles and get candidates sourced by recruiters who work in your space — you only pay when you make a hire.</p>
+      <h2 class="section-headline">A hiring partner that knows exactly what you need</h2>
+      <p class="section-sub">Post your role and we will get you strong candidates within days.</p>
 
       <div class="steps-grid">
         <div class="step-card">
           <div class="step-num">01</div>
           <div class="step-title">Tell us what you need</div>
-          <p class="step-desc">Post the role: what it pays, what you need done, and what a great candidate looks like.</p>
+          <p class="step-desc">Post the role, what it pays and what the ideal hire looks like.</p>
           <div class="step-mock">
             <div class="mock-field"><div class="mock-field-label">Role name</div><div class="mock-field-value">VP of Operations</div></div>
             <div class="mock-field"><div class="mock-field-label">Salary range</div><div class="mock-field-value">$180,000 &ndash; $230,000</div></div>
@@ -735,7 +680,7 @@
         <div class="step-card">
           <div class="step-num">02</div>
           <div class="step-title">Recruiters take it from there</div>
-          <p class="step-desc">Independent recruiters who work in your space start submitting candidates who match.</p>
+          <p class="step-desc">Recruiters immediately get matched and start submitting candidates within days not months.</p>
           <div class="step-mock">
             <div class="mock-candidate">
               <div class="mock-avatar">JR</div>
@@ -750,7 +695,7 @@
         <div class="step-card">
           <div class="step-num">03</div>
           <div class="step-title">Interview and hire</div>
-          <p class="step-desc">Talk to the candidates you like. You only pay a fee when you actually hire someone.</p>
+          <p class="step-desc">Filter your favorite candidates and pay only when the hire is made.</p>
           <div class="step-mock">
             <div class="mock-stage done">Recruiter screen</div>
             <div class="mock-stage done">Hiring manager call</div>
@@ -771,8 +716,8 @@
   <section class="audience-section alt" id="for-recruiters">
     <div class="audience-inner">
       <div class="eyebrow">Recruiters</div>
-      <h2 class="section-headline">The fastest way to more placements</h2>
-      <p class="section-sub">Browse roles from companies actively hiring, submit the candidates you're already working with, and get paid when they're placed — free to use.</p>
+      <h2 class="section-headline">The fastest way to make more placements</h2>
+      <p class="section-sub">Clients are already here. You can start sourcing and submitting candidates immediately.</p>
 
       <div class="steps-grid">
         <div class="step-card">
@@ -788,7 +733,7 @@
         <div class="step-card">
           <div class="step-num">02</div>
           <div class="step-title">Find roles that fit</div>
-          <p class="step-desc">Browse open roles and submit the candidates you think are a match.</p>
+          <p class="step-desc">Browse open roles and submit the candidates that match.</p>
           <div class="step-mock">
             <div class="mock-field"><div class="mock-field-label">Open role</div><div class="mock-field-value">VP of Operations</div></div>
             <div class="mock-candidate-note">$180,000 &ndash; $230,000 &middot; Manufacturing</div>
@@ -816,49 +761,6 @@
     </div>
   </section>
 
-  <section class="faq-section" id="faq">
-    <div class="faq-inner">
-      <h2 class="faq-headline">Frequently asked questions</h2>
-      <div class="faq-list">
-        <details class="faq-item" open>
-          <summary>What is MakePlacement?</summary>
-          <div class="faq-answer">MakePlacement connects companies hiring for a role with independent recruiters who work candidates in that space. Companies post what they need, recruiters submit candidates who match, and you only pay when you hire someone.</div>
-        </details>
-        <details class="faq-item">
-          <summary>Is there a cost for recruiters to use MakePlacement?</summary>
-          <div class="faq-answer">No. It's free for recruiters to use. Companies pay a placement fee only when they hire a candidate who was submitted through MakePlacement.</div>
-        </details>
-        <details class="faq-item">
-          <summary>What happens if a hire doesn't work out?</summary>
-          <div class="faq-answer">Every hire is covered by a 90-day replacement guarantee. If it doesn't work out within that window, MakePlacement runs a replacement search at no additional cost. Full terms are in the <a href="recruitment-agreement.html">Recruitment Agreement</a>.</div>
-        </details>
-        <details class="faq-item">
-          <summary>How is this different from a staffing agency?</summary>
-          <div class="faq-answer">Instead of working with one agency, you get submissions from many independent recruiters at once, each competing to bring you the best fit. You review candidates and only pay for the one you actually hire.</div>
-        </details>
-        <details class="faq-item">
-          <summary>Do recruiters have to work exclusively with MakePlacement?</summary>
-          <div class="faq-answer">No — recruiters can work with other clients too. Once you're introduced to a company through MakePlacement, though, you keep working with that company through the platform rather than moving the relationship off it.</div>
-        </details>
-        <details class="faq-item">
-          <summary>Can I use MakePlacement alongside my own hiring process?</summary>
-          <div class="faq-answer">Yes. Posting a role on MakePlacement doesn't require you to route all of your hiring through us — it just adds another source of vetted candidates.</div>
-        </details>
-      </div>
-    </div>
-  </section>
-
-  <section class="final-cta">
-    <h2>See what MakePlacement can do for you</h2>
-    <form id="final-form" novalidate style="max-width:420px; margin:0 auto;">
-      <div class="hero-form">
-        <input type="email" id="final-email" placeholder="What's your work email?" required>
-        <button type="submit" class="btn-pill">Get started</button>
-      </div>
-      <div class="form-error" id="final-error"></div>
-    </form>
-  </section>
-
   <footer>
     <div class="footer-row">
       <div>&copy; <span id="year"></span> MakePlacement</div>
@@ -881,32 +783,6 @@
       const qs = params.toString();
       window.location.href = 'signup.html' + (qs ? '?' + qs : '');
     }
-
-    document.getElementById('hero-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const input = document.getElementById('hero-email');
-      const errorEl = document.getElementById('hero-error');
-      const value = input.value.trim();
-      if (!isEmail(value)) {
-        errorEl.textContent = 'Please enter a valid email';
-        return;
-      }
-      errorEl.textContent = '';
-      goToSignup(value, null);
-    });
-
-    document.getElementById('final-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const input = document.getElementById('final-email');
-      const errorEl = document.getElementById('final-error');
-      const value = input.value.trim();
-      if (!isEmail(value)) {
-        errorEl.textContent = 'Please enter a valid email';
-        return;
-      }
-      errorEl.textContent = '';
-      goToSignup(value, null);
-    });
 
     document.querySelectorAll('.audience-form').forEach(form => {
       form.addEventListener('submit', e => {
