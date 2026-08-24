@@ -134,13 +134,24 @@
   .hero {
     position: relative;
     padding: 96px 24px 64px;
-    text-align: center;
+    min-height: 78vh;
+    display: flex;
+    align-items: center;
+    text-align: left;
     overflow: hidden;
+    background-image: url('images/hero-lighthouse.png');
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+  }
+
+  @media (max-width: 700px) {
+    .hero { min-height: 640px; }
   }
 
   .hero-inner {
     max-width: 680px;
-    margin: 0 auto;
+    margin: 0;
   }
 
   /* ---- Decorative flock: traced frame-by-frame from an actual recording
@@ -251,7 +262,7 @@
     line-height: 1.55;
     color: #55555a;
     max-width: 520px;
-    margin: 0 auto 36px;
+    margin: 0 0 36px;
   }
 
   /* ---- Trust strip ---- */
@@ -655,6 +666,7 @@
       </div>
     </div>
     <div class="hero-inner">
+      <h1 class="hero-headline">A hiring marketplace</h1>
       <p class="hero-sub">Get automatically matched with recruiters experienced in the industry and role you're trying to fill.</p>
       <a class="btn-pill" href="signup.html">Get started</a>
     </div>
