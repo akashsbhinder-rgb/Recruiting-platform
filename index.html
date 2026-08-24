@@ -45,11 +45,13 @@
 
   /* ---- Header ---- */
   header {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 20;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
+    background: transparent;
+    border-bottom: none;
   }
 
   .header-row {
@@ -133,7 +135,7 @@
   /* ---- Hero ---- */
   .hero {
     position: relative;
-    padding: 96px 24px 64px;
+    padding: 72px 24px 104px;
     min-height: 78vh;
     display: flex;
     align-items: center;
