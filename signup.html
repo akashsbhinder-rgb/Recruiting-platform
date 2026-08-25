@@ -864,7 +864,7 @@
       return null;
     }
 
-    async function routeSignedInUser(session) {
+    async function routeSignedInUser(session, auto) {
       let found = await findCompanyOrRecruiter(session.user.id);
 
       // A freshly-loaded session can occasionally not have its auth token
@@ -894,12 +894,26 @@
         return;
       }
 
-      // Genuinely nothing found for this account after retrying. This is
-      // expected for a brand-new signup (handled separately, before this
-      // ever runs) -- but for an existing, already-logged-in user it means
-      // the lookup is still failing rather than that they're new. Sending
-      // them into company onboarding by default would misfile a real
-      // recruiter, so this surfaces an error to retry instead of guessing.
+      // Genuinely nothing found for this account after retrying.
+      if (auto) {
+        // This came from init()'s silent auto-route on page load, off a
+        // session that was just sitting in this browser -- the visitor
+        // never actively asserted it. Landing them on a dead-end error
+        // (whose only suggested fix is "refresh," which re-runs this same
+        // check against the same stale session and fails identically
+        // forever) is worse than just dropping that leftover session and
+        // showing a normal, working signup form. An explicit login attempt
+        // below still surfaces the error, since that IS an active assertion
+        // worth investigating rather than silently discarding.
+        await supabaseClient.auth.signOut();
+        setMode('companies');
+        return;
+      }
+
+      // For an existing user who just actively logged in with a password,
+      // sending them into company onboarding by default would misfile a
+      // real recruiter, so this surfaces an error to retry instead of
+      // guessing.
       postAuthErrorText.textContent = "We couldn't load your account. Please refresh the page.";
       showOnly(postAuthErrorBox);
     }
@@ -1033,7 +1047,7 @@
 
       pillsWrap.classList.add('hidden');
       showOnly(finishingBox);
-      await routeSignedInUser(session);
+      await routeSignedInUser(session, true);
     }
 
     init();
