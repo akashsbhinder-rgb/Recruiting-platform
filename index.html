@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MakePlacement — Make your next hire</title>
+<title>makeplacement — Make your next hire</title>
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -19,7 +19,7 @@
   :root {
     --bg: #ffffff;
     --fg: #17171a;
-    --muted: #8a8a92;
+    --muted: #6b6b73;
     --border: #e4e4e8;
     --pill-bg: #f0f0f2;
     --btn-bg: #17171a;
@@ -73,14 +73,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .wordmark-mark {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--fg);
-    flex-shrink: 0;
   }
 
   nav.main-nav {
@@ -399,7 +391,7 @@
 
   .mock-field-label {
     font-size: 10.5px;
-    color: #9a9a9a;
+    color: var(--muted);
     margin-bottom: 2px;
   }
 
@@ -440,7 +432,7 @@
   }
 
   .mock-candidate-name { font-size: 13px; font-weight: 600; }
-  .mock-candidate-note { font-size: 11.5px; color: #8a8a92; margin-top: 1px; }
+  .mock-candidate-note { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
 
   .mock-pill {
     display: inline-block;
@@ -562,7 +554,7 @@
     flex-shrink: 0;
     font-size: 20px;
     font-weight: 400;
-    color: #9a9a9a;
+    color: var(--muted);
   }
 
   .faq-item[open] summary::after { content: '\2212'; }
@@ -656,6 +648,21 @@
     transform: translateY(0) scale(1);
   }
 
+  /* Full-screen sheet on narrow phones -- a centered floating card is the
+     wrong shape once the viewport is this tight, especially once the
+     on-screen keyboard eats another big chunk of it. */
+  @media (max-width: 480px) {
+    .signup-overlay { padding: 0; }
+    .signup-modal {
+      max-width: 100%;
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      padding: 56px 24px 24px;
+    }
+  }
+
   .signup-close {
     position: absolute;
     top: 14px;
@@ -665,7 +672,7 @@
     border-radius: 50%;
     border: none;
     background: var(--pill-bg);
-    color: var(--muted);
+    color: var(--fg);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
@@ -675,7 +682,7 @@
     padding: 0;
   }
 
-  .signup-close:hover { color: var(--fg); }
+  .signup-close:hover { background: #e4e4e8; }
 
   .signup-modal h2 {
     font-family: 'Newsreader', serif;
@@ -832,7 +839,7 @@
 
   <header>
     <div class="container header-row">
-      <div class="wordmark"><span class="wordmark-mark"></span>MakePlacement</div>
+      <div class="wordmark">makeplacement</div>
       <nav class="main-nav">
         <a href="#for-companies">For companies</a>
         <a href="#for-recruiters">For recruiters</a>
@@ -844,6 +851,7 @@
     </div>
   </header>
 
+  <main>
   <section class="hero">
     <div class="hero-flock" aria-hidden="true">
       <div class="hero-bird b1" style="top:56px;">
@@ -875,7 +883,7 @@
       </div>
     </div>
     <div class="hero-inner">
-      <h1 class="hero-headline">Get quality candidates in days by automatically getting matched with vetted recruiters experienced in your hire.</h1>
+      <h1 class="hero-headline">Get candidates in days from recruiters who've hired for this role before.</h1>
       <a class="btn-pill" href="signup.html" data-signup-open="companies">Get started</a>
     </div>
   </section>
@@ -978,10 +986,11 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer>
     <div class="footer-row">
-      <div>&copy; <span id="year"></span> MakePlacement</div>
+      <div>&copy; <span id="year"></span> makeplacement</div>
       <div class="footer-links">
         <a href="signup.html" data-signup-open="companies">Sign up</a>
       </div>
@@ -1018,7 +1027,7 @@
             <div class="error-msg" id="err-c-email">Please enter your work email (not a personal address)</div>
           </div>
 
-          <button type="submit" class="submit">Continue with email</button>
+          <button type="submit" class="submit">Create account</button>
 
           <div class="link-row">Already have an account? <a id="link-login-from-companies">Log in</a></div>
         </form>
@@ -1040,7 +1049,7 @@
             <div class="error-msg" id="err-a-email">Please enter a valid email</div>
           </div>
 
-          <button type="submit" class="submit">Continue with email</button>
+          <button type="submit" class="submit">Create account</button>
 
           <div class="link-row">Already have an account? <a id="link-login-from-agencies">Log in</a></div>
         </form>
@@ -1105,25 +1114,100 @@
 
     // ---- Modal open/close ----
     const overlay = document.getElementById('signup-overlay');
+    const modalEl = document.getElementById('signup-modal');
+    let lastFocusedTrigger = null;
 
-    function openModal() {
+    function openModal(trigger) {
+      // A mouse click doesn't reliably focus <a>/<button> elements before
+      // this runs (varies by browser/OS), so document.activeElement here
+      // can't be trusted -- callers pass the actual element that was
+      // interacted with instead.
+      lastFocusedTrigger = trigger || document.activeElement;
       overlay.classList.add('open');
       overlay.setAttribute('aria-hidden', 'false');
       overlay.removeAttribute('inert');
       document.body.style.overflow = 'hidden';
+      // Pushes a history entry so the back button closes the modal instead
+      // of leaving the page -- guarded so re-opening (e.g. auto-routing
+      // straight into a different view) doesn't stack duplicate entries.
+      if (!(history.state && history.state.signupModal)) {
+        history.pushState({ signupModal: true }, '', '#signup');
+      }
     }
 
+    // The actual DOM close. Only call directly from the popstate handler --
+    // everywhere else (close button, backdrop, Esc) should call
+    // requestCloseModal() so the pushed history entry gets popped too,
+    // keeping back-button behavior consistent either way it's closed.
     function closeModal() {
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden', 'true');
       overlay.setAttribute('inert', '');
       document.body.style.overflow = '';
+      if (lastFocusedTrigger && typeof lastFocusedTrigger.focus === 'function') {
+        lastFocusedTrigger.focus();
+      }
     }
 
-    document.getElementById('signup-close').addEventListener('click', closeModal);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    function requestCloseModal() {
+      if (history.state && history.state.signupModal) {
+        history.back();
+      } else {
+        closeModal();
+      }
+    }
+
+    window.addEventListener('popstate', () => {
+      if (overlay.classList.contains('open')) closeModal();
+    });
+
+    document.getElementById('signup-close').addEventListener('click', requestCloseModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) requestCloseModal(); });
+
+    function focusFirstInModal() {
+      if (!overlay.classList.contains('open')) return;
+      const visible = allViews.find(v => !v.classList.contains('hidden'));
+      const target = (visible && visible.querySelector('input, button')) || document.getElementById('signup-close');
+      if (target) target.focus();
+    }
+
+    // On mobile the on-screen keyboard can cover whichever field was just
+    // focused (the modal's own scroll container doesn't know to react to
+    // it) -- nudge that field back into view once the keyboard has had a
+    // moment to animate in.
+    modalEl.addEventListener('focusin', e => {
+      if (e.target.tagName !== 'INPUT') return;
+      setTimeout(() => {
+        e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 300);
+    });
+
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+      if (!overlay.classList.contains('open')) return;
+
+      if (e.key === 'Escape') {
+        requestCloseModal();
+        return;
+      }
+
+      // Focus trap: Tab/Shift+Tab cycles within the modal instead of
+      // escaping out to the (inert, but let's not rely on that alone)
+      // page behind it.
+      if (e.key === 'Tab') {
+        const focusables = Array.from(
+          modalEl.querySelectorAll('button:not([disabled]), input:not([disabled]), a[href]')
+        ).filter(el => el.offsetParent !== null);
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     });
 
     // ---- Show/hide password toggles ----
@@ -1175,6 +1259,7 @@
 
     function showOnly(el) {
       allViews.forEach(node => node.classList.toggle('hidden', node !== el));
+      focusFirstInModal();
     }
 
     function showLogin() {
@@ -1617,7 +1702,7 @@
     async function handleSignupTrigger(e) {
       e.preventDefault();
       const kind = e.currentTarget.dataset.signupOpen;
-      openModal();
+      openModal(e.currentTarget);
 
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
@@ -1651,7 +1736,7 @@
           return;
         }
 
-        openModal();
+        openModal(form.querySelector('button[type="submit"]'));
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
           showOnly(finishingBox);
@@ -1701,6 +1786,30 @@
         await completeSignup(session, metaPending);
       }
     }
+
+    // ---- Deep link from signup.html (cold email links, old bookmarks) ----
+    // signup.html no longer exists as its own page -- it forwards here
+    // with ?signup=1 (plus whatever email/mode it was carrying), and this
+    // opens the modal prefilled exactly like clicking "Get started" would.
+    (function openModalFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('signup') !== '1') return;
+
+      const qMode = params.get('mode') === 'agencies' ? 'agencies' : 'companies';
+      const qEmail = params.get('email');
+
+      openModal();
+      setMode(qMode);
+      if (qEmail) {
+        document.getElementById('c-email').value = qEmail;
+        document.getElementById('a-email').value = qEmail;
+      }
+
+      // Tidy the address bar now that the ?signup=1&email=... has been
+      // acted on -- keeps the same history entry openModal() just pushed
+      // (so back-button behavior is unaffected), just cleans its URL.
+      history.replaceState(history.state, '', window.location.pathname + window.location.hash);
+    })();
 
     initAuthCheck();
   </script>
