@@ -104,7 +104,7 @@
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity 0.6s ease;
+    transition: opacity 0.48s ease;
   }
 
   .hero-bg-scene.active {
@@ -118,6 +118,24 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  /* Vignette so the photo actually blends into the mode's theme color
+     instead of sitting on top of it as an untouched rectangle -- the
+     edges of the screen read as solid white (companies) or black
+     (recruiters), fading in toward the photo at the center. */
+  .bg-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  #bg-companies .bg-vignette {
+    background: radial-gradient(ellipse 68% 62% at 50% 50%, transparent 25%, rgba(255, 255, 255, 0.97) 92%);
+  }
+
+  #bg-agencies .bg-vignette {
+    background: radial-gradient(ellipse 68% 62% at 50% 50%, transparent 25%, rgba(8, 8, 10, 0.94) 92%);
   }
 
   /* Darkened a touch so the black recruiters card blends into the scene
@@ -343,9 +361,11 @@
   <div class="hero-bg" id="hero-bg" aria-hidden="true">
     <div class="hero-bg-scene active" id="bg-companies">
       <img class="bg-photo" src="images/signup-companies.jpg" alt="">
+      <div class="bg-vignette"></div>
     </div>
     <div class="hero-bg-scene" id="bg-agencies">
       <img class="bg-photo" src="images/signup-recruiters.jpg" alt="">
+      <div class="bg-vignette"></div>
     </div>
   </div>
   <div class="card">
