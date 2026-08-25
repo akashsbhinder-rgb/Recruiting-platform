@@ -26,6 +26,28 @@
     --btn-fg: #ffffff;
     --focus: #4b6bfb;
     --error: #d13c3c;
+    --card-bg: rgba(255, 255, 255, 0.96);
+    --card-shadow: rgba(20, 20, 25, 0.18);
+  }
+
+  /* ---- Recruiters mode goes dark/black to blend into the moodier,
+     overcast valley photo -- companies stays light against the bright
+     factory interior. ---- */
+  [data-mode="agencies"] {
+    --bg: #121214;
+    --fg: #f5f5f6;
+    --muted: #97979e;
+    --border: #2c2c30;
+    --input-bg: #1d1d20;
+    --pill-bg: #232326;
+    --pill-active-bg: #f5f5f6;
+    --pill-active-fg: #121214;
+    --btn-bg: #f5f5f6;
+    --btn-fg: #121214;
+    --focus: #6d8bff;
+    --error: #ff6b6b;
+    --card-bg: rgba(18, 18, 20, 0.92);
+    --card-shadow: rgba(0, 0, 0, 0.5);
   }
 
   * { box-sizing: border-box; }
@@ -60,11 +82,13 @@
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 340px;
-    background: rgba(255, 255, 255, 0.96);
-    border-radius: 22px;
-    padding: 28px 26px;
-    box-shadow: 0 24px 60px rgba(20, 20, 25, 0.18);
+    max-width: 300px;
+    margin-bottom: 56px;
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px 22px;
+    box-shadow: 0 24px 60px var(--card-shadow);
+    transition: background 0.35s ease, box-shadow 0.35s ease;
   }
 
   /* ---- Hero background scenes -- a full-bleed photo behind the card,
@@ -96,13 +120,19 @@
     display: block;
   }
 
+  /* Darkened a touch so the black recruiters card blends into the scene
+     the way the white card already does against the brighter factory photo. */
+  #bg-agencies .bg-photo {
+    filter: brightness(0.78) saturate(0.92);
+  }
+
   h1 {
     font-family: 'Newsreader', serif;
     font-weight: 400;
-    font-size: 27px;
+    font-size: 23px;
     line-height: 1.2;
     letter-spacing: -0.01em;
-    margin: 0 0 20px;
+    margin: 0 0 16px;
   }
 
   .pills {
@@ -111,7 +141,7 @@
     background: var(--pill-bg);
     border-radius: 999px;
     padding: 3px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     transition: background 0.35s ease;
   }
 
@@ -121,9 +151,9 @@
     background: transparent;
     color: var(--muted);
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    padding: 10px 14px;
+    padding: 9px 12px;
     border-radius: 999px;
     cursor: pointer;
     transition: background 0.25s ease, color 0.25s ease;
@@ -156,8 +186,8 @@
     border: 1px solid var(--border);
     color: var(--fg);
     font-family: inherit;
-    font-size: 14px;
-    padding: 12px 18px;
+    font-size: 13px;
+    padding: 11px 16px;
     border-radius: 999px;
     outline: none;
     transition: border-color 0.2s ease, background 0.35s ease, color 0.35s ease;
@@ -230,12 +260,12 @@
     color: var(--btn-fg);
     border: none;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    padding: 13px 14px;
+    padding: 12px 14px;
     border-radius: 999px;
     cursor: pointer;
-    margin-top: 6px;
+    margin-top: 4px;
     transition: background 0.35s ease, color 0.35s ease, opacity 0.2s ease;
   }
 
@@ -260,10 +290,10 @@
   .wordmark {
     font-family: 'Newsreader', serif;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 13px;
     letter-spacing: -0.01em;
     color: var(--fg);
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     opacity: 0.85;
   }
 
