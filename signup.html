@@ -566,8 +566,16 @@
       const qMode = params.get('mode');
       if (qMode === 'agencies') setMode('agencies'); else setMode('companies');
       if (qEmail) {
-        cEmail.value = qEmail;
-        aEmail.value = qEmail;
+        // Reached via getElementById rather than the cEmail/aEmail consts
+        // declared further down the file -- those are in the temporal
+        // dead zone at this point in top-level script execution, so
+        // referencing them here threw a ReferenceError that silently
+        // killed every bit of JS after it (form validation, submit
+        // handlers, all of it) any time this page was reached with an
+        // ?email= param, i.e. every time someone actually came through
+        // the homepage's "Get started" form.
+        document.getElementById('c-email').value = qEmail;
+        document.getElementById('a-email').value = qEmail;
       }
     })();
 
