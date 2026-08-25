@@ -988,7 +988,7 @@
     </div>
   </footer>
 
-  <div class="signup-overlay" id="signup-overlay" aria-hidden="true">
+  <div class="signup-overlay" id="signup-overlay" aria-hidden="true" inert>
     <div class="signup-modal" id="signup-modal" role="dialog" aria-modal="true" aria-label="Sign up">
       <button type="button" class="signup-close" id="signup-close" aria-label="Close">&times;</button>
       <h2 id="heading">Make your next hire</h2>
@@ -1109,12 +1109,14 @@
     function openModal() {
       overlay.classList.add('open');
       overlay.setAttribute('aria-hidden', 'false');
+      overlay.removeAttribute('inert');
       document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden', 'true');
+      overlay.setAttribute('inert', '');
       document.body.style.overflow = '';
     }
 
