@@ -131,11 +131,18 @@
   }
 
   #bg-companies .bg-vignette {
-    background: radial-gradient(ellipse 68% 62% at 50% 50%, transparent 25%, rgba(255, 255, 255, 0.97) 92%);
+    background: radial-gradient(ellipse 68% 62% at 50% 50%, transparent 30%, rgba(255, 255, 255, 0.93) 92%);
   }
 
   #bg-agencies .bg-vignette {
     background: radial-gradient(ellipse 68% 62% at 50% 50%, transparent 25%, rgba(8, 8, 10, 0.94) 92%);
+  }
+
+  /* Companies photo is naturally high-key/pale, so it was washing out to
+     near-flat white under the vignette -- a touch more contrast keeps its
+     shape and depth instead of disappearing the way the plain crop did. */
+  #bg-companies .bg-photo {
+    filter: contrast(1.12) saturate(1.15) brightness(0.96);
   }
 
   /* Darkened a touch so the black recruiters card blends into the scene
@@ -309,12 +316,11 @@
 
   .wordmark {
     font-family: 'Newsreader', serif;
-    font-weight: 500;
-    font-size: 13px;
+    font-weight: 600;
+    font-size: 17px;
     letter-spacing: -0.01em;
     color: var(--fg);
-    margin-bottom: 14px;
-    opacity: 0.85;
+    margin-bottom: 16px;
     transition: color 0.48s ease;
   }
 

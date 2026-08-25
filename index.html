@@ -38,7 +38,7 @@
   a { color: inherit; }
 
   .container {
-    max-width: 1120px;
+    max-width: 1280px;
     margin: 0 auto;
     padding: 0 24px;
   }
@@ -188,8 +188,8 @@
     animation: bird-fly 11s linear forwards;
   }
 
-  .hero-bird.b2 { top: 46px; width: 22px; opacity: 0.5; animation-duration: 12.5s; animation-delay: .6s; }
-  .hero-bird.b3 { top: 22px; width: 25px; opacity: 0.56; animation-duration: 10.2s; animation-delay: 1.3s; }
+  .hero-bird.b2 { top: 48px; width: 22px; opacity: 0.5; animation-duration: 11.4s; animation-delay: .25s; }
+  .hero-bird.b3 { top: 40px; width: 25px; opacity: 0.56; animation-duration: 10.7s; animation-delay: .5s; }
 
   @keyframes bird-fly {
     0%   { transform: translateX(112vw); }
@@ -238,12 +238,12 @@
 
   @keyframes flap-l {
     0%, 100% { transform: rotate(0deg); }
-    45%      { transform: rotate(24deg); }
+    45%      { transform: rotate(38deg); }
   }
 
   @keyframes flap-r {
     0%, 100% { transform: rotate(0deg); }
-    45%      { transform: rotate(-24deg); }
+    45%      { transform: rotate(-38deg); }
   }
 
   @media (max-width: 700px) {
@@ -639,7 +639,7 @@
 
   <section class="hero">
     <div class="hero-flock" aria-hidden="true">
-      <div class="hero-bird b1" style="top:64px;">
+      <div class="hero-bird b1" style="top:56px;">
         <div class="bird-bob">
           <svg viewBox="-18 -6.5 36 11" xmlns="http://www.w3.org/2000/svg">
             <path class="wing-l" d="M-2,0 Q-9,-4.2 -16,-2 Q-9,-3 -2,0 Z"></path>
@@ -669,7 +669,7 @@
     </div>
     <div class="hero-inner">
       <h1 class="hero-headline">A hiring marketplace</h1>
-      <p class="hero-sub">Get automatically matched with recruiters experienced in the industry and role you're trying to fill.</p>
+      <p class="hero-sub">Get quality candidates in days by automatically getting matched with vetted recruiters experienced in your hire.</p>
       <a class="btn-pill" href="signup.html">Get started</a>
     </div>
   </section>
@@ -677,7 +677,7 @@
   <section class="audience-section" id="for-companies">
     <div class="audience-inner">
       <div class="eyebrow">Companies</div>
-      <h2 class="section-headline">A hiring partner that knows exactly what you need</h2>
+      <h2 class="section-headline">A hiring expert that will understand your needs</h2>
       <p class="section-sub">Post your role and we will get you strong candidates within days.</p>
 
       <div class="steps-grid">
@@ -730,7 +730,7 @@
   <section class="audience-section alt" id="for-recruiters">
     <div class="audience-inner">
       <div class="eyebrow">Recruiters</div>
-      <h2 class="section-headline">The fastest way to make more placements</h2>
+      <h2 class="section-headline">Make more placements</h2>
       <p class="section-sub">Clients are already here. You can start sourcing and submitting candidates immediately.</p>
 
       <div class="steps-grid">
@@ -750,7 +750,8 @@
           <p class="step-desc">Browse open roles and submit the candidates that match.</p>
           <div class="step-mock">
             <div class="mock-field"><div class="mock-field-label">Open role</div><div class="mock-field-value">VP of Operations</div></div>
-            <div class="mock-candidate-note">$180,000 &ndash; $230,000 &middot; Manufacturing</div>
+            <div class="mock-candidate-note">Austin, TX &middot; 250 employees</div>
+            <div class="mock-pill">est. earnings $27,000 &ndash; $34,500</div>
             <div class="mock-btn">Submit a candidate</div>
           </div>
         </div>
@@ -759,9 +760,10 @@
           <div class="step-title">Get paid when you place</div>
           <p class="step-desc">Earn a fee when your candidate gets hired. It's free to use MakePlacement.</p>
           <div class="step-mock">
-            <div class="mock-stage done">30 days after start &mdash; 1/3 released</div>
-            <div class="mock-stage done">60 days after start &mdash; 1/3 released</div>
-            <div class="mock-stage active">90 days after start &mdash; final 1/3</div>
+            <div class="mock-stage done">30 days after start &mdash; $9,000 released</div>
+            <div class="mock-stage done">60 days after start &mdash; $9,000 released</div>
+            <div class="mock-stage active">90 days after start &mdash; $9,000 final</div>
+            <div class="mock-pill">total earned $27,000</div>
           </div>
         </div>
       </div>
@@ -779,7 +781,6 @@
     <div class="footer-row">
       <div>&copy; <span id="year"></span> MakePlacement</div>
       <div class="footer-links">
-        <a href="recruitment-agreement.html">Recruitment Agreement</a>
         <a href="signup.html">Sign up</a>
       </div>
     </div>
