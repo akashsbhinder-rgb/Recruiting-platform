@@ -152,26 +152,18 @@
     margin: 0;
   }
 
-  /* ---- Decorative flock: traced frame-by-frame from an actual recording
-     of the reference site rather than guessed. What that footage showed
-     was NOT "one bird flies in and hovers" -- it's a small, loose flock
-     (2-3 birds) gliding in a slow, continuous, one-time pass clear across
-     the sky, each bird's wings out of phase with the others' (one can be
-     mid-upstroke while another is mid-downstroke). A rotating single wing
-     shape reads as a rigid hinge, not a flap -- real wings change SHAPE
-     through the stroke, not just angle -- so each wing-pair is drawn as
-     three distinct silhouettes (swept up / spread level / swept down) and
-     cycled as a hard-cut sprite flipbook (steps(), no interpolation)
-     rather than smoothly rotated. Motion layers, independent of each other:
-       1. .hero-bird   -- the whole flight path: one slow linear pass from
-                           off-screen right to off-screen left, runs once.
-       2. .bird-bob    -- a small continuous vertical wobble per bird,
-                           loops forever, own period per bird.
-       3. .wing-frame  -- three full wing-pair shapes stacked in place,
-                           opacity-cycled one-at-a-time via staggered
-                           negative delays on a shared keyframe, so exactly
-                           one is visible at any instant. Per-bird
-                           --flap-dur varies the cycle speed. ---- */
+  /* ---- Decorative flock: distant gulls, not a close-up flap study.
+     Real reference (birds against open sky) shows small, simple,
+     mostly-static gull-checkmark silhouettes gliding across -- not a
+     detailed body+wings illustration, and not an aggressive flap
+     cycle. A shallow double-arc stroke reads as "bird in flight" at
+     a glance; anything more detailed than that just reads as noise
+     at this size. Motion layers, independent of each other:
+       1. .hero-bird  -- the whole flight path: one slow linear pass
+                          from off-screen right to off-screen left,
+                          runs once.
+       2. .bird-bob   -- a small continuous vertical wobble per bird,
+                          loops forever, own period per bird. ---- */
   .hero-flock {
     position: absolute;
     inset: 0;
@@ -183,14 +175,13 @@
   .hero-bird {
     position: absolute;
     left: 0;
-    width: 62px;
-    opacity: 0.65;
-    --flap-dur: 0.68s;
+    width: 26px;
+    opacity: 0.6;
     animation: bird-fly 11s linear forwards;
   }
 
-  .hero-bird.b2 { top: 46px; width: 46px; opacity: 0.52; --flap-dur: 0.62s; animation-duration: 11.4s; animation-delay: .25s; }
-  .hero-bird.b3 { top: 36px; width: 52px; opacity: 0.58; --flap-dur: 0.74s; animation-duration: 10.7s; animation-delay: .5s; }
+  .hero-bird.b2 { top: 46px; width: 19px; opacity: 0.48; animation-duration: 11.4s; animation-delay: .25s; }
+  .hero-bird.b3 { top: 36px; width: 22px; opacity: 0.54; animation-duration: 10.7s; animation-delay: .5s; }
 
   @keyframes bird-fly {
     0%   { transform: translateX(112vw); }
@@ -216,34 +207,12 @@
     overflow: visible;
   }
 
-  .bird-body {
-    fill: var(--fg);
-  }
-
-  .bird-tail {
-    fill: var(--fg);
-    opacity: 0.85;
-  }
-
-  .wing-frame {
-    fill: var(--fg);
-    opacity: 0;
-    animation-name: wing-cycle;
-    animation-duration: var(--flap-dur);
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-  }
-
-  .wing-frame.f-mid  { animation-delay: calc(var(--flap-dur) * -0.3333); }
-  .wing-frame.f-down { animation-delay: calc(var(--flap-dur) * -0.6667); }
-
-  /* A hard steps() cut between very different silhouettes read as
-     fidgeting -- a short cross-fade at each frame's tail end (still
-     mostly a flat hold, not a smooth morph) settles that without
-     blurring the shapes into mush. */
-  @keyframes wing-cycle {
-    0%, 22%      { opacity: 1; }
-    33.33%, 100% { opacity: 0; }
+  .bird-mark {
+    fill: none;
+    stroke: var(--fg);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   @media (max-width: 700px) {
@@ -860,34 +829,22 @@
     <div class="hero-flock" aria-hidden="true">
       <div class="hero-bird b1" style="top:56px;">
         <div class="bird-bob">
-          <svg viewBox="-18 -11 36 20" xmlns="http://www.w3.org/2000/svg">
-            <path class="wing-frame f-up" d="M-2,1.5 Q-9,-7 -13,-9 Q-7,-2 -2,0 Z M2,1.5 Q9,-7 13,-9 Q7,-2 2,0 Z"></path>
-            <path class="wing-frame f-mid" d="M-2,2 Q-8,-3.5 -13,-1.5 Q-7,3.5 -2,1 Z M2,2 Q8,-3.5 13,-1.5 Q7,3.5 2,1 Z"></path>
-            <path class="wing-frame f-down" d="M-2,-1 Q-8,4 -12,7 Q-7,1 -2,-2 Z M2,-1 Q8,4 12,7 Q7,1 2,-2 Z"></path>
-            <ellipse class="bird-body" cx="0" cy="0" rx="3.6" ry="2.2"></ellipse>
-            <path class="bird-tail" d="M3,0 L7,-1.6 L7,1.6 Z"></path>
+          <svg viewBox="-10 -6 20 8" xmlns="http://www.w3.org/2000/svg">
+            <path class="bird-mark" d="M-7,0 Q-3.5,-3.6 0,0 Q3.5,-3.6 7,0"></path>
           </svg>
         </div>
       </div>
       <div class="hero-bird b2">
         <div class="bird-bob">
-          <svg viewBox="-18 -11 36 20" xmlns="http://www.w3.org/2000/svg">
-            <path class="wing-frame f-up" d="M-2,1.5 Q-9,-7 -13,-9 Q-7,-2 -2,0 Z M2,1.5 Q9,-7 13,-9 Q7,-2 2,0 Z"></path>
-            <path class="wing-frame f-mid" d="M-2,2 Q-8,-3.5 -13,-1.5 Q-7,3.5 -2,1 Z M2,2 Q8,-3.5 13,-1.5 Q7,3.5 2,1 Z"></path>
-            <path class="wing-frame f-down" d="M-2,-1 Q-8,4 -12,7 Q-7,1 -2,-2 Z M2,-1 Q8,4 12,7 Q7,1 2,-2 Z"></path>
-            <ellipse class="bird-body" cx="0" cy="0" rx="3.6" ry="2.2"></ellipse>
-            <path class="bird-tail" d="M3,0 L7,-1.6 L7,1.6 Z"></path>
+          <svg viewBox="-10 -6 20 8" xmlns="http://www.w3.org/2000/svg">
+            <path class="bird-mark" d="M-7,0 Q-3.5,-3.6 0,0 Q3.5,-3.6 7,0"></path>
           </svg>
         </div>
       </div>
       <div class="hero-bird b3">
         <div class="bird-bob">
-          <svg viewBox="-18 -11 36 20" xmlns="http://www.w3.org/2000/svg">
-            <path class="wing-frame f-up" d="M-2,1.5 Q-9,-7 -13,-9 Q-7,-2 -2,0 Z M2,1.5 Q9,-7 13,-9 Q7,-2 2,0 Z"></path>
-            <path class="wing-frame f-mid" d="M-2,2 Q-8,-3.5 -13,-1.5 Q-7,3.5 -2,1 Z M2,2 Q8,-3.5 13,-1.5 Q7,3.5 2,1 Z"></path>
-            <path class="wing-frame f-down" d="M-2,-1 Q-8,4 -12,7 Q-7,1 -2,-2 Z M2,-1 Q8,4 12,7 Q7,1 2,-2 Z"></path>
-            <ellipse class="bird-body" cx="0" cy="0" rx="3.6" ry="2.2"></ellipse>
-            <path class="bird-tail" d="M3,0 L7,-1.6 L7,1.6 Z"></path>
+          <svg viewBox="-10 -6 20 8" xmlns="http://www.w3.org/2000/svg">
+            <path class="bird-mark" d="M-7,0 Q-3.5,-3.6 0,0 Q3.5,-3.6 7,0"></path>
           </svg>
         </div>
       </div>
