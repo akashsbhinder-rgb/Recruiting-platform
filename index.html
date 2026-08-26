@@ -152,18 +152,25 @@
     margin: 0;
   }
 
-  /* ---- Decorative flock: distant gulls, not a close-up flap study.
-     Real reference (birds against open sky) shows small, simple,
-     mostly-static gull-checkmark silhouettes gliding across -- not a
-     detailed body+wings illustration, and not an aggressive flap
-     cycle. A shallow double-arc stroke reads as "bird in flight" at
-     a glance; anything more detailed than that just reads as noise
-     at this size. Motion layers, independent of each other:
+  /* ---- Decorative flock, rebuilt against ground truth: micro1's own
+     hero bird is a Lottie animation (checked their site + fetched the
+     actual JSON). It is a FILLED solid silhouette, not a stroke, and
+     the flap is two wing groups ROTATING around the shoulder (+-33 to
+     36deg) -- not a shape-morph flipbook. What makes it read as real:
+     irregular, hand-keyed timing (each half-stroke is a different
+     duration -- not a metronome) on a proper ease-in-out curve
+     (cubic-bezier(.167,.167,.833,.833), lifted directly from their
+     keyframe easing values -- a timing curve, not their artwork).
+     Layers, independent of each other:
        1. .hero-bird  -- the whole flight path: one slow linear pass
                           from off-screen right to off-screen left,
                           runs once.
        2. .bird-bob   -- a small continuous vertical wobble per bird,
-                          loops forever, own period per bird. ---- */
+                          loops forever, own period per bird.
+       3. .wing-l/-r  -- rotate around the shoulder pivot on an
+                          irregular multi-stop keyframe (3 flaps per
+                          loop, uneven spacing) instead of a smooth
+                          sine, which is what read as robotic before. ---- */
   .hero-flock {
     position: absolute;
     inset: 0;
@@ -175,13 +182,13 @@
   .hero-bird {
     position: absolute;
     left: 0;
-    width: 26px;
-    opacity: 0.6;
+    width: 34px;
+    opacity: 0.62;
     animation: bird-fly 11s linear forwards;
   }
 
-  .hero-bird.b2 { top: 46px; width: 19px; opacity: 0.48; animation-duration: 11.4s; animation-delay: .25s; }
-  .hero-bird.b3 { top: 36px; width: 22px; opacity: 0.54; animation-duration: 10.7s; animation-delay: .5s; }
+  .hero-bird.b2 { top: 46px; width: 25px; opacity: 0.5; animation-duration: 11.4s; animation-delay: .25s; }
+  .hero-bird.b3 { top: 36px; width: 29px; opacity: 0.56; animation-duration: 10.7s; animation-delay: .5s; }
 
   @keyframes bird-fly {
     0%   { transform: translateX(112vw); }
@@ -207,12 +214,48 @@
     overflow: visible;
   }
 
-  .bird-mark {
-    fill: none;
-    stroke: var(--fg);
-    stroke-width: 1.3;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .bird-body, .bird-tail {
+    fill: var(--fg);
+  }
+
+  .wing-l, .wing-r {
+    fill: var(--fg);
+    transform-box: view-box;
+  }
+
+  .wing-l {
+    transform-origin: 0px 0px;
+    animation: flap-l 1.2s cubic-bezier(.167, .167, .833, .833) infinite;
+  }
+
+  .wing-r {
+    transform-origin: 0px 0px;
+    animation: flap-r 1.2s cubic-bezier(.167, .167, .833, .833) infinite;
+  }
+
+  .hero-bird.b2 .wing-l, .hero-bird.b2 .wing-r { animation-duration: 1.05s; }
+  .hero-bird.b3 .wing-l { animation-duration: 1.35s; }
+  .hero-bird.b3 .wing-r { animation-duration: 1.32s; animation-delay: -.06s; }
+
+  /* Three flaps per loop, unevenly spaced (18/12/16/18/18/18%) rather
+     than perfectly even quarters -- the irregularity itself is what
+     the real keyframe data has and a clean sine curve doesn't. */
+  @keyframes flap-l {
+    0%, 100% { transform: rotate(0deg); }
+    18%      { transform: rotate(-34deg); }
+    30%      { transform: rotate(0deg); }
+    46%      { transform: rotate(-34deg); }
+    64%      { transform: rotate(0deg); }
+    82%      { transform: rotate(-34deg); }
+  }
+
+  @keyframes flap-r {
+    0%, 100% { transform: rotate(0deg); }
+    18%      { transform: rotate(34deg); }
+    30%      { transform: rotate(0deg); }
+    46%      { transform: rotate(34deg); }
+    64%      { transform: rotate(0deg); }
+    82%      { transform: rotate(34deg); }
   }
 
   @media (max-width: 700px) {
@@ -829,22 +872,31 @@
     <div class="hero-flock" aria-hidden="true">
       <div class="hero-bird b1" style="top:56px;">
         <div class="bird-bob">
-          <svg viewBox="-10 -6 20 8" xmlns="http://www.w3.org/2000/svg">
-            <path class="bird-mark" d="M-7,0 Q-3.5,-3.6 0,0 Q3.5,-3.6 7,0"></path>
+          <svg viewBox="-16 -9 32 17" xmlns="http://www.w3.org/2000/svg">
+            <path class="wing-l" d="M0,0 C-3,-0.9 -6.5,-2.6 -9.5,-3.3 C-11.8,-3.9 -13.5,-3.2 -14,-1.8 C-12.2,-0.4 -8.5,1 -5,1.7 C-2.7,2.1 -0.9,1.7 0,0.9 Z"></path>
+            <path class="wing-r" d="M0,0 C3,-0.9 6.5,-2.6 9.5,-3.3 C11.8,-3.9 13.5,-3.2 14,-1.8 C12.2,-0.4 8.5,1 5,1.7 C2.7,2.1 0.9,1.7 0,0.9 Z"></path>
+            <ellipse class="bird-body" cx="0" cy="0" rx="2.3" ry="1.3"></ellipse>
+            <path class="bird-tail" d="M2.1,0 L4.6,-0.9 L4.6,0.9 Z"></path>
           </svg>
         </div>
       </div>
       <div class="hero-bird b2">
         <div class="bird-bob">
-          <svg viewBox="-10 -6 20 8" xmlns="http://www.w3.org/2000/svg">
-            <path class="bird-mark" d="M-7,0 Q-3.5,-3.6 0,0 Q3.5,-3.6 7,0"></path>
+          <svg viewBox="-16 -9 32 17" xmlns="http://www.w3.org/2000/svg">
+            <path class="wing-l" d="M0,0 C-3,-0.9 -6.5,-2.6 -9.5,-3.3 C-11.8,-3.9 -13.5,-3.2 -14,-1.8 C-12.2,-0.4 -8.5,1 -5,1.7 C-2.7,2.1 -0.9,1.7 0,0.9 Z"></path>
+            <path class="wing-r" d="M0,0 C3,-0.9 6.5,-2.6 9.5,-3.3 C11.8,-3.9 13.5,-3.2 14,-1.8 C12.2,-0.4 8.5,1 5,1.7 C2.7,2.1 0.9,1.7 0,0.9 Z"></path>
+            <ellipse class="bird-body" cx="0" cy="0" rx="2.3" ry="1.3"></ellipse>
+            <path class="bird-tail" d="M2.1,0 L4.6,-0.9 L4.6,0.9 Z"></path>
           </svg>
         </div>
       </div>
       <div class="hero-bird b3">
         <div class="bird-bob">
-          <svg viewBox="-10 -6 20 8" xmlns="http://www.w3.org/2000/svg">
-            <path class="bird-mark" d="M-7,0 Q-3.5,-3.6 0,0 Q3.5,-3.6 7,0"></path>
+          <svg viewBox="-16 -9 32 17" xmlns="http://www.w3.org/2000/svg">
+            <path class="wing-l" d="M0,0 C-3,-0.9 -6.5,-2.6 -9.5,-3.3 C-11.8,-3.9 -13.5,-3.2 -14,-1.8 C-12.2,-0.4 -8.5,1 -5,1.7 C-2.7,2.1 -0.9,1.7 0,0.9 Z"></path>
+            <path class="wing-r" d="M0,0 C3,-0.9 6.5,-2.6 9.5,-3.3 C11.8,-3.9 13.5,-3.2 14,-1.8 C12.2,-0.4 8.5,1 5,1.7 C2.7,2.1 0.9,1.7 0,0.9 Z"></path>
+            <ellipse class="bird-body" cx="0" cy="0" rx="2.3" ry="1.3"></ellipse>
+            <path class="bird-tail" d="M2.1,0 L4.6,-0.9 L4.6,0.9 Z"></path>
           </svg>
         </div>
       </div>
