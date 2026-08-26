@@ -183,14 +183,14 @@
   .hero-bird {
     position: absolute;
     left: 0;
-    width: 30px;
+    width: 36px;
     opacity: 0.62;
-    --flap-dur: 0.42s;
+    --flap-dur: 0.68s;
     animation: bird-fly 11s linear forwards;
   }
 
-  .hero-bird.b2 { top: 48px; width: 22px; opacity: 0.5; --flap-dur: 0.39s; animation-duration: 11.4s; animation-delay: .25s; }
-  .hero-bird.b3 { top: 40px; width: 25px; opacity: 0.56; --flap-dur: 0.47s; animation-duration: 10.7s; animation-delay: .5s; }
+  .hero-bird.b2 { top: 48px; width: 27px; opacity: 0.5; --flap-dur: 0.62s; animation-duration: 11.4s; animation-delay: .25s; }
+  .hero-bird.b3 { top: 40px; width: 30px; opacity: 0.56; --flap-dur: 0.74s; animation-duration: 10.7s; animation-delay: .5s; }
 
   @keyframes bird-fly {
     0%   { transform: translateX(112vw); }
@@ -216,8 +216,13 @@
     overflow: visible;
   }
 
-  .bird-body, .bird-tail {
+  .bird-body {
     fill: var(--fg);
+  }
+
+  .bird-tail {
+    fill: var(--fg);
+    opacity: 0.85;
   }
 
   .wing-frame {
@@ -225,16 +230,20 @@
     opacity: 0;
     animation-name: wing-cycle;
     animation-duration: var(--flap-dur);
-    animation-timing-function: steps(1);
+    animation-timing-function: linear;
     animation-iteration-count: infinite;
   }
 
   .wing-frame.f-mid  { animation-delay: calc(var(--flap-dur) * -0.3333); }
   .wing-frame.f-down { animation-delay: calc(var(--flap-dur) * -0.6667); }
 
+  /* A hard steps() cut between very different silhouettes read as
+     fidgeting -- a short cross-fade at each frame's tail end (still
+     mostly a flat hold, not a smooth morph) settles that without
+     blurring the shapes into mush. */
   @keyframes wing-cycle {
-    0%, 33.32%   { opacity: 1; }
-    33.34%, 100% { opacity: 0; }
+    0%, 22%      { opacity: 1; }
+    33.33%, 100% { opacity: 0; }
   }
 
   @media (max-width: 700px) {
@@ -851,34 +860,34 @@
     <div class="hero-flock" aria-hidden="true">
       <div class="hero-bird b1" style="top:56px;">
         <div class="bird-bob">
-          <svg viewBox="-18 -8 36 14" xmlns="http://www.w3.org/2000/svg">
-            <path class="wing-frame f-up" d="M-2,0 Q-8,-5 -14,-7 Q-7,-3.5 -2,-0.5 Z M2,0 Q8,-5 14,-7 Q7,-3.5 2,-0.5 Z"></path>
-            <path class="wing-frame f-mid" d="M-2,0 Q-9,-4.2 -16,-2 Q-9,-3 -2,0 Z M2,0 Q9,-4.2 16,-2 Q9,-3 2,0 Z"></path>
-            <path class="wing-frame f-down" d="M-2,0.5 Q-8,3 -15,4 Q-8,2 -2,0 Z M2,0.5 Q8,3 15,4 Q8,2 2,0 Z"></path>
-            <ellipse class="bird-body" cx="0" cy="0" rx="2.2" ry="1.3"></ellipse>
-            <path class="bird-tail" d="M2.2,0 L4.6,-0.9 L4.6,0.9 Z"></path>
+          <svg viewBox="-19 -9 38 16" xmlns="http://www.w3.org/2000/svg">
+            <path class="wing-frame f-up" d="M-2,0.8 Q-9,-6.5 -15,-8 Q-8,-2 -2,-0.5 Z M2,0.8 Q9,-6.5 15,-8 Q8,-2 2,-0.5 Z"></path>
+            <path class="wing-frame f-mid" d="M-2,1 Q-10,-1.5 -17,-1 Q-10,1.8 -2,0.3 Z M2,1 Q10,-1.5 17,-1 Q10,1.8 2,0.3 Z"></path>
+            <path class="wing-frame f-down" d="M-2,-0.5 Q-9,3 -15,5 Q-8,0.5 -2,-0.8 Z M2,-0.5 Q9,3 15,5 Q8,0.5 2,-0.8 Z"></path>
+            <ellipse class="bird-body" cx="0" cy="0" rx="2.6" ry="1.6"></ellipse>
+            <path class="bird-tail" d="M2.4,0 L5.2,-1.1 L5.2,1.1 Z"></path>
           </svg>
         </div>
       </div>
       <div class="hero-bird b2">
         <div class="bird-bob">
-          <svg viewBox="-18 -8 36 14" xmlns="http://www.w3.org/2000/svg">
-            <path class="wing-frame f-up" d="M-2,0 Q-8,-5 -14,-7 Q-7,-3.5 -2,-0.5 Z M2,0 Q8,-5 14,-7 Q7,-3.5 2,-0.5 Z"></path>
-            <path class="wing-frame f-mid" d="M-2,0 Q-9,-4.2 -16,-2 Q-9,-3 -2,0 Z M2,0 Q9,-4.2 16,-2 Q9,-3 2,0 Z"></path>
-            <path class="wing-frame f-down" d="M-2,0.5 Q-8,3 -15,4 Q-8,2 -2,0 Z M2,0.5 Q8,3 15,4 Q8,2 2,0 Z"></path>
-            <ellipse class="bird-body" cx="0" cy="0" rx="2.2" ry="1.3"></ellipse>
-            <path class="bird-tail" d="M2.2,0 L4.6,-0.9 L4.6,0.9 Z"></path>
+          <svg viewBox="-19 -9 38 16" xmlns="http://www.w3.org/2000/svg">
+            <path class="wing-frame f-up" d="M-2,0.8 Q-9,-6.5 -15,-8 Q-8,-2 -2,-0.5 Z M2,0.8 Q9,-6.5 15,-8 Q8,-2 2,-0.5 Z"></path>
+            <path class="wing-frame f-mid" d="M-2,1 Q-10,-1.5 -17,-1 Q-10,1.8 -2,0.3 Z M2,1 Q10,-1.5 17,-1 Q10,1.8 2,0.3 Z"></path>
+            <path class="wing-frame f-down" d="M-2,-0.5 Q-9,3 -15,5 Q-8,0.5 -2,-0.8 Z M2,-0.5 Q9,3 15,5 Q8,0.5 2,-0.8 Z"></path>
+            <ellipse class="bird-body" cx="0" cy="0" rx="2.6" ry="1.6"></ellipse>
+            <path class="bird-tail" d="M2.4,0 L5.2,-1.1 L5.2,1.1 Z"></path>
           </svg>
         </div>
       </div>
       <div class="hero-bird b3">
         <div class="bird-bob">
-          <svg viewBox="-18 -8 36 14" xmlns="http://www.w3.org/2000/svg">
-            <path class="wing-frame f-up" d="M-2,0 Q-8,-5 -14,-7 Q-7,-3.5 -2,-0.5 Z M2,0 Q8,-5 14,-7 Q7,-3.5 2,-0.5 Z"></path>
-            <path class="wing-frame f-mid" d="M-2,0 Q-9,-4.2 -16,-2 Q-9,-3 -2,0 Z M2,0 Q9,-4.2 16,-2 Q9,-3 2,0 Z"></path>
-            <path class="wing-frame f-down" d="M-2,0.5 Q-8,3 -15,4 Q-8,2 -2,0 Z M2,0.5 Q8,3 15,4 Q8,2 2,0 Z"></path>
-            <ellipse class="bird-body" cx="0" cy="0" rx="2.2" ry="1.3"></ellipse>
-            <path class="bird-tail" d="M2.2,0 L4.6,-0.9 L4.6,0.9 Z"></path>
+          <svg viewBox="-19 -9 38 16" xmlns="http://www.w3.org/2000/svg">
+            <path class="wing-frame f-up" d="M-2,0.8 Q-9,-6.5 -15,-8 Q-8,-2 -2,-0.5 Z M2,0.8 Q9,-6.5 15,-8 Q8,-2 2,-0.5 Z"></path>
+            <path class="wing-frame f-mid" d="M-2,1 Q-10,-1.5 -17,-1 Q-10,1.8 -2,0.3 Z M2,1 Q10,-1.5 17,-1 Q10,1.8 2,0.3 Z"></path>
+            <path class="wing-frame f-down" d="M-2,-0.5 Q-9,3 -15,5 Q-8,0.5 -2,-0.8 Z M2,-0.5 Q9,3 15,5 Q8,0.5 2,-0.8 Z"></path>
+            <ellipse class="bird-body" cx="0" cy="0" rx="2.6" ry="1.6"></ellipse>
+            <path class="bird-tail" d="M2.4,0 L5.2,-1.1 L5.2,1.1 Z"></path>
           </svg>
         </div>
       </div>
