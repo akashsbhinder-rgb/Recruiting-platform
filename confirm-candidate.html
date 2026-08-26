@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Confirm your interest | MakePlacement</title>
+<title>Confirm your interest | makeplacement</title>
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -41,17 +41,6 @@
     text-align: center;
   }
 
-  .logomark {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: var(--fg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-  }
-
   h1 {
     font-family: 'Newsreader', serif;
     font-weight: 400;
@@ -74,11 +63,6 @@
 <body>
 
 <div class="card" id="content">
-  <div class="logomark">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
-      <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" />
-    </svg>
-  </div>
   <div class="icon">…</div>
   <h1>Confirming…</h1>
   <p>One moment.</p>
@@ -93,11 +77,6 @@
 
   function render(icon, title, body) {
     content.innerHTML = `
-      <div class="logomark">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
-          <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" />
-        </svg>
-      </div>
       <div class="icon">${icon}</div>
       <h1>${title}</h1>
       <p>${body}</p>

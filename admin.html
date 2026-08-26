@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin | MakePlacement</title>
+  <title>Admin | makeplacement</title>
   <meta name="robots" content="noindex, nofollow">
 
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -341,7 +341,7 @@ function OverviewTab({ data, onJump }) {
 
   return (
     <div>
-      <SectionHeading eyebrow="Platform-wide" title="Everything happening on MakePlacement" subtitle="A live view across every company, recruiter, role, and conversation." />
+      <SectionHeading eyebrow="Platform-wide" title="Everything happening on makeplacement" subtitle="A live view across every company, recruiter, role, and conversation." />
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 32 }}>
         {[
@@ -1025,16 +1025,6 @@ function Login({ onSignedIn }) {
 }
 
 // ---------- top nav (matches the employer/recruiter dashboards) ----------
-function Logomark() {
-  return (
-    <div style={{ width: 26, height: 26, borderRadius: 7, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
-        <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" />
-      </svg>
-    </div>
-  );
-}
-
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "companies", label: "Companies" },
@@ -1052,8 +1042,7 @@ function TopNav({ tab, onTabChange, onLogout, notifications, notifUnread, onMark
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 28px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Logomark />
-            <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>MakePlacement</span>
+            <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>makeplacement</span>
             <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: T.sub, background: T.pillBg, padding: "3px 8px", borderRadius: 999 }}>Admin</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 22 }} className="mp-nav-secondary">

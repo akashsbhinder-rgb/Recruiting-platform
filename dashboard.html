@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard | MakePlacement</title>
+  <title>Dashboard | makeplacement</title>
 
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -791,7 +791,7 @@ async function updateCandidate(id, patch) {
 // Records a placement and schedules the Referrer's 30/60/90-day payout
 // installments -- see recruiting-agreement.html Section 3. This only tracks
 // what's owed; actually moving money requires the release-payout-installments
-// Edge Function and a funded MakePlacement Stripe balance.
+// Edge Function and a funded makeplacement Stripe balance.
 async function createPlacement({ candidateId, roleId, recruiterId, companyId, baseSalary, commissionPct, startDate }) {
   const { count: existingCount, error: existingErr } = await supabaseClient
     .from("placements")
@@ -946,16 +946,6 @@ async function sendMessage(session, roleId, candidateId, recruiterId, body) {
 }
 
 // ---------- top navigation ----------
-function Logomark() {
-  return (
-    <div style={{ width: 26, height: 26, borderRadius: 7, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
-        <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" />
-      </svg>
-    </div>
-  );
-}
-
 const NAV_ITEMS = [
   { key: "roles", label: "Roles", live: true },
   { key: "recruiters", label: "My Recruiters", live: true },
@@ -972,8 +962,7 @@ function TopNav({ tab, onTabChange, companyName, onLogout, unreadHint, notificat
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 28px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Logomark />
-            <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>MakePlacement</span>
+            <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>makeplacement</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
             {NAV_ITEMS.map((item) => {
@@ -2235,7 +2224,7 @@ function ClientDashboard() {
               <EmptyState
                 icon="briefcase"
                 title="No roles posted yet"
-                body="Post your first role to start getting candidates from recruiters on MakePlacement."
+                body="Post your first role to start getting candidates from recruiters on makeplacement."
                 actions={!adminViewMode && <PrimaryButton onClick={() => (window.location.href = NEW_ROLE_URL)}>Post a role</PrimaryButton>}
               />
             ) : (

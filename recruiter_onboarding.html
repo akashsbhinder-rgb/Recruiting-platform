@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recruiter onboarding | MakePlacement</title>
+<title>Recruiter onboarding | makeplacement</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,400&family=Inter:wght@400;500;600&display=swap');
@@ -852,7 +852,7 @@
             },
           }),
           el('span', {}, [
-            'By agreeing, you acknowledge that you have read and understood, and agree to MakePlacement’s ',
+            'By agreeing, you acknowledge that you have read and understood, and agree to makeplacement’s ',
             el('a', { href: 'terms.html', target: '_blank', rel: 'noreferrer', style: 'text-decoration:underline;color:inherit;' }, 'Terms of Use'),
             ', ',
             el('a', { href: 'privacy.html', target: '_blank', rel: 'noreferrer', style: 'text-decoration:underline;color:inherit;' }, 'Privacy Policy'),
@@ -917,7 +917,7 @@
 
     function buildTopBar() {
       const bar = el('div', { className: 'topbar' });
-      bar.appendChild(el('a', { href: LOGIN_URL }, 'MakePlacement'));
+      bar.appendChild(el('a', { href: LOGIN_URL }, 'makeplacement'));
       bar.appendChild(el('button', { type: 'button', onClick: handleLogout }, 'Log out'));
       return bar;
     }
