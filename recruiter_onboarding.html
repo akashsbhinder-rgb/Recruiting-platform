@@ -304,6 +304,7 @@
         firmName: '',
         yearsExperience: null,
         industries: [],
+        locations: [],
         phone: '',
         executivePlacements: null,   // true | false
         executiveLevel: null,        // 'C-suite' | 'VPs/SVPs' | 'Directors/Heads/GM'
@@ -312,6 +313,7 @@
         termsAccepted: false,
       },
       industryDraft: '',
+      locationDraft: '',
       submitting: false,
       submitError: '',
       submitted: false,
@@ -599,6 +601,10 @@
       const industriesSubtitle = el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, 'Type an industry and press Enter to add it. One is enough to get started.');
       wrap.appendChild(fieldWrap('field-industries', state.data.industries.length > 0, 'Please add at least one industry.', [industriesHeading, industriesSubtitle, buildIndustryTagInput()]));
 
+      const locationsHeading = el('h2', {}, 'Where have you made the most placements?');
+      const locationsSubtitle = el('div', { className: 'subtitle', style: 'margin-bottom:10px;' }, "Cities, states, or regions -- this is how we tell where your network and relationships are strongest. Type one and press Enter to add it.");
+      wrap.appendChild(el('div', {}, [locationsHeading, locationsSubtitle, buildLocationTagInput()]));
+
       const phoneLabel = el('div', { className: 'field-label' }, ['Phone number', reqMark()]);
       const phoneInput = el('input', { type: 'text', placeholder: 'e.g. (555) 123-4567' });
       phoneInput.value = state.data.phone;
@@ -644,6 +650,51 @@
           render();
         } else if (e.key === 'Backspace' && !state.industryDraft && state.data.industries.length) {
           state.data.industries = state.data.industries.slice(0, -1);
+          render();
+        }
+      });
+      box.appendChild(input);
+      box.addEventListener('click', () => input.focus());
+
+      return box;
+    }
+
+    function buildLocationTagInput() {
+      const box = el('div', { className: 'tag-input-box' });
+
+      state.data.locations.forEach((location, i) => {
+        const pill = el('span', { className: 'tag-pill' }, [
+          document.createTextNode(location),
+          el(
+            'button',
+            {
+              type: 'button',
+              onClick: (e) => {
+                e.stopPropagation();
+                state.data.locations = state.data.locations.filter((_, idx) => idx !== i);
+                render();
+              },
+            },
+            '✕'
+          ),
+        ]);
+        box.appendChild(pill);
+      });
+
+      const input = el('input', { type: 'text', placeholder: state.data.locations.length ? '' : 'e.g. Austin, TX' });
+      input.value = state.locationDraft;
+      input.addEventListener('input', (e) => { state.locationDraft = e.target.value; });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = state.locationDraft.trim();
+          if (val && !state.data.locations.includes(val)) {
+            state.data.locations = [...state.data.locations, val];
+          }
+          state.locationDraft = '';
+          render();
+        } else if (e.key === 'Backspace' && !state.locationDraft && state.data.locations.length) {
+          state.data.locations = state.data.locations.slice(0, -1);
           render();
         }
       });
@@ -767,6 +818,7 @@
         ['Search firm', d.firmName],
         ['Years of experience', d.yearsExperience],
         ['Industries', d.industries.join(', ')],
+        ['Locations', d.locations.length ? d.locations.join(', ') : 'N/A'],
         ['Phone', d.phone || 'N/A'],
         ['Executive placements', d.executivePlacements ? 'Yes' : 'No'],
       ];
@@ -837,6 +889,7 @@
             firm_name: state.data.firmName,
             years_experience: state.data.yearsExperience,
             industries: state.data.industries,
+            locations: state.data.locations,
             phone: state.data.phone || null,
             executive_placements: state.data.executivePlacements,
             executive_level: state.data.executivePlacements ? state.data.executiveLevel : null,

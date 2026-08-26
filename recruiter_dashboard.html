@@ -715,6 +715,7 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
   const gradient = gradientFor(companyName || role.name);
   const initial = (companyName || role.name || "?").trim().charAt(0).toUpperCase();
   const commissionPct = role.commission_pct != null ? Number(role.commission_pct).toFixed(1).replace(/\.0$/, "") : null;
+  const earnings = estimateEarnings(role.min_salary, role.max_salary, role.commission_pct);
   const isNew = isRecent(role.created_at);
 
   return (
@@ -753,24 +754,24 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
           )}
           <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 8, lineHeight: 1.3 }}>{role.name}</div>
           {(location || (company && company.employee_count)) && (
-            <div style={{ fontSize: 12, color: T.sub, marginBottom: 9 }}>
+            <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>
               {[location, company && company.employee_count ? `${company.employee_count} employees` : null].filter(Boolean).join(" · ")}
             </div>
           )}
-          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px" }}>
-            {commissionPct ? <>{commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span></> : <span style={{ fontWeight: 500, color: T.sub }}>Bonus not set</span>}
-          </div>
+          <div style={{ fontSize: 13, color: T.sub, marginBottom: 9 }}>{money(role.min_salary)} – {money(role.max_salary)}</div>
+          {earnings && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999 }}>
+              <Icon name="dollar" size={12} />
+              est. earnings {money(Math.round(earnings.low))} – {money(Math.round(earnings.high))}
+            </div>
+          )}
         </div>
       </div>
 
       {expanded && (
         <div style={{ padding: "18px 20px 22px", borderTop: `1px solid ${T.lineSoft}` }}>
-          <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999 }}>
-            <Icon name="dollar" size={12} />
-            est. earnings {(() => {
-              const e = estimateEarnings(role.min_salary, role.max_salary, role.commission_pct);
-              return e ? `${money(Math.round(e.low))} \u2013 ${money(Math.round(e.high))}` : "\u2014";
-            })()}
+          <div style={{ marginBottom: 14, fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px" }}>
+            {commissionPct ? <>{commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span></> : <span style={{ fontWeight: 500, color: T.sub }}>Bonus not set</span>}
           </div>
 
           {role.description && (
