@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>makeplacement — Make your next hire</title>
+<title>makeplacement: Make your next hire</title>
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -11,7 +11,6 @@
 <link rel="manifest" href="site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="image" href="images/hero-lighthouse.jpg" fetchpriority="high">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
@@ -128,38 +127,176 @@
     nav.main-nav { display: none; }
   }
 
-  /* ---- Hero ---- */
-  .hero {
-    position: relative;
-    padding: 72px 24px 104px;
-    min-height: 78vh;
-    display: flex;
-    align-items: center;
+  /* ---- Explore hero (role grid) ---- */
+  .explore-hero {
+    padding: 128px 24px 88px;
+    background: #fbfbfa;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .explore-inner {
+    max-width: 1160px;
+  }
+
+  .explore-head {
+    max-width: 620px;
+    margin: 0 0 36px;
+  }
+
+  .explore-head .eyebrow {
     text-align: left;
-    overflow: hidden;
-    background-image: url('images/hero-lighthouse.jpg');
-    background-size: cover;
-    background-position: center bottom;
-    background-repeat: no-repeat;
+    margin-bottom: 12px;
   }
 
-  @media (max-width: 700px) {
-    .hero { min-height: 640px; }
+  h1.explore-headline {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 38px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
   }
 
-  .hero-inner {
-    max-width: 680px;
+  .explore-sub {
+    font-size: 15.5px;
+    line-height: 1.6;
+    color: #55555a;
     margin: 0;
   }
 
-  h1.hero-headline {
-    font-family: 'Newsreader', serif;
-    font-weight: 400;
-    font-size: 36px;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-    max-width: 560px;
-    margin: 0 0 36px;
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  @media (max-width: 860px) {
+    .role-grid { grid-template-columns: 1fr; }
+  }
+
+  .role-card {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 8px 24px rgba(20, 20, 25, 0.04);
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+  }
+
+  .role-card.expanded { box-shadow: 0 12px 32px rgba(20, 20, 25, 0.08); }
+
+  .role-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .role-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .role-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .role-badge.new { background: #eaf1ff; color: #3b6fe0; }
+  .role-badge.fee { background: #e8f6ec; color: #1a8a4a; }
+
+  .role-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .role-meta {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .role-comp {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  .role-earn {
+    font-size: 12.5px;
+    color: #1a8a4a;
+    margin-bottom: 4px;
+  }
+
+  .role-expand-hint {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 14px;
+  }
+
+  .role-detail {
+    display: none;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .role-card.expanded .role-expand-hint { display: none; }
+  .role-card.expanded .role-detail { display: block; }
+
+  .role-detail-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+    margin-bottom: 6px;
+  }
+
+  .role-detail-desc {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #55555a;
+    margin-bottom: 14px;
+  }
+
+  .role-apply {
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--btn-bg);
+    border: none;
+    border-radius: 999px;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .role-apply:hover { opacity: 0.88; }
+
+  .explore-cta {
+    text-align: center;
+    margin-top: 36px;
+  }
+
+  .explore-note {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 14px;
   }
 
   /* ---- Trust strip ---- */
@@ -248,6 +385,12 @@
 
   @media (max-width: 860px) {
     .steps-grid { grid-template-columns: 1fr; }
+  }
+
+  .steps-grid.two-col { grid-template-columns: repeat(2, 1fr); max-width: 700px; margin: 0 auto; }
+
+  @media (max-width: 860px) {
+    .steps-grid.two-col { grid-template-columns: 1fr; }
   }
 
   .step-card {
@@ -747,27 +890,89 @@
     <div class="container header-row">
       <div class="wordmark">makeplacement</div>
       <nav class="main-nav">
+        <a href="#explore">Open roles</a>
         <a href="#for-companies">For companies</a>
-        <a href="#for-recruiters">For recruiters</a>
       </nav>
       <div class="header-actions">
         <a class="link" href="signup.html" data-signup-open="login">Log in</a>
-        <a class="btn-pill" href="signup.html" data-signup-open="companies">Get started</a>
+        <a class="btn-pill" href="signup.html" data-signup-open="agencies">Get started</a>
       </div>
     </div>
   </header>
 
   <main>
-  <section class="hero">
-    <div class="hero-inner">
-      <h1 class="hero-headline">Your BD is handled, just submit candidates.</h1>
-      <a class="btn-pill" href="signup.html" data-signup-open="companies">Get started</a>
+  <section class="explore-hero" id="explore">
+    <div class="container explore-inner">
+      <div class="explore-head">
+        <div class="eyebrow">For manufacturing recruiters</div>
+        <h1 class="explore-headline">Your BD is handled. Just submit candidates.</h1>
+        <p class="explore-sub">Live searches from manufacturing and advanced manufacturing companies. Apply instantly, with no waiting on approval, and start submitting candidates the moment you're in.</p>
+      </div>
+
+      <div class="role-grid" id="role-grid">
+        <div class="role-card">
+          <div class="role-card-top">
+            <div class="role-avatar" style="background:linear-gradient(135deg,#f0b429,#e8672a);">M</div>
+            <span class="role-badge new">New opportunity</span>
+          </div>
+          <div class="role-title">VP of Operations</div>
+          <div class="role-meta">Manufacturing &middot; Austin, TX &middot; 32 employees</div>
+          <div class="role-comp">$180,000 &ndash; $230,000</div>
+          <div class="role-earn">Est. earnings $27,000 &ndash; $34,500</div>
+          <div class="role-expand-hint">About this role &rsaquo;</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Family-owned manufacturer scaling into a second facility. Needs an operator who's run plant P&amp;L before and can report directly to the CEO.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-top">
+            <div class="role-avatar" style="background:linear-gradient(135deg,#f0b429,#e8672a);">M</div>
+            <span class="role-badge fee">15% fee</span>
+          </div>
+          <div class="role-title">Plant Manager</div>
+          <div class="role-meta">Manufacturing &middot; Charlotte, NC &middot; 300 employees</div>
+          <div class="role-comp">$145,000 &ndash; $175,000</div>
+          <div class="role-earn">Est. earnings $21,750 &ndash; $26,250</div>
+          <div class="role-expand-hint">About this role &rsaquo;</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Tier-1 automotive supplier replacing a plant manager who was promoted internally. Union environment, high-volume production.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-top">
+            <div class="role-avatar" style="background:linear-gradient(135deg,#f0b429,#e8672a);">A</div>
+            <span class="role-badge new">New opportunity</span>
+          </div>
+          <div class="role-title">Director of Manufacturing Engineering</div>
+          <div class="role-meta">Advanced Manufacturing (Robotics &amp; Automation) &middot; Pittsburgh, PA &middot; 150 employees</div>
+          <div class="role-comp">$170,000 &ndash; $210,000</div>
+          <div class="role-earn">Est. earnings $25,500 &ndash; $31,500</div>
+          <div class="role-expand-hint">About this role &rsaquo;</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Growing robotics and automation supplier ramping up production capacity. Needs someone who can lead engineering through a scale-up.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="explore-cta">
+        <a class="btn-pill" href="signup.html" data-signup-open="agencies">See all open roles</a>
+        <div class="explore-note">Free to join.</div>
+      </div>
     </div>
   </section>
 
   <section class="audience-section" id="for-companies">
     <div class="audience-inner">
       <div class="eyebrow">Companies</div>
+      <h2 class="section-headline">Strong candidates from recruiters who've hired for this role before.</h2>
 
       <div class="steps-grid">
         <div class="step-card">
@@ -820,7 +1025,7 @@
     <div class="audience-inner">
       <div class="eyebrow">Recruiters</div>
 
-      <div class="steps-grid">
+      <div class="steps-grid two-col">
         <div class="step-card">
           <div class="step-num">01</div>
           <div class="step-title">Set up your firm</div>
@@ -834,17 +1039,6 @@
         </div>
         <div class="step-card">
           <div class="step-num">02</div>
-          <div class="step-title">Find roles that fit</div>
-          <p class="step-desc">Apply for roles and get matched fast if your experience is a fit.</p>
-          <div class="step-mock">
-            <div class="mock-field"><div class="mock-field-label">Open role</div><div class="mock-field-value">VP of Operations</div></div>
-            <div class="mock-candidate-note">Austin, TX &middot; 32 employees</div>
-            <div class="mock-candidate-note">$180,000 &ndash; $230,000</div>
-            <div class="mock-pill">est. earnings $27,000 &ndash; $34,500</div>
-          </div>
-        </div>
-        <div class="step-card">
-          <div class="step-num">03</div>
           <div class="step-title">Get paid when you place</div>
           <p class="step-desc">Earn a fee when your candidate gets hired. It's free to use makeplacement.</p>
           <div class="step-mock">
@@ -1283,7 +1477,7 @@
 
       localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       lastMagicLinkRequest = { email, pending };
-      checkEmailText.textContent = `We sent a login link to ${email} — click it to finish signing up.`;
+      checkEmailText.textContent = `We sent a login link to ${email}. Click it to finish signing up.`;
       pillsWrap.classList.add('hidden');
       showOnly(checkEmailBox);
     });
@@ -1334,7 +1528,7 @@
 
       localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       lastMagicLinkRequest = { email, pending };
-      checkEmailText.textContent = `We sent a login link to ${email} — click it to finish signing up.`;
+      checkEmailText.textContent = `We sent a login link to ${email}. Click it to finish signing up.`;
       pillsWrap.classList.add('hidden');
       showOnly(checkEmailBox);
     });
@@ -1597,6 +1791,14 @@
 
     document.querySelectorAll('[data-signup-open]').forEach(el => {
       el.addEventListener('click', handleSignupTrigger);
+    });
+
+    // ---- Role grid: click a card to see role details, then apply ----
+    document.querySelectorAll('#role-grid .role-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.role-apply')) return;
+        card.classList.toggle('expanded');
+      });
     });
 
     // The two "What's your work email?" mini-forms under the Companies and
