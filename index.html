@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700&display=swap');
 
   :root {
     --bg: #ffffff;
@@ -57,6 +57,10 @@
     border-bottom: none;
   }
 
+  header .container {
+    padding-left: 10px;
+  }
+
   .header-row {
     display: flex;
     align-items: center;
@@ -65,8 +69,8 @@
   }
 
   .wordmark {
-    font-family: 'Newsreader', serif;
-    font-weight: 500;
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-weight: 700;
     font-size: 19px;
     letter-spacing: -0.01em;
     display: flex;
@@ -151,9 +155,9 @@
   h1.explore-headline {
     font-family: 'Newsreader', serif;
     font-weight: 400;
-    font-size: 38px;
-    line-height: 1.25;
-    letter-spacing: -0.01em;
+    font-size: 46px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
     margin: 0 0 12px;
   }
 
@@ -162,6 +166,67 @@
     line-height: 1.6;
     color: #55555a;
     margin: 0;
+  }
+
+  /* ---- Board chrome: sort tabs, search, live-roles heading ---- */
+  .board-tabs {
+    display: flex;
+    gap: 28px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .board-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .board-tab svg { flex-shrink: 0; }
+
+  .board-tab.active { color: var(--fg); }
+
+  .board-tab:disabled {
+    color: #c4c4c8;
+    cursor: not-allowed;
+  }
+
+  .board-search-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .board-count {
+    font-size: 13.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .board-heading {
+    margin-bottom: 20px;
+  }
+
+  .board-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .board-sub {
+    font-size: 14px;
+    color: var(--muted);
   }
 
   .role-grid {
@@ -187,36 +252,26 @@
 
   .role-card.expanded { box-shadow: 0 12px 32px rgba(20, 20, 25, 0.08); }
 
-  .role-card-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-
   .role-avatar {
     width: 34px;
     height: 34px;
     border-radius: 50%;
+    background: var(--pill-bg);
+    color: var(--fg);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
     font-size: 13px;
     font-weight: 600;
     flex-shrink: 0;
+    margin-bottom: 14px;
   }
 
-  .role-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 999px;
-    white-space: nowrap;
+  .role-revealed {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
   }
-
-  .role-badge.new { background: #eaf1ff; color: #3b6fe0; }
-  .role-badge.fee { background: #e8f6ec; color: #1a8a4a; }
 
   .role-title {
     font-size: 16px;
@@ -233,20 +288,29 @@
   .role-comp {
     font-size: 14px;
     font-weight: 600;
-    margin-bottom: 3px;
+    margin-bottom: 8px;
   }
 
   .role-earn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    align-self: flex-start;
     font-size: 12.5px;
-    color: #1a8a4a;
-    margin-bottom: 4px;
+    font-weight: 600;
+    color: #3b6fe0;
+    background: #eaf1ff;
+    padding: 5px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
   }
 
-  .role-expand-hint {
-    font-size: 12px;
+  .role-fee-line {
+    font-size: 13px;
     font-weight: 600;
-    color: var(--muted);
-    margin-top: 14px;
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .role-detail {
@@ -256,13 +320,14 @@
     border-top: 1px solid var(--border);
   }
 
-  .role-card.expanded .role-expand-hint { display: none; }
   .role-card.expanded .role-detail { display: block; }
 
   .role-detail-label {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--fg);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
     margin-bottom: 6px;
   }
 
@@ -270,6 +335,21 @@
     font-size: 13px;
     line-height: 1.6;
     color: #55555a;
+    margin-bottom: 18px;
+  }
+
+  .role-apply-heading {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  .role-apply-copy {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
     margin-bottom: 14px;
   }
 
@@ -360,9 +440,9 @@
   h2.section-headline {
     font-family: 'Newsreader', serif;
     font-weight: 400;
-    font-size: 34px;
-    line-height: 1.25;
-    letter-spacing: -0.01em;
+    font-size: 38px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
     text-align: center;
     max-width: 620px;
     margin: 0 auto 14px;
@@ -387,12 +467,6 @@
     .steps-grid { grid-template-columns: 1fr; }
   }
 
-  .steps-grid.two-col { grid-template-columns: repeat(2, 1fr); max-width: 700px; margin: 0 auto; }
-
-  @media (max-width: 860px) {
-    .steps-grid.two-col { grid-template-columns: 1fr; }
-  }
-
   .step-card {
     background: #ffffff;
     border: 1px solid var(--border);
@@ -402,8 +476,8 @@
   }
 
   .step-num {
-    font-family: 'Newsreader', serif;
     font-size: 14px;
+    font-weight: 600;
     color: var(--muted);
     margin-bottom: 18px;
   }
@@ -734,9 +808,8 @@
   .signup-close:hover { background: #e4e4e8; }
 
   .signup-modal h2 {
-    font-family: 'Newsreader', serif;
-    font-weight: 400;
-    font-size: 22px;
+    font-weight: 700;
+    font-size: 20px;
     line-height: 1.25;
     letter-spacing: -0.01em;
     margin: 0 0 20px;
@@ -904,59 +977,170 @@
   <section class="explore-hero" id="explore">
     <div class="container explore-inner">
       <div class="explore-head">
-        <div class="eyebrow">For manufacturing recruiters</div>
-        <h1 class="explore-headline">Your BD is handled. Just submit candidates.</h1>
-        <p class="explore-sub">Live searches from manufacturing and advanced manufacturing companies. Apply instantly, with no waiting on approval, and start submitting candidates the moment you're in.</p>
+        <h1 class="explore-headline">With your BD completed, start earning fees upon successful placements.</h1>
+      </div>
+
+      <div class="board-tabs">
+        <button class="board-tab active" type="button" data-sort="new">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          New
+        </button>
+        <button class="board-tab" type="button" data-sort="highest">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Highest paying
+        </button>
+        <button class="board-tab" type="button" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          Responsive
+        </button>
+      </div>
+
+      <div class="board-search-row">
+        <div class="board-count" id="role-count">7 roles</div>
+      </div>
+
+      <div class="board-heading">
+        <div class="board-title">Live roles</div>
+        <div class="board-sub">Open roles from companies hiring on makeplacement.</div>
       </div>
 
       <div class="role-grid" id="role-grid">
-        <div class="role-card">
-          <div class="role-card-top">
-            <div class="role-avatar" style="background:linear-gradient(135deg,#f0b429,#e8672a);">M</div>
-            <span class="role-badge new">New opportunity</span>
-          </div>
+        <div class="role-card" data-comp-min="180000">
+          <div class="role-avatar">M</div>
+          <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">VP of Operations</div>
-          <div class="role-meta">Manufacturing &middot; Austin, TX &middot; 32 employees</div>
+          <div class="role-meta">Austin, TX &middot; 11-50 employees</div>
           <div class="role-comp">$180,000 &ndash; $230,000</div>
-          <div class="role-earn">Est. earnings $27,000 &ndash; $34,500</div>
-          <div class="role-expand-hint">About this role &rsaquo;</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $27,000 &ndash; $34,500
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
           <div class="role-detail">
             <div class="role-detail-label">About this role</div>
             <p class="role-detail-desc">Family-owned manufacturer scaling into a second facility. Needs an operator who's run plant P&amp;L before and can report directly to the CEO.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
             <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
           </div>
         </div>
 
-        <div class="role-card">
-          <div class="role-card-top">
-            <div class="role-avatar" style="background:linear-gradient(135deg,#f0b429,#e8672a);">M</div>
-            <span class="role-badge fee">15% fee</span>
-          </div>
+        <div class="role-card" data-comp-min="145000">
+          <div class="role-avatar">M</div>
+          <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Plant Manager</div>
-          <div class="role-meta">Manufacturing &middot; Charlotte, NC &middot; 300 employees</div>
+          <div class="role-meta">Charlotte, NC &middot; 201-500 employees</div>
           <div class="role-comp">$145,000 &ndash; $175,000</div>
-          <div class="role-earn">Est. earnings $21,750 &ndash; $26,250</div>
-          <div class="role-expand-hint">About this role &rsaquo;</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $21,750 &ndash; $26,250
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
           <div class="role-detail">
             <div class="role-detail-label">About this role</div>
             <p class="role-detail-desc">Tier-1 automotive supplier replacing a plant manager who was promoted internally. Union environment, high-volume production.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
             <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
           </div>
         </div>
 
-        <div class="role-card">
-          <div class="role-card-top">
-            <div class="role-avatar" style="background:linear-gradient(135deg,#f0b429,#e8672a);">A</div>
-            <span class="role-badge new">New opportunity</span>
-          </div>
+        <div class="role-card" data-comp-min="170000">
+          <div class="role-avatar">A</div>
+          <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Director of Manufacturing Engineering</div>
-          <div class="role-meta">Advanced Manufacturing (Robotics &amp; Automation) &middot; Pittsburgh, PA &middot; 150 employees</div>
+          <div class="role-meta">Pittsburgh, PA &middot; 51-200 employees</div>
           <div class="role-comp">$170,000 &ndash; $210,000</div>
-          <div class="role-earn">Est. earnings $25,500 &ndash; $31,500</div>
-          <div class="role-expand-hint">About this role &rsaquo;</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $25,500 &ndash; $31,500
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
           <div class="role-detail">
             <div class="role-detail-label">About this role</div>
             <p class="role-detail-desc">Growing robotics and automation supplier ramping up production capacity. Needs someone who can lead engineering through a scale-up.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+
+        <div class="role-card" data-comp-min="160000">
+          <div class="role-avatar">M</div>
+          <div class="role-revealed">Company revealed once approved</div>
+          <div class="role-title">Director of Business Development</div>
+          <div class="role-meta">Chicago, IL &middot; 51-200 employees</div>
+          <div class="role-comp">$160,000 &ndash; $200,000</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $24,000 &ndash; $30,000
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Contract manufacturer expanding into new verticals. Needs someone who can build a pipeline from scratch and close enterprise accounts.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+
+        <div class="role-card" data-comp-min="110000">
+          <div class="role-avatar">M</div>
+          <div class="role-revealed">Company revealed once approved</div>
+          <div class="role-title">Supply Chain Manager</div>
+          <div class="role-meta">Memphis, TN &middot; 201-500 employees</div>
+          <div class="role-comp">$110,000 &ndash; $140,000</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $16,500 &ndash; $21,000
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Multi-site manufacturer tightening up supplier relationships after a recent expansion. Needs someone who can own sourcing end to end.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+
+        <div class="role-card" data-comp-min="70000">
+          <div class="role-avatar">M</div>
+          <div class="role-revealed">Company revealed once approved</div>
+          <div class="role-title">Production Supervisor</div>
+          <div class="role-meta">Grand Rapids, MI &middot; 51-200 employees</div>
+          <div class="role-comp">$70,000 &ndash; $90,000</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $10,500 &ndash; $13,500
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Growing packaging manufacturer adding a second shift. Needs a hands-on supervisor who can run the floor and coach a team of 15.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
+            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+          </div>
+        </div>
+
+        <div class="role-card" data-comp-min="50000">
+          <div class="role-avatar">M</div>
+          <div class="role-revealed">Company revealed once approved</div>
+          <div class="role-title">Quality Control Technician</div>
+          <div class="role-meta">Toledo, OH &middot; 11-50 employees</div>
+          <div class="role-comp">$50,000 &ndash; $65,000</div>
+          <div class="role-earn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            est. earnings $7,500 &ndash; $9,750
+          </div>
+          <div class="role-fee-line">15% of first year salary</div>
+          <div class="role-detail">
+            <div class="role-detail-label">About this role</div>
+            <p class="role-detail-desc">Precision parts manufacturer supplying the aerospace industry. Needs someone comfortable with tight tolerances and ISO documentation.</p>
+            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-apply-copy">You're approved instantly, no waiting on the company. Once you apply, this role shows up under "My roles" and you can start submitting candidates right away.</p>
             <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
           </div>
         </div>
@@ -969,7 +1153,54 @@
     </div>
   </section>
 
-  <section class="audience-section" id="for-companies">
+  <section class="audience-section" id="for-recruiters">
+    <div class="audience-inner">
+      <div class="eyebrow">Recruiters</div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <div class="step-title">Set up your firm</div>
+          <p class="step-desc">Tell us about your firm and where you have the most experience.</p>
+          <div class="step-mock">
+            <div class="mock-field"><div class="mock-field-label">Firm name</div><div class="mock-field-value">Rivera Search Partners</div></div>
+            <div class="mock-field-label" style="margin-top:10px;">Industries you've placed the most</div>
+            <div class="mock-pill">Manufacturing</div>
+            <div class="mock-pill">Healthcare</div>
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <div class="step-title">Find roles that fit</div>
+          <p class="step-desc">Apply for roles and get matched fast if your experience is a fit.</p>
+          <div class="step-mock">
+            <div class="mock-field"><div class="mock-field-label">Open role</div><div class="mock-field-value">VP of Operations</div></div>
+            <div class="mock-candidate-note">Austin, TX &middot; 11-50 employees</div>
+            <div class="mock-candidate-note">$180,000 &ndash; $230,000</div>
+            <div class="mock-pill">est. earnings $27,000 &ndash; $34,500</div>
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <div class="step-title">Get paid when you place</div>
+          <p class="step-desc">Earn a fee when your candidate gets hired. It's free to use makeplacement.</p>
+          <div class="step-mock">
+            <div class="mock-stage active">Placement confirmed</div>
+            <div class="mock-pill">total earned $30,000</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="audience-cta">
+        <form data-mode="agencies" class="audience-form" novalidate>
+          <input type="email" placeholder="What's your work email?" required>
+          <button type="submit" class="btn-pill">Get started</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="audience-section alt" id="for-companies">
     <div class="audience-inner">
       <div class="eyebrow">Companies</div>
       <h2 class="section-headline">Strong candidates from recruiters who've hired for this role before.</h2>
@@ -1014,42 +1245,6 @@
 
       <div class="audience-cta">
         <form data-mode="companies" class="audience-form" novalidate>
-          <input type="email" placeholder="What's your work email?" required>
-          <button type="submit" class="btn-pill">Get started</button>
-        </form>
-      </div>
-    </div>
-  </section>
-
-  <section class="audience-section alt" id="for-recruiters">
-    <div class="audience-inner">
-      <div class="eyebrow">Recruiters</div>
-
-      <div class="steps-grid two-col">
-        <div class="step-card">
-          <div class="step-num">01</div>
-          <div class="step-title">Set up your firm</div>
-          <p class="step-desc">Tell us about your firm and where you have the most experience.</p>
-          <div class="step-mock">
-            <div class="mock-field"><div class="mock-field-label">Firm name</div><div class="mock-field-value">Rivera Search Partners</div></div>
-            <div class="mock-field-label" style="margin-top:10px;">Industries you've placed the most</div>
-            <div class="mock-pill">Manufacturing</div>
-            <div class="mock-pill">Healthcare</div>
-          </div>
-        </div>
-        <div class="step-card">
-          <div class="step-num">02</div>
-          <div class="step-title">Get paid when you place</div>
-          <p class="step-desc">Earn a fee when your candidate gets hired. It's free to use makeplacement.</p>
-          <div class="step-mock">
-            <div class="mock-stage active">Placement confirmed</div>
-            <div class="mock-pill">total earned $30,000</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="audience-cta">
-        <form data-mode="agencies" class="audience-form" novalidate>
           <input type="email" placeholder="What's your work email?" required>
           <button type="submit" class="btn-pill">Get started</button>
         </form>
@@ -1800,6 +1995,25 @@
         card.classList.toggle('expanded');
       });
     });
+
+    // ---- Role grid: sort ----
+    (function () {
+      const grid = document.getElementById('role-grid');
+      const tabs = document.querySelectorAll('.board-tab[data-sort]');
+      const cards = Array.from(grid.querySelectorAll('.role-card'));
+      const originalOrder = cards.slice();
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const order = tab.dataset.sort === 'highest'
+            ? cards.slice().sort((a, b) => Number(b.dataset.compMin) - Number(a.dataset.compMin))
+            : originalOrder;
+          order.forEach(card => grid.appendChild(card));
+        });
+      });
+    })();
 
     // The two "What's your work email?" mini-forms under the Companies and
     // Recruiters sections open the modal prefilled instead of navigating
