@@ -371,48 +371,35 @@
     margin-top: 14px;
   }
 
-  .refer-banner {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    margin-top: 48px;
-    padding: 22px 26px;
-    background: #ffffff;
-    border: 1px solid var(--border);
-    border-radius: 16px;
+  /* ---- Refer & earn section ---- */
+  .refer-section {
+    padding: 96px 24px;
+    background: #fbfbfa;
+  }
+
+  .refer-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    text-align: center;
   }
 
   .refer-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
     background: #eaf1ff;
     color: #3b6fe0;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .refer-text { flex: 1 1 auto; }
-
-  .refer-title {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 3px;
+    margin: 0 auto 24px;
   }
 
   .refer-sub {
-    font-size: 13.5px;
+    font-size: 15.5px;
+    line-height: 1.6;
     color: #55555a;
-    line-height: 1.5;
-  }
-
-  .refer-btn { flex-shrink: 0; }
-
-  @media (max-width: 640px) {
-    .refer-banner { flex-wrap: wrap; }
-    .refer-btn { width: 100%; }
+    margin: 0 0 28px;
   }
 
   /* ---- Trust strip ---- */
@@ -1000,6 +987,7 @@
       <div class="wordmark">makeplacement</div>
       <nav class="main-nav">
         <a href="#explore">Open roles</a>
+        <a href="#refer">Refer &amp; earn</a>
         <a href="#for-companies">For companies</a>
       </nav>
       <div class="header-actions">
@@ -1179,17 +1167,6 @@
         <a class="btn-pill" href="signup.html" data-signup-open="agencies">See all open roles</a>
         <div class="explore-note">Free to join.</div>
       </div>
-
-      <div class="refer-banner">
-        <div class="refer-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"></rect><rect x="4" y="12" width="16" height="9" rx="1"></rect><line x1="12" y1="8" x2="12" y2="21"></line><path d="M12 8c-1.5-4-6-4-6-1s3 1 6 1"></path><path d="M12 8c1.5-4 6-4 6-1s-3 1-6 1"></path></svg>
-        </div>
-        <div class="refer-text">
-          <div class="refer-title">Refer & earn</div>
-          <div class="refer-sub">Know other recruiters? Send them your link and earn 15% of their first placement fee.</div>
-        </div>
-        <a class="btn-pill refer-btn" href="signup.html" data-signup-open="agencies">Get your link</a>
-      </div>
     </div>
   </section>
 
@@ -1289,6 +1266,18 @@
           <button type="submit" class="btn-pill">Get started</button>
         </form>
       </div>
+    </div>
+  </section>
+
+  <section class="refer-section" id="refer">
+    <div class="refer-inner">
+      <div class="refer-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"></rect><rect x="4" y="12" width="16" height="9" rx="1"></rect><line x1="12" y1="8" x2="12" y2="21"></line><path d="M12 8c-1.5-4-6-4-6-1s3 1 6 1"></path><path d="M12 8c1.5-4 6-4 6-1s-3 1-6 1"></path></svg>
+      </div>
+      <div class="eyebrow">Refer &amp; earn</div>
+      <h2 class="section-headline">Know other recruiters? Bring them in.</h2>
+      <p class="refer-sub">Every recruiter gets their own link. Send it to someone else in the industry, and when they get their first placement fee paid, you automatically earn 15% of it. No cap on how many people you refer.</p>
+      <a class="btn-pill" href="signup.html" data-signup-open="agencies">Get your link</a>
     </div>
   </section>
   </main>
