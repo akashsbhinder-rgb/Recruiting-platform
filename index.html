@@ -371,6 +371,50 @@
     margin-top: 14px;
   }
 
+  .refer-banner {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 48px;
+    padding: 22px 26px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .refer-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #eaf1ff;
+    color: #3b6fe0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .refer-text { flex: 1 1 auto; }
+
+  .refer-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  .refer-sub {
+    font-size: 13.5px;
+    color: #55555a;
+    line-height: 1.5;
+  }
+
+  .refer-btn { flex-shrink: 0; }
+
+  @media (max-width: 640px) {
+    .refer-banner { flex-wrap: wrap; }
+    .refer-btn { width: 100%; }
+  }
+
   /* ---- Trust strip ---- */
   .trust-strip {
     border-top: 1px solid var(--border);
@@ -1134,6 +1178,17 @@
       <div class="explore-cta">
         <a class="btn-pill" href="signup.html" data-signup-open="agencies">See all open roles</a>
         <div class="explore-note">Free to join.</div>
+      </div>
+
+      <div class="refer-banner">
+        <div class="refer-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"></rect><rect x="4" y="12" width="16" height="9" rx="1"></rect><line x1="12" y1="8" x2="12" y2="21"></line><path d="M12 8c-1.5-4-6-4-6-1s3 1 6 1"></path><path d="M12 8c1.5-4 6-4 6-1s-3 1-6 1"></path></svg>
+        </div>
+        <div class="refer-text">
+          <div class="refer-title">Refer & earn</div>
+          <div class="refer-sub">Know other recruiters? Send them your link and earn 15% of their first placement fee.</div>
+        </div>
+        <a class="btn-pill refer-btn" href="signup.html" data-signup-open="agencies">Get your link</a>
       </div>
     </div>
   </section>
