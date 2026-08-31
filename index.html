@@ -1361,6 +1361,17 @@
     const RECRUITER_ONBOARDING_URL = 'recruiter_onboarding.html';
     const RECRUITER_DASHBOARD_URL = 'recruiter_dashboard.html';
     const PENDING_KEY = 'mp_pending_signup';
+    const REFERRAL_KEY = 'mp_referral_code';
+
+    // First-touch attribution: only set it if nothing's stored yet, so a
+    // recruiter who clicks a second referral link later doesn't steal
+    // credit from whoever actually sent them here first.
+    (function captureReferralCode() {
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref && !localStorage.getItem(REFERRAL_KEY)) {
+        localStorage.setItem(REFERRAL_KEY, ref.trim());
+      }
+    })();
 
     // ---- Modal open/close ----
     const overlay = document.getElementById('signup-overlay');
@@ -1692,7 +1703,8 @@
         type: 'search_firm',
         firstName: aFirstName.value.trim(),
         lastName: aLastName.value.trim(),
-        email
+        email,
+        referredByCode: localStorage.getItem(REFERRAL_KEY) || null
       };
 
       const { error } = await sendMagicLink(email, pending);
@@ -1861,6 +1873,16 @@
       showOnly(postAuthErrorBox);
     }
 
+    // Personalized-but-unique referral code, e.g. "jordan-9k2p". The random
+    // suffix is the actual uniqueness guarantee (recruiters.referral_code
+    // has a unique index) -- collisions are astronomically unlikely at any
+    // real signup volume, so this doesn't bother retrying on conflict.
+    function makeReferralCode(firstName) {
+      const base = (firstName || 'recruiter').toLowerCase().replace(/[^a-z0-9]/g, '') || 'recruiter';
+      const suffix = Math.random().toString(36).slice(2, 6);
+      return `${base}-${suffix}`;
+    }
+
     // Tries a plain insert; if a row already exists for this account
     // (e.g. a returning user whose signUp fell back to a login),
     // updates it instead. Avoids upsert/ON CONFLICT, which doesn't
@@ -1933,10 +1955,13 @@
             auth_user_id: session.user.id,
             contact_first_name: pending.firstName,
             last_name: pending.lastName,
-            email: pending.email
+            email: pending.email,
+            referral_code: makeReferralCode(pending.firstName),
+            referred_by_code: pending.referredByCode || null
           });
 
           localStorage.removeItem(PENDING_KEY);
+          localStorage.removeItem(REFERRAL_KEY);
           await clearPendingSignupMetadata();
           window.location.href = RECRUITER_ONBOARDING_URL;
           return;

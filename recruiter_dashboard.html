@@ -244,6 +244,8 @@ function Icon({ name, size = 18, style, filled }) {
       return <svg {...common}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
     case "mail":
       return <svg {...common}><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22 6 12 13 2 6" /></svg>;
+    case "gift":
+      return <svg {...common}><rect x="3" y="8" width="18" height="4" rx="1" /><rect x="4" y="12" width="16" height="9" rx="1" /><line x1="12" y1="8" x2="12" y2="21" /><path d="M12 8c-1.5-4-6-4-6-1s3 1 6 1" /><path d="M12 8c1.5-4 6-4 6-1s-3 1-6 1" /></svg>;
     default:
       return null;
   }
@@ -310,6 +312,89 @@ function EmptyState({ icon, title, body, actions }) {
       <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 13.5, color: T.sub, maxWidth: 380, margin: "6px auto 0" }}>{body}</div>
       {actions && <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>{actions}</div>}
+    </div>
+  );
+}
+
+function ReferAndEarn({ recruiter, session }) {
+  const [code, setCode] = useState(recruiter.referral_code || null);
+  const [stats, setStats] = useState(null);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        let activeCode = recruiter.referral_code;
+        if (!activeCode) {
+          // Recruiter signed up before this feature existed -- give them a
+          // code now, the first time they open this tab.
+          activeCode = makeReferralCode(recruiter.contact_first_name);
+          const { error: saveErr } = await supabaseClient
+            .from("recruiters")
+            .update({ referral_code: activeCode })
+            .eq("id", recruiter.id);
+          if (saveErr) throw new Error(saveErr.message);
+        }
+        if (cancelled) return;
+        setCode(activeCode);
+        const s = await fetchReferralStats(recruiter.id, activeCode);
+        if (!cancelled) setStats(s);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [recruiter.id]);
+
+  const link = code ? `https://makeplacement.com/?ref=${code}` : "";
+
+  const copyLink = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_err) {
+      // Clipboard access can be blocked (e.g. insecure context, permissions) --
+      // the link is still selectable/visible in the input, so this is a
+      // quiet no-op rather than an error the recruiter has to deal with.
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 640, margin: "0 auto" }}>
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: T.blueBg, color: T.blue, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+        <Icon name="gift" size={20} />
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Refer & earn</div>
+      <div style={{ fontSize: 14, color: T.sub, lineHeight: 1.6, marginBottom: 28 }}>
+        Send this link to other recruiters. When someone you refer gets their first placement fee paid, you earn 15% of what they earn on it &mdash; automatically, no cap on how many people you refer.
+      </div>
+
+      {error && <div style={{ color: T.red, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+
+      <div style={sectionLabelStyle}>Your referral link</div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+        <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...inputStyle, marginBottom: 0, flex: 1, color: T.sub }} />
+        <PrimaryButton onClick={copyLink} style={{ flexShrink: 0 }}>{copied ? "Copied!" : "Copy link"}</PrimaryButton>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+        <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 18 }}>
+          <div style={sectionLabelStyle}>Recruiters referred</div>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>{stats ? stats.referredCount : "—"}</div>
+        </div>
+        <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 18 }}>
+          <div style={sectionLabelStyle}>Pending bonus</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: T.sub }}>{stats ? money(stats.pending) : "—"}</div>
+        </div>
+        <div style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: 18 }}>
+          <div style={sectionLabelStyle}>Bonus earned</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: T.green }}>{stats ? money(stats.paid) : "—"}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -488,12 +573,34 @@ async function sendRecruiterMessage(session, recruiterId, roleId, candidateId, r
   if (error) throw new Error(`Failed sending message: ${error.message}`);
 }
 
+// ---------- refer & earn ----------
+// Same generator index.html uses for a brand-new signup -- kept here too
+// so recruiters who signed up before this feature shipped can still get a
+// code lazily, the first time they open this tab.
+function makeReferralCode(firstName) {
+  const base = (firstName || "recruiter").toLowerCase().replace(/[^a-z0-9]/g, "") || "recruiter";
+  const suffix = Math.random().toString(36).slice(2, 6);
+  return `${base}-${suffix}`;
+}
+
+async function fetchReferralStats(recruiterId, referralCode) {
+  const [{ count: referredCount }, { data: bonuses, error: bonusErr }] = await Promise.all([
+    supabaseClient.from("recruiters").select("id", { count: "exact", head: true }).eq("referred_by_code", referralCode),
+    supabaseClient.from("referral_bonuses").select("amount, status").eq("referrer_id", recruiterId),
+  ]);
+  if (bonusErr) throw new Error(`Failed loading referral bonuses: ${bonusErr.message}`);
+  const pending = (bonuses || []).filter((b) => b.status === "pending").reduce((sum, b) => sum + Number(b.amount), 0);
+  const paid = (bonuses || []).filter((b) => b.status === "paid").reduce((sum, b) => sum + Number(b.amount), 0);
+  return { referredCount: referredCount || 0, pending, paid };
+}
+
 // ---------- top navigation ----------
 const NAV_ITEMS = [
   { key: "browse", label: "Browse", live: true },
   { key: "myroles", label: "My roles", live: true },
   { key: "candidates", label: "Candidates", live: true },
   { key: "messages", label: "Messages", live: true },
+  { key: "refer", label: "Refer & earn", live: true },
 ];
 
 function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnread, onMarkNotifsRead, onSelectNotification, bellPulse }) {
@@ -1950,6 +2057,7 @@ function RecruiterDashboard() {
         {tab === "myroles" && <MyRoles recruiterId={recruiter.id} session={session} appliedRoleIds={appliedRoleIds} onBrowse={() => setTab("browse")} focusRoleId={focusRoleId} onFocusRole={setFocusRoleId} onOpenWelcome={(role, company) => setWelcomeModal({ role, company })} readOnly={adminViewMode} />}
         {tab === "candidates" && <CandidatesTab recruiterId={recruiter.id} session={session} readOnly={adminViewMode} />}
         {tab === "messages" && <RecruiterInbox session={session} recruiterId={recruiter.id} appliedRoleIds={appliedRoleIds} readOnly={adminViewMode} />}
+        {tab === "refer" && <ReferAndEarn recruiter={recruiter} session={session} />}
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {welcomeModal && <WelcomeModal role={welcomeModal.role} company={welcomeModal.company} onClose={() => setWelcomeModal(null)} />}

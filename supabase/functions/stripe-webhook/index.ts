@@ -6,7 +6,7 @@
 //  - checkout.session.completed: fires when an Employer finishes paying a
 //    placement fee -- flips placements.fee_paid, which is what actually
 //    puts money in MakePlacement's Stripe balance for release-payout-installments
-//    to pay Referrers from.
+//    to pay Referrers from. Also triggers awardReferralBonus below.
 //
 // This endpoint needs TWO separate webhook destinations registered in the
 // Stripe Dashboard, both pointing at this same URL: one scoped to
@@ -17,6 +17,15 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14?target=deno";
+
+// Refer & earn: cut of a referred recruiter's OWN placement fee
+// (referrer_bonus_total, not the employer's full fee) that the recruiter
+// who referred them earns -- once, on the referred recruiter's first paid
+// placement. Recording it here only creates a "pending" ledger row; the
+// actual Stripe transfer to the referrer is a separate release step, same
+// pattern as release-payout-installments already uses for the recruiter's
+// own payouts.
+const REFERRAL_BONUS_PCT = 0.15;
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2023-10-16",
@@ -32,6 +41,47 @@ const webhookSecrets = (Deno.env.get("STRIPE_WEBHOOK_SECRETS") || Deno.env.get("
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+// Awards the referrer a one-time bonus the first time their referred
+// recruiter gets a placement fee paid. Guards against double-awarding
+// two ways: the in-code count check (belt) and referral_bonuses.
+// unique(referred_recruiter_id) at the DB level (suspenders, covers
+// concurrent/duplicate webhook deliveries for the same event).
+async function awardReferralBonus(placement: { id: string; recruiter_id: string; referrer_bonus_total: number }) {
+  const { data: recruiter } = await supabaseAdmin
+    .from("recruiters")
+    .select("id, referred_by_code")
+    .eq("id", placement.recruiter_id)
+    .single();
+  if (!recruiter?.referred_by_code) return;
+
+  const { count: priorPaidCount } = await supabaseAdmin
+    .from("placements")
+    .select("id", { count: "exact", head: true })
+    .eq("recruiter_id", recruiter.id)
+    .eq("fee_paid", true);
+  if ((priorPaidCount ?? 0) !== 1) return; // not their first paid placement
+
+  const { data: referrer } = await supabaseAdmin
+    .from("recruiters")
+    .select("id")
+    .eq("referral_code", recruiter.referred_by_code)
+    .maybeSingle();
+  if (!referrer) return; // referral code didn't match a real recruiter
+
+  const amount = Math.round(Number(placement.referrer_bonus_total) * REFERRAL_BONUS_PCT * 100) / 100;
+
+  await supabaseAdmin.from("referral_bonuses").insert([{
+    referrer_id: referrer.id,
+    referred_recruiter_id: recruiter.id,
+    placement_id: placement.id,
+    pct: REFERRAL_BONUS_PCT,
+    amount,
+  }]);
+  // A unique-violation here just means this bonus was already recorded
+  // (e.g. a retried webhook delivery) -- nothing to do, so the error from
+  // this insert is intentionally not checked or surfaced.
+}
 
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
@@ -70,13 +120,19 @@ Deno.serve(async (req) => {
     const session = event.data.object;
     const placementId = session.metadata?.placement_id;
     if (placementId) {
-      const { error } = await supabaseAdmin
+      const { data: placement, error } = await supabaseAdmin
         .from("placements")
         .update({ fee_paid: true, fee_paid_at: new Date().toISOString() })
-        .eq("id", placementId);
+        .eq("id", placementId)
+        .select("id, recruiter_id, referrer_bonus_total")
+        .single();
 
       if (error) {
         return new Response(`Failed updating placement: ${error.message}`, { status: 500 });
+      }
+
+      if (placement) {
+        await awardReferralBonus(placement);
       }
     }
   }
