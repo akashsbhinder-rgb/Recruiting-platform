@@ -937,8 +937,15 @@
     font-size: 20px;
     line-height: 1.25;
     letter-spacing: -0.01em;
-    margin: 0 0 20px;
+    margin: 0 0 8px;
     padding-right: 20px;
+  }
+
+  .signup-subtext {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 0 0 20px;
   }
 
   .signup-modal .pills {
@@ -1094,7 +1101,7 @@
       </nav>
       <div class="header-actions">
         <a class="link" href="signup.html" data-signup-open="login">Log in</a>
-        <a class="btn-pill" href="signup.html" data-signup-open="agencies">Get started</a>
+        <a class="btn-pill" href="signup.html" data-signup-open="agencies">Join the waitlist</a>
       </div>
     </div>
   </header>
@@ -1245,14 +1252,14 @@
               <span id="role-modal-earn-text"></span>
             </div>
             <div class="role-fee-line" id="role-modal-fee"></div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
+            <button class="role-apply" type="button" data-signup-open="agencies">Join the waitlist to apply</button>
           </div>
         </div>
       </div>
 
       <div class="explore-cta">
         <a class="btn-pill" href="signup.html" data-signup-open="agencies">See all open roles</a>
-        <div class="explore-note">Free to join.</div>
+        <div class="explore-note">Free to join the waitlist.</div>
       </div>
     </div>
   </section>
@@ -1298,7 +1305,7 @@
       <div class="audience-cta">
         <form data-mode="agencies" class="audience-form" novalidate>
           <input type="email" placeholder="What's your work email?" required>
-          <button type="submit" class="btn-pill">Get started</button>
+          <button type="submit" class="btn-pill">Join the waitlist</button>
         </form>
       </div>
     </div>
@@ -1382,6 +1389,7 @@
     <div class="signup-modal" id="signup-modal" role="dialog" aria-modal="true" aria-label="Sign up">
       <button type="button" class="signup-close" id="signup-close" aria-label="Close">&times;</button>
       <h2 id="heading">Make your next hire</h2>
+      <p class="signup-subtext hidden" id="heading-sub">We're at capacity on new recruiters right now. Join the waitlist and we'll email you the moment a spot opens up.</p>
 
       <div class="pills" role="tablist" id="pills">
         <button class="pill active" id="btn-companies" role="tab" aria-selected="true" type="button">Companies</button>
@@ -1430,7 +1438,7 @@
             <div class="error-msg" id="err-a-email">Please enter a valid email</div>
           </div>
 
-          <button type="submit" class="submit">Create account</button>
+          <button type="submit" class="submit">Join the waitlist</button>
 
           <div class="link-row">Already have an account? <a id="link-login-from-agencies">Log in</a></div>
         </form>
@@ -1618,6 +1626,7 @@
 
     // ---- View switching ----
     const heading = document.getElementById('heading');
+    const headingSub = document.getElementById('heading-sub');
     const btnCompanies = document.getElementById('btn-companies');
     const btnAgencies = document.getElementById('btn-agencies');
     const formCompanies = document.getElementById('form-companies');
@@ -1642,7 +1651,8 @@
       btnCompanies.setAttribute('aria-selected', isCompanies);
       btnAgencies.setAttribute('aria-selected', !isCompanies);
       pillsWrap.classList.remove('hidden');
-      heading.textContent = isCompanies ? 'Make your next hire' : 'Grow your recruiting business';
+      heading.textContent = isCompanies ? 'Make your next hire' : 'Join the recruiter waitlist';
+      headingSub.classList.toggle('hidden', isCompanies);
       showOnly(isCompanies ? formCompanies : formAgencies);
     }
 
@@ -1657,6 +1667,7 @@
     function showLogin() {
       pillsWrap.classList.add('hidden');
       heading.textContent = 'Log in';
+      headingSub.classList.add('hidden');
       showOnly(formLogin);
     }
 

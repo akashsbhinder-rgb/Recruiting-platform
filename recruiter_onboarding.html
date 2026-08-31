@@ -467,12 +467,12 @@
       const wrap = el('div', { className: 'wrap' });
       wrap.appendChild(buildTopBar());
       const box = el('div', { style: 'max-width:480px;margin:120px auto;text-align:center;padding:0 24px;' });
-      box.appendChild(el('div', { style: 'font-size:22px;font-weight:600;margin-bottom:8px;color:#17171a;' }, 'Profile submitted'));
+      box.appendChild(el('div', { style: 'font-size:22px;font-weight:600;margin-bottom:8px;color:#17171a;' }, "You're on the waitlist"));
       box.appendChild(
         el(
           'div',
           { style: 'font-size:14.5px;color:#777;margin-bottom:24px;line-height:1.5;' },
-          "Thanks! Our admin team will review your profile and approve it shortly. Keep an eye on your email."
+          "Thanks! We're at capacity on new recruiters right now, so our admin team will review your profile and reach out as soon as a spot opens up. Keep an eye on your email."
         )
       );
       if (state.recruiterVerified) {
