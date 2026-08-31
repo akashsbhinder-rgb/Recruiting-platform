@@ -250,7 +250,7 @@
     cursor: pointer;
   }
 
-  .role-card.expanded { box-shadow: 0 12px 32px rgba(20, 20, 25, 0.08); }
+  .role-card:hover { box-shadow: 0 12px 32px rgba(20, 20, 25, 0.08); }
 
   .role-avatar {
     width: 34px;
@@ -313,14 +313,106 @@
     text-underline-offset: 2px;
   }
 
-  .role-detail {
-    display: none;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
+  /* ---- Role detail modal ---- */
+  .role-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(15, 15, 17, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
-  .role-card.expanded .role-detail { display: block; }
+  .role-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .role-modal {
+    position: relative;
+    width: 100%;
+    max-width: 620px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 36px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+    transform: translateY(8px) scale(0.98);
+    transition: transform 0.2s ease;
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 32px;
+  }
+
+  .role-overlay.open .role-modal {
+    transform: translateY(0) scale(1);
+  }
+
+  @media (max-width: 640px) {
+    .role-modal { grid-template-columns: 1fr; max-width: 460px; }
+  }
+
+  @media (max-width: 480px) {
+    .role-overlay { padding: 0; }
+    .role-modal {
+      max-width: 100%;
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .role-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--pill-bg);
+    color: var(--fg);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .role-modal-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .role-modal-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+  }
+
+  .role-modal-badge.new { background: #eaf1ff; color: #3b6fe0; }
+  .role-modal-badge.verified { background: #e8f6ec; color: #1a8a4a; }
+
+  .role-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    padding-right: 30px;
+  }
+
+  .role-modal-meta {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
 
   .role-detail-label {
     font-size: 11px;
@@ -328,22 +420,32 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
-  .role-detail-desc {
-    font-size: 13px;
-    line-height: 1.6;
-    color: #55555a;
-    margin-bottom: 18px;
-  }
-
-  .role-apply-heading {
+  .role-modal-desc {
     font-size: 14px;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 14px;
+    line-height: 1.65;
+    color: #333;
   }
+
+  .role-modal-reward {
+    background: #fbfbfa;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    align-self: start;
+  }
+
+  .role-modal-comp {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .role-modal-reward .role-earn { margin-bottom: 12px; }
+
+  .role-modal-reward .role-fee-line { display: block; margin-bottom: 20px; }
 
   .role-apply {
     font-family: inherit;
@@ -353,7 +455,7 @@
     background: var(--btn-bg);
     border: none;
     border-radius: 999px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     cursor: pointer;
     width: 100%;
   }
@@ -1013,7 +1115,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           Highest paying
         </button>
-        <button class="board-tab" type="button" disabled>
+        <button class="board-tab" type="button" data-sort="responsive">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           Responsive
         </button>
@@ -1029,7 +1131,7 @@
       </div>
 
       <div class="role-grid" id="role-grid">
-        <div class="role-card" data-comp-min="180000">
+        <div class="role-card" data-comp-min="180000" data-desc="Family-owned manufacturer scaling into a second facility. Needs an operator who's run plant P&amp;L before and can report directly to the CEO.">
           <div class="role-avatar">M</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">VP of Operations</div>
@@ -1040,15 +1142,9 @@
             est. earnings $31,500 &ndash; $40,250
           </div>
           <div class="role-fee-line">17.5% of first year salary</div>
-          <div class="role-detail">
-            <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Family-owned manufacturer scaling into a second facility. Needs an operator who's run plant P&amp;L before and can report directly to the CEO.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
-          </div>
         </div>
 
-        <div class="role-card" data-comp-min="145000">
+        <div class="role-card" data-comp-min="145000" data-desc="Tier-1 automotive supplier replacing a plant manager who was promoted internally. Union environment, high-volume production.">
           <div class="role-avatar">M</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Plant Manager</div>
@@ -1059,15 +1155,9 @@
             est. earnings $25,375 &ndash; $30,625
           </div>
           <div class="role-fee-line">17.5% of first year salary</div>
-          <div class="role-detail">
-            <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Tier-1 automotive supplier replacing a plant manager who was promoted internally. Union environment, high-volume production.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
-          </div>
         </div>
 
-        <div class="role-card" data-comp-min="170000">
+        <div class="role-card" data-comp-min="170000" data-desc="Growing robotics and automation supplier ramping up production capacity. Needs someone who can lead engineering through a scale-up.">
           <div class="role-avatar">A</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Director of Manufacturing Engineering</div>
@@ -1078,15 +1168,9 @@
             est. earnings $29,750 &ndash; $36,750
           </div>
           <div class="role-fee-line">17.5% of first year salary</div>
-          <div class="role-detail">
-            <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Growing robotics and automation supplier ramping up production capacity. Needs someone who can lead engineering through a scale-up.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
-          </div>
         </div>
 
-        <div class="role-card" data-comp-min="160000">
+        <div class="role-card" data-comp-min="160000" data-desc="Contract manufacturer expanding into new verticals. Needs someone who can build a pipeline from scratch and close enterprise accounts.">
           <div class="role-avatar">M</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Director of Business Development</div>
@@ -1097,15 +1181,9 @@
             est. earnings $28,000 &ndash; $35,000
           </div>
           <div class="role-fee-line">17.5% of first year salary</div>
-          <div class="role-detail">
-            <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Contract manufacturer expanding into new verticals. Needs someone who can build a pipeline from scratch and close enterprise accounts.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
-          </div>
         </div>
 
-        <div class="role-card" data-comp-min="110000">
+        <div class="role-card" data-comp-min="110000" data-desc="Multi-site manufacturer tightening up supplier relationships after a recent expansion. Needs someone who can own sourcing end to end.">
           <div class="role-avatar">M</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Supply Chain Manager</div>
@@ -1116,15 +1194,9 @@
             est. earnings $16,500 &ndash; $21,000
           </div>
           <div class="role-fee-line">15% of first year salary</div>
-          <div class="role-detail">
-            <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Multi-site manufacturer tightening up supplier relationships after a recent expansion. Needs someone who can own sourcing end to end.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
-          </div>
         </div>
 
-        <div class="role-card" data-comp-min="70000">
+        <div class="role-card" data-comp-min="70000" data-desc="Growing packaging manufacturer adding a second shift. Needs a hands-on supervisor who can run the floor and coach a team of 15.">
           <div class="role-avatar">M</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Production Supervisor</div>
@@ -1135,15 +1207,9 @@
             est. earnings $10,500 &ndash; $13,500
           </div>
           <div class="role-fee-line">15% of first year salary</div>
-          <div class="role-detail">
-            <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Growing packaging manufacturer adding a second shift. Needs a hands-on supervisor who can run the floor and coach a team of 15.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
-            <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
-          </div>
         </div>
 
-        <div class="role-card" data-comp-min="50000">
+        <div class="role-card" data-comp-min="50000" data-desc="Precision parts manufacturer supplying the aerospace industry. Needs someone comfortable with tight tolerances and ISO documentation.">
           <div class="role-avatar">M</div>
           <div class="role-revealed">Company revealed once approved</div>
           <div class="role-title">Quality Control Technician</div>
@@ -1154,10 +1220,31 @@
             est. earnings $7,500 &ndash; $9,750
           </div>
           <div class="role-fee-line">15% of first year salary</div>
-          <div class="role-detail">
+        </div>
+      </div>
+
+      <div class="role-overlay" id="role-overlay" aria-hidden="true">
+        <div class="role-modal" role="dialog" aria-modal="true" aria-labelledby="role-modal-title">
+          <button type="button" class="role-modal-close" id="role-modal-close" aria-label="Close">&times;</button>
+          <div>
+            <div class="role-modal-badges">
+              <span class="role-modal-badge new">New opportunity</span>
+              <span class="role-modal-badge verified">Verified employer</span>
+            </div>
+            <div class="role-revealed">Company revealed once approved</div>
+            <div class="role-modal-title" id="role-modal-title"></div>
+            <div class="role-modal-meta" id="role-modal-meta"></div>
             <div class="role-detail-label">About this role</div>
-            <p class="role-detail-desc">Precision parts manufacturer supplying the aerospace industry. Needs someone comfortable with tight tolerances and ISO documentation.</p>
-            <div class="role-apply-heading">Apply to submit candidates</div>
+            <p class="role-modal-desc" id="role-modal-desc"></p>
+          </div>
+          <div class="role-modal-reward">
+            <div class="role-detail-label">Reward</div>
+            <div class="role-modal-comp" id="role-modal-comp"></div>
+            <div class="role-earn" id="role-modal-earn">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+              <span id="role-modal-earn-text"></span>
+            </div>
+            <div class="role-fee-line" id="role-modal-fee"></div>
             <button class="role-apply" type="button" data-signup-open="agencies">Apply to this role</button>
           </div>
         </div>
@@ -2042,15 +2129,54 @@
       el.addEventListener('click', handleSignupTrigger);
     });
 
-    // ---- Role grid: click a card to see role details, then apply ----
-    document.querySelectorAll('#role-grid .role-card').forEach(card => {
-      card.addEventListener('click', e => {
-        if (e.target.closest('.role-apply')) return;
-        card.classList.toggle('expanded');
-      });
-    });
+    // ---- Role grid: click a card to open its detail modal ----
+    (function () {
+      const roleOverlay = document.getElementById('role-overlay');
+      const roleModal = roleOverlay.querySelector('.role-modal');
+      const modalTitle = document.getElementById('role-modal-title');
+      const modalMeta = document.getElementById('role-modal-meta');
+      const modalDesc = document.getElementById('role-modal-desc');
+      const modalComp = document.getElementById('role-modal-comp');
+      const modalEarnText = document.getElementById('role-modal-earn-text');
+      const modalFee = document.getElementById('role-modal-fee');
+      let roleLastFocused = null;
 
-    // ---- Role grid: sort ----
+      function openRoleModal(card) {
+        roleLastFocused = document.activeElement;
+        modalTitle.textContent = card.querySelector('.role-title').textContent;
+        modalMeta.textContent = card.querySelector('.role-meta').textContent;
+        modalDesc.textContent = card.dataset.desc || '';
+        modalComp.textContent = card.querySelector('.role-comp').textContent;
+        modalEarnText.textContent = card.querySelector('.role-earn').textContent.trim();
+        modalFee.textContent = card.querySelector('.role-fee-line').textContent;
+        roleOverlay.classList.add('open');
+        roleOverlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeRoleModal() {
+        roleOverlay.classList.remove('open');
+        roleOverlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        if (roleLastFocused && typeof roleLastFocused.focus === 'function') roleLastFocused.focus();
+      }
+
+      document.querySelectorAll('#role-grid .role-card').forEach(card => {
+        card.addEventListener('click', () => openRoleModal(card));
+      });
+
+      document.getElementById('role-modal-close').addEventListener('click', closeRoleModal);
+      roleOverlay.addEventListener('click', e => { if (e.target === roleOverlay) closeRoleModal(); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && roleOverlay.classList.contains('open')) closeRoleModal();
+      });
+      // Close this modal first so the signup modal (opened by the global
+      // [data-signup-open] handler on this same button) isn't stacked on
+      // top of it.
+      roleModal.querySelector('.role-apply').addEventListener('click', closeRoleModal);
+    })();
+
+    // ---- Role grid: sort tabs ----
     (function () {
       const grid = document.getElementById('role-grid');
       const tabs = document.querySelectorAll('.board-tab[data-sort]');

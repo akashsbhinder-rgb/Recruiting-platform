@@ -701,7 +701,7 @@ function TopNav({ tab, onTabChange, recruiter, onLogout, notifications, notifUnr
 const FILTER_PILLS = [
   { key: "new", label: "New", icon: "clock", live: true },
   { key: "highestPaying", label: "Highest paying", icon: "dollar", live: true },
-  { key: "responsive", label: "Responsive", icon: "bolt", live: false },
+  { key: "responsive", label: "Responsive", icon: "bolt", live: true },
   { key: "roleBonus", label: "Role bonus", icon: "briefcase", live: false },
 ];
 
@@ -802,21 +802,109 @@ function ApplyPanel({ role, onApply }) {
   );
 }
 
+// ---------- role detail modal ----------
+function RoleDetailModal({ role, company, applied, onApply, onClose, readOnly }) {
+  const companyName = applied ? company && company.name : null;
+  const location = companyLocation(company);
+  const commissionPct = role.commission_pct != null ? Number(role.commission_pct).toFixed(1).replace(/\.0$/, "") : null;
+  const earnings = estimateEarnings(role.min_salary, role.max_salary, role.commission_pct);
+  const isNew = isRecent(role.created_at);
+  const [qualities, setQualities] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const detail = await fetchRoleDetail(role.id);
+        if (!cancelled) setQualities(detail.qualities);
+      } catch (_err) {
+        // Candidate requirements are a nice-to-have on this view -- a
+        // failure here shouldn't block seeing the rest of the role or
+        // applying to it.
+        if (!cancelled) setQualities([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [role.id]);
+
+  return (
+    <Modal onClose={onClose} width={700}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 240px", gap: 28 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {isNew && <Pill tone="live"><Icon name="clock" size={12} /> New opportunity</Pill>}
+            {company && company.verified && <Pill tone="placed"><Icon name="shield" size={12} /> Verified employer</Pill>}
+          </div>
+          {applied ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{companyName || "Company"}</span>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: T.faint, marginBottom: 4 }}>Company revealed once approved</div>
+          )}
+          <div style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 6, lineHeight: 1.25 }}>{role.name}</div>
+          {(location || (company && company.employee_count)) && (
+            <div style={{ fontSize: 13.5, color: T.sub, marginBottom: 24 }}>
+              {[location, company && company.employee_count ? `${company.employee_count} employees` : null].filter(Boolean).join(" · ")}
+            </div>
+          )}
+
+          {role.description && (
+            <div style={{ marginBottom: 22 }}>
+              <div style={sectionLabelStyle}>About this role</div>
+              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{role.description}</div>
+            </div>
+          )}
+
+          {qualities === null ? (
+            <div style={{ fontSize: 12.5, color: T.faint }}>{"loading requirements…"}</div>
+          ) : qualities.length > 0 ? (
+            <div>
+              <div style={sectionLabelStyle}>Candidate requirements</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#333", lineHeight: 1.7 }}>
+                {qualities.map((q) => <li key={q.id}>{q.quality}</li>)}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+
+        <div style={{ background: T.paperDim, border: `1px solid ${T.line}`, borderRadius: 14, padding: 20, alignSelf: "start" }}>
+          <div style={sectionLabelStyle}>Reward</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 12 }}>{money(role.min_salary)} – {money(role.max_salary)}</div>
+          {earnings && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: T.blue, background: T.blueBg, padding: "5px 10px", borderRadius: 999, marginBottom: 14 }}>
+              <Icon name="dollar" size={12} />
+              est. earnings {money(Math.round(earnings.low))} – {money(Math.round(earnings.high))}
+            </div>
+          )}
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px", marginBottom: 20 }}>
+            {commissionPct ? <>{commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span></> : <span style={{ fontWeight: 500, color: T.sub }}>Bonus not set</span>}
+          </div>
+          {applied ? (
+            <div style={{ fontSize: 12.5, color: T.sub }}>{"You're already applied \u2014 find this role under \"My roles\" to submit candidates."}</div>
+          ) : readOnly ? null : (
+            <ApplyPanel role={role} onApply={onApply} />
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ---------- role card ----------
-function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, applied, onApply, readOnly }) {
+function RoleCard({ role, company, onOpen, saved, onToggleSave, applied, readOnly }) {
   // Company identity stays hidden until the recruiter is approved for this
   // role -- everything else about it (location, size, comp) is fair game.
   const companyName = applied ? company && company.name : null;
   const location = companyLocation(company);
   const gradient = gradientFor(companyName || role.name);
   const initial = (companyName || role.name || "?").trim().charAt(0).toUpperCase();
-  const commissionPct = role.commission_pct != null ? Number(role.commission_pct).toFixed(1).replace(/\.0$/, "") : null;
   const earnings = estimateEarnings(role.min_salary, role.max_salary, role.commission_pct);
   const isNew = isRecent(role.created_at);
 
   return (
     <div style={{ border: `1px solid ${T.line}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
-      <div style={{ cursor: "pointer" }} onClick={onToggle}>
+      <div style={{ cursor: "pointer" }} onClick={onOpen}>
         <div style={{ position: "relative", height: 148, background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})` }}>
           {isNew && (
             <div style={{ position: "absolute", top: 10, left: 10 }}>
@@ -863,27 +951,6 @@ function RoleCard({ role, company, expanded, onToggle, saved, onToggleSave, appl
           )}
         </div>
       </div>
-
-      {expanded && (
-        <div style={{ padding: "18px 20px 22px", borderTop: `1px solid ${T.lineSoft}` }}>
-          <div style={{ marginBottom: 14, fontSize: 13, fontWeight: 700, color: T.ink, textDecoration: "underline", textUnderlineOffset: "2px" }}>
-            {commissionPct ? <>{commissionPct}% <span style={{ fontWeight: 500 }}>first year salary + bonus</span></> : <span style={{ fontWeight: 500, color: T.sub }}>Bonus not set</span>}
-          </div>
-
-          {role.description && (
-            <div style={{ marginBottom: 18 }}>
-              <div style={sectionLabelStyle}>About this role</div>
-              <div style={{ fontSize: 13.5, color: "#333", whiteSpace: "pre-wrap" }}>{role.description}</div>
-            </div>
-          )}
-
-          {applied ? (
-            <div style={{ fontSize: 12.5, color: T.sub }}>{"You're already applied \u2014 find this role under \"My roles\" to submit candidates."}</div>
-          ) : readOnly ? null : (
-            <ApplyPanel role={role} onApply={onApply} />
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -976,7 +1043,7 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
   const [companyMap, setCompanyMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
+  const [detailRoleId, setDetailRoleId] = useState(null);
   const [savedSet, setSavedSet] = useState(() => new Set());
 
   const [query, setQuery] = useState("");
@@ -997,8 +1064,6 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
     })();
   }, []);
 
-  const toggle = (roleId) => setExpandedId((prev) => (prev === roleId ? null : roleId));
-
   const toggleFilter = (key) => setActiveFilters((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; });
   const toggleSave = (roleId) => setSavedSet((prev) => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next; });
   const clearAll = () => { setQuery(""); setMinSalary(""); setActiveFilters(new Set()); };
@@ -1013,12 +1078,17 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
     }
     if (minSalary && Number(r.max_salary || 0) < Number(minSalary)) return false;
     if (activeFilters.has("new") && !isRecent(r.created_at)) return false;
+    // "responsive" has no dedicated signal yet -- pre-application, a
+    // recruiter can't see a company's messaging history with anyone else,
+    // so there's nothing real to filter on. Clickable, not a fake filter.
     return true;
   });
   if (activeFilters.has("highestPaying")) visible = [...visible].sort((a, b) => (b.max_salary || 0) - (a.max_salary || 0));
 
   if (loading) return <div style={{ color: T.sub, fontSize: 13 }}>{"loading roles\u2026"}</div>;
   if (error) return <div style={{ color: T.red, fontSize: 14 }}>{error}</div>;
+
+  const detailRole = detailRoleId ? roles.find((r) => r.id === detailRoleId) : null;
 
   return (
     <div>
@@ -1044,16 +1114,25 @@ function BrowseRoles({ recruiterId, session, appliedRoleIds, onApplied, readOnly
               key={role.id}
               role={role}
               company={companyMap[role.company_id]}
-              expanded={expandedId === role.id}
-              onToggle={() => toggle(role.id)}
+              onOpen={() => setDetailRoleId(role.id)}
               saved={savedSet.has(role.id)}
               onToggleSave={() => toggleSave(role.id)}
               applied={appliedRoleIds.has(role.id)}
-              onApply={async () => { await applyToRole(recruiterId, role.id); onApplied(role, companyMap[role.company_id]); }}
               readOnly={readOnly}
             />
           ))}
         </div>
+      )}
+
+      {detailRole && (
+        <RoleDetailModal
+          role={detailRole}
+          company={companyMap[detailRole.company_id]}
+          applied={appliedRoleIds.has(detailRole.id)}
+          onApply={async () => { await applyToRole(recruiterId, detailRole.id); onApplied(detailRole, companyMap[detailRole.company_id]); setDetailRoleId(null); }}
+          onClose={() => setDetailRoleId(null)}
+          readOnly={readOnly}
+        />
       )}
     </div>
   );
