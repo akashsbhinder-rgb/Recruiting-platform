@@ -1062,6 +1062,31 @@
         ({ data: recruiter, error } = await lookupRecruiter());
       }
 
+      // No row yet (and no real fetch error) but this session was created
+      // via the recruiter magic link (its metadata still carries
+      // pending_signup) -- the row that index.html's completeSignup()
+      // normally creates before redirecting here just hasn't landed, for
+      // any reason (that redirect never ran, a transient insert failure,
+      // etc). Rather than strand the user on an error screen, create it
+      // here so onboarding can proceed -- same behavior onboarding.html
+      // already has for companies.
+      const metaPending = session.user.user_metadata && session.user.user_metadata.pending_signup;
+      if (!error && !recruiter && metaPending && metaPending.type === 'search_firm') {
+        const base = (metaPending.firstName || 'recruiter').toLowerCase().replace(/[^a-z0-9]/g, '') || 'recruiter';
+        const referralCode = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+        const { error: insertErr } = await supabaseClient.from('recruiters').insert([{
+          auth_user_id: session.user.id,
+          contact_first_name: metaPending.firstName,
+          last_name: metaPending.lastName,
+          email: metaPending.email,
+          referral_code: referralCode,
+          referred_by_code: metaPending.referredByCode || null,
+        }]);
+        if (!insertErr || insertErr.code === '23505') {
+          ({ data: recruiter, error } = await lookupRecruiter());
+        }
+      }
+
       if (error || !recruiter) {
         document.getElementById('root').innerHTML =
           '<div class="center-msg">We\'re having trouble loading your profile. Please refresh the page. If this keeps happening, log out and log back in.</div>';
